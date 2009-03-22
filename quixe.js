@@ -550,7 +550,20 @@ var opcode_table = {
     },
 
     0x1d: function(context, operands) { /* sshiftr */
-        //###
+        if (quot_isconstant(operands[1])) {
+            var val = Number(operands[1]);
+            if (val < 32)
+                context.code.push(operands[2]+"(("+operands[0]+")>>"+val+") & 0xffffffff);");
+            else
+                context.code.push(operands[2]+"(("+operands[0]+")&0x80000000) ? 0xffffffff : 0);");
+        }
+        else {
+            context.code.push("if ("+operands[0]+" & 0x80000000) {");
+            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>"+operands[1]+") & 0xffffffff) : 0xffffffff);");
+            context.code.push("} else {");
+            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>"+operands[1]+") & 0xffffffff) : 0);");
+            context.code.push("}");
+        }
     },
 
     0x1e: function(context, operands) { /* ushiftr */
