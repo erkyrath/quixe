@@ -45,6 +45,7 @@ function qobjdump(obj, depth) {
 }
 
 var bytestring_table = Array(256);
+var quotechar_table = Array(256);
 function setup_bytestring_table() {
     var ix, val;
     for (ix=0; ix<0x100; ix++) {
@@ -52,6 +53,22 @@ function setup_bytestring_table() {
         if (ix<0x10)
             val = "0" + val;
         bytestring_table[ix] = val;
+    }
+
+    for (ix=0; ix<0x100; ix++) {
+        if (ix >= 0x20 && ix < 0x7f) {
+            if (ix == 0x22 || ix == 0x27 || ix == 0x5c)
+                val = "\\"+String.fromCharCode(ix);
+            else
+                val = String.fromCharCode(ix);
+        }
+        else if (ix == 0x0a) {
+            val = "\\n";
+        }
+        else {
+            val = "\\x" + bytestring_table[ix];
+        }
+        quotechar_table[ix] = val;
     }
 }
 
@@ -114,6 +131,39 @@ function QuoteMem4(addr) {
     if (memmap[addr+2]) 
         return "0x" + bytestring_table[memmap[addr+2]] + bytestring_table[memmap[addr+3]];
     return "0x" + bytestring_table[memmap[addr+3]];
+}
+
+/* Convert a 32-bit Unicode value to a JS string. */
+function CharToString(val) {
+    if (val < 0x10000) {
+        return String.fromCharCode(val);
+    }
+    else {
+        val -= 0x10000;
+        return String.fromCharCode(0xD800 + (val >> 10), 0xDC00 + (val & 0x3FF));
+    }
+}
+
+/* Convert a 32-bit Unicode value to a fragment of a JS string literal.
+   That is, eval('"'+QuoteCharToString(val)+'"') == CharToString(val).
+*/
+function QuoteCharToString(val) {
+    if (val < 0x100) {
+        return quotechar_table[val];
+    }
+    else if (val < 0x10000) {
+        val = val.toString(16);
+        while (val.length < 4)
+            val = "0"+val;
+        return ("\\u" + val);
+    }
+    else {
+        var val2;
+        val -= 0x10000;
+        val2 = 0xD800 + (val >> 10);
+        val = 0xDC00 + (val & 0x3FF);
+        return ("\\u" + val2.toString(16) + "\\u" + val.toString(16));
+    }
 }
 
 function fatal_error(msg) {
@@ -1027,6 +1077,28 @@ var opcode_table = {
         context.code.push("done_executing = true;");
         context.code.push("return;");
         context.path_ends = true;
+    },
+
+    0x70: function(context, operands) { /* streamchar */
+        //### iosys
+        if (quot_isconstant(operands[0])) {
+            var val = Number(operands[0]) & 0xff;
+            context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
+        }
+        else {
+            context.code.push("glk_buffer.push(CharToString(("+operands[0]+")&0xff));");
+        }
+    },
+
+    0x73: function(context, operands) { /* streamunichar */
+        //### iosys
+        if (quot_isconstant(operands[0])) {
+            var val = Number(operands[0]);
+            context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
+        }
+        else {
+            context.code.push("glk_buffer.push(CharToString("+operands[0]+"));");
+        }
     },
 
 }
@@ -1947,6 +2019,10 @@ function pop_callstub(val) {
     }
 }
 
+/* Set the current table address, and rebuild decoding cache. */
+function set_table(addr) {
+    //###
+}
 
 /* The VM state variables */
 
@@ -1974,6 +2050,9 @@ var stringtable;
 var endmem;        // always memmap.length
 var protectstart, protectend;
 var iosysmode, iosysrock;
+
+/* ### accumulator */
+var glk_buffer;
 
 /* Set up all the initial VM state.
    ### where does game_image come from?
@@ -2054,7 +2133,8 @@ function vm_restart() {
     pc = 0;
     iosysmode = 0;
     iosysrock = 0;
-    //### set_table(origstringtable);
+    set_table(origstringtable);
+    glk_buffer = [];
 
     /* Note that we do not reset the protection range. */
     
@@ -2071,6 +2151,8 @@ function vm_restart() {
 function execute_loop() {
     var vmfunc, pathtab, path;
 
+    glk_buffer.length = 0;
+
     while (!done_executing) {
         qlog("### pc now " + pc.toString(16));
         vmfunc = frame.vmfunc;
@@ -2085,7 +2167,11 @@ function execute_loop() {
     }
 
     qlog("### done executing.");
-    //qlog("### " + qobjdump(vmfunc_table[0x48], 1));
+
+    var text = glk_buffer.join("");
+    glk_buffer.length = 0;
+    var el = document.getElementById('story');
+    el.appendChild(document.createTextNode(text));
 }
 
 return {
