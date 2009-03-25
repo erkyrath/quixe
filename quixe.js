@@ -1090,6 +1090,17 @@ var opcode_table = {
         }
     },
 
+    0x72: function(context, operands) { /* streamstr */
+        //### iosys
+        if (quot_isconstant(operands[0])) {
+            var addr = Number(operands[0]) & 0xff;
+            //###
+        }
+        else {
+            //###
+        }
+    },
+
     0x73: function(context, operands) { /* streamunichar */
         //### iosys
         if (quot_isconstant(operands[0])) {
@@ -2020,8 +2031,32 @@ function pop_callstub(val) {
     }
 }
 
-/* Set the current table address, and rebuild decoding cache. */
-function set_table(addr) {
+/* Set the current table address, and rebuild decoding tree. */
+function set_string_table(addr) {
+    if (stringtable == addr)
+        return;
+
+    /* Drop the existing cache and tree. */
+    decoding_tree = undefined;
+    vmstring_table = {};
+
+    /* Set the register. */
+    stringtable = addr;
+
+    var never_cache_stringtable = false;
+
+    if (stringtable) {
+        /* Build cache. We can only do this if the table is entirely in ROM. */
+        var tablelen = Mem4(stringtable);
+        var rootaddr = Mem4(stringtable+8);
+        if (stringtable+tablelen <= ramstart && !never_cache_stringtable) {
+            qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
+            decoding_tree = build_decoding_tree(rootaddr);
+        }
+    }
+}
+
+function build_decoding_tree(nodeaddr) {
     //###
 }
 
@@ -2035,6 +2070,8 @@ var tempcallargs; /* only used momentarily, for enter_function() */
 var done_executing;
 
 var vmfunc_table; /* maps addresses to VMFuncs */
+var vmstring_table; /* maps addresses to ###? */
+var decoding_tree; /* binary tree of string nodes */
 
 /* Header constants. */
 var ramstart;
@@ -2101,7 +2138,9 @@ function setup_vm() {
 
     done_executing = false;
     vmfunc_table = {};
-    tempcallargs = []; //### Array(8)?
+    vmstring_table = {};
+    decoding_tree = undefined;
+    tempcallargs = Array(8);
     //### glulx_setrandom(0);
 
     endmem = origendmem;
@@ -2134,7 +2173,7 @@ function vm_restart() {
     pc = 0;
     iosysmode = 0;
     iosysrock = 0;
-    set_table(origstringtable);
+    set_string_table(origstringtable);
     glk_buffer = [];
 
     /* Note that we do not reset the protection range. */
