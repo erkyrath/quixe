@@ -1932,7 +1932,8 @@ function enter_function(addr, argcount) {
     var vmfunc = vmfunc_table[addr];
     if (vmfunc === undefined) {
         vmfunc = compile_func(addr);
-        vmfunc_table[addr] = vmfunc;
+        if (addr < ramstart)
+            vmfunc_table[addr] = vmfunc;
     }
 
     pc = vmfunc.startpc;
@@ -2161,7 +2162,8 @@ function execute_loop() {
         if (path === undefined) {
             vmfunc.pathaddrs[pc] = true;
             path = compile_path(vmfunc, pc, iosysmode);
-            pathtab[pc] = path;
+            if (pc < ramstart)
+                pathtab[pc] = path;
         }
         path();
     }
