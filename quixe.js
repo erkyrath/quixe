@@ -1091,14 +1091,7 @@ var opcode_table = {
     },
 
     0x72: function(context, operands) { /* streamstr */
-        //### iosys
-        if (quot_isconstant(operands[0])) {
-            var addr = Number(operands[0]) & 0xff;
-            //###
-        }
-        else {
-            //###
-        }
+        context.code.push("stream_string("+operands[0]+", 0, 0);");
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -2051,13 +2044,158 @@ function set_string_table(addr) {
         var rootaddr = Mem4(stringtable+8);
         if (stringtable+tablelen <= ramstart && !never_cache_stringtable) {
             qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
-            decoding_tree = build_decoding_tree(rootaddr);
+            var tmparray = Array(1);
+            build_decoding_tree(tmparray, rootaddr, 4 /*CACHEBITS*/, 0);
+            decoding_tree = tmparray[0];
+            if (decoding_tree === undefined)
+                fatal_error("Failed to create decoding tree.");
         }
     }
 }
 
-function build_decoding_tree(nodeaddr) {
-    //###
+/* The form of the decoding tree is a tree of arrays and leaf objects.
+   An array always has 16 entries (2^CACHESIZE). Every object, including
+   the array, has a "type" field corresponding to the Glulx node type.
+
+   The arrays have a peculiar structure (inherited from Glulxe). Each one
+   encapsulates a subtree of binary branch nodes, up to four nodes deep. This
+   lets you traverse the tree four levels at a time (using four input bits at
+   a time). The first input bit is the 1s place of the array index, and so 
+   on.
+
+   Life gets complicated if we want to encode *fewer* than four levels. A
+   subtree with only one branch (and two leaves) must duplicate each leaf
+   four times: 0,1,0,1,... This is because the decoder will index using
+   four bits at a time, but the high bits will be undefined.
+
+   The initial argument is the array we're writing into. If this is the
+   top-level call, it will be a fake (length-one) array -- see above.
+*/
+function build_decoding_tree(cablist, nodeaddr, depth, mask) {
+    var ix, type, cab;
+    var depthbit;
+
+    type = Mem1(nodeaddr);
+
+    if (type == 0 && depth == 4) { /*CACHEBITS*/
+        /* Start a new array. */
+        cab = Array(16); /*CACHESIZE*/
+        cab.type = 0;
+        cab.depth = 4; /*CACHEBITS*/
+        cablist[mask] = cab;
+        build_decoding_tree(cab, nodeaddr, 0, 0);
+        return;
+    }
+
+    if (type == 0) {
+        var leftaddr  = Mem4(nodeaddr+1);
+        var rightaddr = Mem4(nodeaddr+5);
+        build_decoding_tree(cablist, leftaddr, depth+1, mask);
+        build_decoding_tree(cablist, rightaddr, depth+1, (mask | (1 << depth)));
+        return;
+    }
+
+    /* Leaf node. */
+    nodeaddr++;
+
+    cab = {};
+    cab.type = type;
+    cab.depth = depth;
+    switch (type) {
+    case 0x02: /* 8-bit character */
+        cab.char = CharToString(Mem1(nodeaddr));
+        break;
+    case 0x04: /* Unicode character */
+        cab.char = CharToString(Mem4(nodeaddr));
+        break;
+    case 0x03: /* C-style string */
+    case 0x05: /* C-style unicode string */
+        //### cache as string if in ROM
+        cab.addr = nodeaddr;
+        break;
+    case 0x08: /* indirect ref */
+    case 0x09: /* double-indirect ref */
+        cab.addr = Mem4(nodeaddr);
+        break;
+    case 0x0A: /* indirect ref with arguments */
+    case 0x0B: /* double-indirect ref with arguments */
+        cab.addr = nodeaddr;
+        break;
+    case 0x01: /* terminator */
+        break;
+    default:
+        fatal_error("Unknown node type in string table.", type);
+    }
+
+    depthbit = (1 << depth);
+    for (ix = mask; ix < 16 /* CACHESIZE */; ix += depthbit) {
+        cablist[ix] = cab;
+    }
+}
+
+function stream_string(addr, inmiddle, bitnum) {
+    var ch, type;
+    var alldone = false;
+    var substring = (inmiddle != 0);
+
+    if (!addr)
+        fatal_error("Called stream_string with null address.");
+
+    while (!alldone) {
+        if (inmiddle == 0) {
+            type = Mem1(addr);
+            if (type == 0xE2)
+                addr+=4;
+            else
+                addr++;
+            bitnum = 0;
+        }
+        else {
+            type = inmiddle;
+        }
+
+        if (type == 0xE1) {
+            //### iosys
+            //### write...
+        }
+        else if (type == 0xE0) {
+            //### iosys
+            var ch;
+            while (1) {
+                ch = Mem1(addr);
+                addr++;
+                if (ch == 0)
+                    break;
+                glk_buffer.push(CharToString(ch));
+            }
+        }
+        else if (type == 0xE2) {
+            //### iosys
+            var ch;
+            while (1) {
+                ch = Mem4(addr);
+                addr+=4;
+                if (ch == 0)
+                    break;
+                glk_buffer.push(CharToString(ch));
+            }
+        }
+        else if (type >= 0xE0 && type <= 0xFF) {
+            fatal_error("Attempt to print unknown type of string.");
+        }
+        else {
+            fatal_error("Attempt to print non-string.");
+        }
+
+        if (!substring) {
+            /* Just get straight out. */
+            alldone = true;
+        }
+        else {
+            /* Pop a stub and see what's to be done. */
+            //###
+        }
+    }
 }
 
 /* The VM state variables */
