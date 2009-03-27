@@ -1,3 +1,10 @@
+// ### Optimizations I have not yet tried:
+// Change memory to an array of 4-byte values. Inline Mem4 and Mem4W when
+//   address is known to be aligned.
+// Inline Mem1 wherever possible.
+// Put a "with" on the JIT code, to keep the Quixe context at the top of
+//   the scope chain.
+
 Quixe = function() {
 
 /* This is called by the page (or the page's display library) when it
