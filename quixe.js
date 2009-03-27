@@ -524,17 +524,26 @@ function oputil_perform_jump(context, operand, unconditional) {
     if (quot_isconstant(operand)) {
         var val = Number(operand);
         if (val == 0 || val == 1) {
+            if (unconditional) {
+                context.code.push("// quashing offstack for unconditional return: " + context.offstack.length); //###debug
+                context.offstack.length = 0;
+            }
+            else {
+                context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //###debug
+            }
             context.code.push("leave_function();");
             context.code.push("if (stack.length == 0) { done_executing = true; return; }");
             context.code.push("pop_callstub("+val+");");
         }
         else {
+            oputil_unload_offstack(context, !unconditional);
             var newpc = (context.cp+val-2) & 0xffffffff;
             context.code.push("pc = "+newpc+";");
             context.vmfunc.pathaddrs[newpc] = true;
         }
     }
     else {
+        oputil_unload_offstack(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
         context.code.push("leave_function();");
         context.code.push("if (stack.length == 0) { done_executing = true; return; }");
@@ -544,7 +553,6 @@ function oputil_perform_jump(context, operand, unconditional) {
         context.code.push("pc = ("+context.cp+"+("+operand+")-2) & 0xffffffff;");
         context.code.push("}");
     }
-    oputil_unload_offstack(context, !unconditional);
     context.code.push("return;");
 }
 
@@ -1098,6 +1106,7 @@ var opcode_table = {
     },
 
     0x72: function(context, operands) { /* streamstr */
+        //### iosys
         context.code.push("stream_string("+operands[0]+", 0, 0);");
     },
 
@@ -2013,6 +2022,8 @@ function pop_callstub(val) {
     pc = frame.valstack.pop();
     destaddr = frame.valstack.pop();
     desttype = frame.valstack.pop();
+
+    //### string callstub magic
 
     switch (desttype) {
     case 0:
