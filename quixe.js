@@ -198,6 +198,13 @@ function make_code(val) {
     return _func;
 }
 
+/* Everything we know about a function. This includes the layout of the
+   local variables, the compiled paths for various start points within
+   the function, and the addresses known to be start points.
+
+   If the function is not in ROM, we still create this, but we will not
+   add it to the permanent vmfunc_table.
+*/
 function VMFunc(funcaddr, startpc, localsformat, rawformat) {
     this.funcaddr = funcaddr;
     this.startpc = startpc;
@@ -252,6 +259,10 @@ function VMFunc(funcaddr, startpc, localsformat, rawformat) {
     this.locallen = locallen;
 }
 
+/* One stack frame on the execution stack. This includes local variables
+   and the value stack. It does not contain the spec-defined byte sequence
+   for the stack frame; we generate that at save time.
+*/
 function StackFrame(vmfunc) {
     var ix;
 
@@ -275,6 +286,30 @@ function StackFrame(vmfunc) {
     this.framelen = 8 + vmfunc.rawformat.length + vmfunc.locallen;
 
     qlog("### frame for " + vmfunc.funcaddr.toString(16) + ": framelen " + this.framelen + ", locindex " + qobjdump(this.localsindex) + ", locals " + qobjdump(this.locals));
+}
+
+/* Represents all the cached string-table information for when stringtable
+   is addr. This includes the decoding table, and the compiled strings
+   for each address that's been printed.
+
+   If the table is not in ROM, there is no cached information. We still
+   make a VMTextEnv, but it's empty.
+*/
+function VMTextEnv(addr, dectab) {
+    if (addr == 0)
+        fatal_error("Tried to create a VMTextEnv for address zero.");
+
+    this.addr = addr;
+    this.cacheable = !(dectab === undefined);
+    this.decoding_tree = dectab;
+
+    /* The string tables for the various iosys modes. */
+    this.vmstring_tables = [];
+    if (this.cacheable) {
+        this.vmstring_tables[0] = {};
+        this.vmstring_tables[1] = {};
+        this.vmstring_tables[2] = {};
+    }
 }
 
 var operandlist_table = null;
@@ -1109,7 +1144,18 @@ var opcode_table = {
 
     0x72: function(context, operands) { /* streamstr */
         //### iosys
-        context.code.push("stream_string("+operands[0]+", 0, 0);");
+        context.varsused["strop"] = true;
+        //### this can be better
+        context.code.push("strop = undefined;");
+        context.code.push("if (!(vmstring_table === undefined)) {");
+        context.code.push("strop = vmstring_table["+operands[0]+"];");
+        context.code.push("if (strop === undefined) {");
+        context.code.push("strop = compile_string("+operands[0]+", 0, 0);");
+        context.code.push("vmstring_table["+operands[0]+"] = strop;");
+        context.code.push("}");
+        context.code.push("} else {");
+        context.code.push("strop = compile_string("+operands[0]+", 0, 0);");
+        context.code.push("}");
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -2051,26 +2097,40 @@ function set_string_table(addr) {
 
     /* Drop the existing cache and tree. */
     decoding_tree = undefined;
-    vmstring_table = {};
+    vmstring_table = undefined;
 
     /* Set the register. */
     stringtable = addr;
 
-    var never_cache_stringtable = false;
+    if (stringtable == 0) {
+        return;
+    }
 
-    if (stringtable) {
-        /* Build cache. We can only do this if the table is entirely in ROM. */
+    var textenv = vmtextenv_table[stringtable];
+    if (textenv === undefined) {
+        /* We will need a new VMTextEnv. */
+        /* If the table is entirely in ROM, we can build a decoding tree.
+           If not, leave it undefined in the VMTextEnv. */
+        var dectab = undefined;
         var tablelen = Mem4(stringtable);
         var rootaddr = Mem4(stringtable+8);
-        if (stringtable+tablelen <= ramstart && !never_cache_stringtable) {
+        var cache_stringtable = (stringtable+tablelen <= ramstart);
+        // cache_stringtable = false; // for debugging
+        if (cache_stringtable) {
             qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
             var tmparray = Array(1);
             build_decoding_tree(tmparray, rootaddr, 4 /*CACHEBITS*/, 0);
-            decoding_tree = tmparray[0];
-            if (decoding_tree === undefined)
+            dectab = tmparray[0];
+            if (dectab === undefined)
                 fatal_error("Failed to create decoding tree.");
         }
+
+        textenv = new VMTextEnv(stringtable, dectab);
+        vmtextenv_table[stringtable] = textenv;
     }
+
+    decoding_tree = textenv.decoding_tree;
+    vmstring_table = textenv.vmstring_tables[iosysmode];
 }
 
 /* The form of the decoding tree is a tree of arrays and leaf objects.
@@ -2153,13 +2213,13 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     }
 }
 
-function stream_string(addr, inmiddle, bitnum) {
+function compile_string(addr, inmiddle, bitnum) {
     var ch, type;
     var alldone = false;
     var substring = (inmiddle != 0);
 
     if (!addr)
-        fatal_error("Called stream_string with null address.");
+        fatal_error("Called compile_string with null address.");
 
     while (!alldone) {
         if (inmiddle == 0) {
@@ -2228,8 +2288,11 @@ var tempcallargs; /* only used momentarily, for enter_function() */
 var done_executing;
 
 var vmfunc_table; /* maps addresses to VMFuncs */
-var vmstring_table; /* maps addresses to ###? */
+var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
+/* The following two variables point to inside the current string table.
+   They are undefined if stringtable is zero, or a non-ROM address. */
 var decoding_tree; /* binary tree of string nodes */
+var vmstring_table; /* maps addresses to functions or strings */
 
 /* Header constants. */
 var ramstart;
@@ -2296,8 +2359,9 @@ function setup_vm() {
 
     done_executing = false;
     vmfunc_table = {};
-    vmstring_table = {};
+    vmtextenv_table = {};
     decoding_tree = undefined;
+    vmstring_table = undefined;
     tempcallargs = Array(8);
     //### glulx_setrandom(0);
 
