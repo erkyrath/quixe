@@ -4,6 +4,8 @@
 // Inline Mem1 wherever possible.
 // Put a "with" on the JIT code, to keep the Quixe context at the top of
 //   the scope chain.
+// ### And don't forget to check up on the negative-value bug.
+//   (($ffffffff & $ffffffff) != $ffffffff)
 
 Quixe = function() {
 
