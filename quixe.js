@@ -2213,13 +2213,23 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     }
 }
 
-function compile_string(addr, inmiddle, bitnum) {
-    var ch, type;
+function compile_string(startaddr, inmiddle, startbitnum) {
+    var addr = startaddr;
+    var bitnum = startbitnum;
     var alldone = false;
     var substring = (inmiddle != 0);
+    var ch, type;
 
     if (!addr)
         fatal_error("Called compile_string with null address.");
+
+    /* This will hold all sorts of useful information about the code
+       sequence we're compiling. */
+    var context = {
+        startaddr: startaddr,
+        startbitnum: startbitnum,
+        buffer: [],
+    }
 
     while (!alldone) {
         if (inmiddle == 0) {
@@ -2246,7 +2256,7 @@ function compile_string(addr, inmiddle, bitnum) {
                 addr++;
                 if (ch == 0)
                     break;
-                glk_buffer.push(CharToString(ch));
+                context.buffer.push(CharToString(ch));
             }
         }
         else if (type == 0xE2) {
@@ -2257,7 +2267,7 @@ function compile_string(addr, inmiddle, bitnum) {
                 addr+=4;
                 if (ch == 0)
                     break;
-                glk_buffer.push(CharToString(ch));
+                context.buffer.push(CharToString(ch));
             }
         }
         else if (type >= 0xE0 && type <= 0xFF) {
