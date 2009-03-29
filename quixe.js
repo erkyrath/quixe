@@ -1076,6 +1076,57 @@ var opcode_table = {
         }
     },
 
+    0x4f: function(context, operands) { /* astorebit */
+        var bitx, addrx, mask, bitnum;
+        if (quot_isconstant(operands[1])) {
+            bitnum = Number(operands[1]);
+            if (bitnum & 0x80000000)
+                bitnum -= 0x100000000;
+            bitx = bitnum & 7;
+            if (quot_isconstant(operands[0])) {
+                /* Generate addrx as a number. */
+                addrx = Number(operands[0]);
+                if (bitnum >= 0) 
+                    addrx += (bitnum>>3);
+                else
+                    addrx -= (1+((-1-bitnum)>>3));
+            }
+            else {
+                /* Generate addrx as an expression string. */
+                if (bitnum >= 0) {
+                    if (bitnum <= 7)
+                        addrx = operands[0];
+                    else
+                        addrx = (operands[0]+"+"+(bitnum>>3));
+                }
+                else {
+                    addrx = (operands[0]+"-"+(1+((-1-bitnum)>>3)));
+                }
+            }
+            mask = (1<<bitx);
+        }
+        else {
+            context.varsused["bitx"] = true;
+            context.varsused["addrx"] = true;
+            var sign1 = oputil_signify_operand(context, operands[1]);
+            context.code.push("bitx = "+sign1+"&7;");
+            context.code.push("if ("+sign1+">=0) addrx = "+operands[0]+" + ("+sign1+">>3);");
+            context.code.push("else addrx = "+operands[0]+" - (1+((-1-("+sign1+"))>>3));");
+            addrx = "addrx";
+            mask = "(1<<bitx)";
+        }
+        if (quot_isconstant(operands[2])) {
+            if (Number(operands[2]))
+                context.code.push("MemW1("+addrx+", Mem1("+addrx+") | "+mask+");");
+            else
+                context.code.push("MemW1("+addrx+", Mem1("+addrx+") & ~("+mask+"));");
+        }
+        else {
+            context.code.push("if ("+operands[2]+") MemW1("+addrx+", Mem1("+addrx+") | "+mask+");");
+            context.code.push("else MemW1("+addrx+", Mem1("+addrx+") & ~("+mask+"));");
+        }
+    },
+
     0x50: function(context, operands) { /* stkcount */
         var val;
         var count = context.offstack.length;
