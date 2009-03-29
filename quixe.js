@@ -1036,6 +1036,46 @@ var opcode_table = {
         context.code.push("MemW1("+val+operands[2]+")"+";");
     },
 
+    0x4b: function(context, operands) { /* aloadbit */
+        if (quot_isconstant(operands[1])) {
+            var bitx, addrx, bitnum;
+            bitnum = Number(operands[1]);
+            if (bitnum & 0x80000000)
+                bitnum -= 0x100000000;
+            bitx = bitnum & 7;
+            if (quot_isconstant(operands[0])) {
+                /* Generate addrx as a number. */
+                addrx = Number(operands[0]);
+                if (bitnum >= 0) 
+                    addrx += (bitnum>>3);
+                else
+                    addrx -= (1+((-1-bitnum)>>3));
+            }
+            else {
+                /* Generate addrx as an expression string. */
+                if (bitnum >= 0) {
+                    if (bitnum <= 7)
+                        addrx = operands[0];
+                    else
+                        addrx = (operands[0]+"+"+(bitnum>>3));
+                }
+                else {
+                    addrx = (operands[0]+"-"+(1+((-1-bitnum)>>3)));
+                }
+            }
+            context.code.push(operands[2]+"(Mem1("+addrx+") & "+(1<<bitx)+")?1:0);");
+        }
+        else {
+            context.varsused["bitx"] = true;
+            context.varsused["addrx"] = true;
+            var sign1 = oputil_signify_operand(context, operands[1]);
+            context.code.push("bitx = "+sign1+"&7;");
+            context.code.push("if ("+sign1+">=0) addrx = "+operands[0]+" + ("+sign1+">>3);");
+            context.code.push("else addrx = "+operands[0]+" - (1+((-1-("+sign1+"))>>3));");
+            context.code.push(operands[2]+"(Mem1(addrx) & (1<<bitx))?1:0);");
+        }
+    },
+
     0x50: function(context, operands) { /* stkcount */
         var val;
         var count = context.offstack.length;
