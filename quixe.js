@@ -4,6 +4,8 @@
 // Inline Mem1 wherever possible.
 // Put a "with" on the JIT code, to keep the Quixe context at the top of
 //   the scope chain.
+// Is "x instanceof Function" efficient? Should compile_string return a 
+//   tiny tagged object instead?
 // ### And don't forget to check up on the negative-value bug.
 //   (($ffffffff & $ffffffff) != $ffffffff)
 
@@ -1247,6 +1249,14 @@ var opcode_table = {
         context.code.push("} else {");
         context.code.push("strop = compile_string("+operands[0]+", 0, 0);");
         context.code.push("}");
+        context.code.push("qlog('### strop: ' + strop);");
+        context.code.push("if (strop instanceof Function) {");
+        //### unload offstack? 
+        //### call function
+        //### maybe return?
+        context.code.push("} else {");
+        context.code.push("glk_buffer.push(strop);");
+        context.code.push("}");
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -2304,6 +2314,15 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     }
 }
 
+/* Generate a function which outputs the string, or rather one path of it.
+   Like function paths, a string path only runs up to the first internal
+   call; then it exits so that the main terp loop can start working on
+   the function.
+
+   If the string begins *and* ends with no sub-strings or sub-calls (the
+   substring flag stays false, and there is no stack activity), then this
+   doesn't bother with a function. It returns a plain string.
+*/
 function compile_string(startaddr, inmiddle, startbitnum) {
     var addr = startaddr;
     var bitnum = startbitnum;
@@ -2320,6 +2339,7 @@ function compile_string(startaddr, inmiddle, startbitnum) {
         startaddr: startaddr,
         startbitnum: startbitnum,
         buffer: [],
+        code: [],
     }
 
     while (!alldone) {
@@ -2377,6 +2397,11 @@ function compile_string(startaddr, inmiddle, startbitnum) {
             //###
         }
     }
+
+    /* The simple case. */
+    if (context.code.length)
+        fatal_error("Simple-case string generated code."); //###assert
+    return context.buffer.join("");
 }
 
 /* The VM state variables */
