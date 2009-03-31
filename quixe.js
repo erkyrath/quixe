@@ -1270,6 +1270,13 @@ var opcode_table = {
         }
     },
 
+    0x140: function(context, operands) { /* getstringtbl */
+        context.code.push(operands[0]+"stringtable)");
+    },
+
+    0x141: function(context, operands) { /* setstringtbl */
+        context.code.push("set_string_table("+operands[0]+");");
+    },
 }
 
 /* Select a currently-unused "_hold*" variable, and mark it used. 
@@ -2357,7 +2364,65 @@ function compile_string(startaddr, inmiddle, startbitnum) {
 
         if (type == 0xE1) {
             //### iosys
-            //### write...
+            if (0) {
+                //### decoding_tree
+            }
+            else {
+                var node, byte, nodetype;
+                var done=0;
+
+                /* No decoding_tree available. */
+                if (!stringtable)
+                    fatal_error("Attempted to print a compressed string with no table set.");
+                /* bitnum is already set right */
+                byte = Mem1(addr);
+                if (bitnum)
+                    byte >>= bitnum;
+                node = Mem4(stringtable+8);
+
+                while (!done) {
+                    nodetype = Mem1(node);
+                    node++;
+                    switch (nodetype) {
+                    case 0x00: /* non-leaf node */
+                        if (byte & 1) 
+                            node = Mem4(node+4);
+                        else
+                            node = Mem4(node+0);
+                        if (bitnum == 7) {
+                            bitnum = 0;
+                            addr++;
+                            byte = Mem1(addr);
+                        }
+                        else {
+                            bitnum++;
+                            byte >>= 1;
+                        }
+                        break;
+                    case 0x01: /* string terminator */
+                        done = 1;
+                        break;
+                    case 0x02: /* single character */
+                        ch = Mem1(node);
+                        //###iosys
+                        context.buffer.push(CharToString(ch));
+                        node = Mem4(stringtable+8);
+                        break;
+                    case 0x04: /* single Unicode character */
+                        ch = Mem4(node);
+                        //###iosys
+                        context.buffer.push(CharToString(ch));
+                        node = Mem4(stringtable+8);
+                        break;
+                    default:
+                        fatal_error("Unknown entity in string decoding.");
+                        break;
+                    }
+                }
+                if (done > 1) {
+                    continue; /* restart the top-level loop */
+                }
+            }
         }
         else if (type == 0xE0) {
             //### iosys
@@ -2394,7 +2459,13 @@ function compile_string(startaddr, inmiddle, startbitnum) {
         }
         else {
             /* Pop a stub and see what's to be done. */
-            //###
+            addr /*###,bitnum*/ = pop_callstub_string();
+            if (addr == 0) {
+                alldone = TRUE;
+            }
+            else {
+                inmiddle = 0xE1;
+            }
         }
     }
 
@@ -2542,7 +2613,7 @@ function execute_loop() {
     glk_buffer.length = 0;
 
     while (!done_executing) {
-        qlog("### pc now " + pc.toString(16));
+        //qlog("### pc now " + pc.toString(16));
         vmfunc = frame.vmfunc;
         pathtab = vmfunc[iosysmode];
         path = pathtab[pc];
@@ -2556,6 +2627,7 @@ function execute_loop() {
     }
 
     qlog("### done executing.");
+    qlog("### final vmstring_table: " + qobjdump(vmstring_table));
 
     var text = glk_buffer.join("");
     glk_buffer.length = 0;
