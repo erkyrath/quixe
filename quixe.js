@@ -537,6 +537,16 @@ function oputil_unload_offstack(context, keepstack) {
     }
 }
 
+function oputil_flush_string(context) {
+    if (context.buffer.length == 0)
+        return;
+
+    var str = context.buffer.join("");
+    context.buffer.length = 0;
+
+    context.code.push("glk_buffer.push('"+str+"');"); //### escape(str)
+}
+
 /* Return the signed equivalent of a value. If it is a high-bit constant, 
    this returns its negative equivalent as a constant. If it is a _hold
    variable, a new _hold is returned with the new (or old) value.
@@ -1237,26 +1247,9 @@ var opcode_table = {
 
     0x72: function(context, operands) { /* streamstr */
         //### iosys
-        context.varsused["strop"] = true;
-        //### this can be better
-        context.code.push("strop = undefined;");
-        context.code.push("if (!(vmstring_table === undefined)) {");
-        context.code.push("strop = vmstring_table["+operands[0]+"];");
-        context.code.push("if (strop === undefined) {");
-        context.code.push("strop = compile_string("+operands[0]+", 0, 0);");
-        context.code.push("vmstring_table["+operands[0]+"] = strop;");
-        context.code.push("}");
-        context.code.push("} else {");
-        context.code.push("strop = compile_string("+operands[0]+", 0, 0);");
-        context.code.push("}");
-        context.code.push("qlog('### strop: ' + strop);");
-        context.code.push("if (strop instanceof Function) {");
-        //### unload offstack? 
-        //### call function
-        //### maybe return?
-        context.code.push("} else {");
-        context.code.push("glk_buffer.push(strop);");
-        context.code.push("}");
+        oputil_unload_offstack(context);
+        //### can we avoid unloading in the simple case?
+        context.code.push("if (stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -2321,16 +2314,92 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     }
 }
 
+/* Look up a string, and print or execute it.
+
+   This returns true if a sub-function needs to be called. In this case,
+   the pc and stack are already set up, so the caller needs to return
+   to the main execution loop.
+
+   This returns false if execution can continue for the caller. This is the
+   simple case, where the caller began at the start of a string and the
+   whole thing got printed.
+*/
+function stream_string(nextcp, addr, inmiddle, bitnum) {
+    var addrkey, strop, res;
+    var desttype, destaddr;
+
+    qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16));
+
+    while (true) {
+        strop = undefined;
+        if (bitnum == 0)
+            addrkey = addr;
+        else
+            addrkey = addr+'/'+bitnum;
+
+        if (!(vmstring_table === undefined)) {
+            strop = vmstring_table[addrkey];
+            if (strop === undefined) {
+                strop = compile_string(nextcp, addr, inmiddle, bitnum);
+                vmstring_table[addrkey] = strop;
+            }
+        }
+        else {
+            strop = compile_string(nextcp, addr, inmiddle, bitnum);
+        }
+
+        qlog("### strop(" + addrkey + "): " + strop);
+    
+        if (!(strop instanceof Function)) {
+            glk_buffer.push(strop);
+            return false;
+        }
+
+        res = strop();
+        if (res)
+            return true;
+        
+        /* Carry out a pop_callstub_string(). */
+        if (frame.valstack.pop() != frame.framestart)
+            fatal_error("Call stub frameptr does not match frame.");
+        pc = frame.valstack.pop();
+        destaddr = frame.valstack.pop();
+        desttype = frame.valstack.pop();
+
+        if (desttype == 0x11) {
+            /* The call stub for the top-level string. Return to the main
+               execution loop. */
+            return true;
+        }
+        else if (desttype == 0x10) {
+            /* The call stub for a sub-function. Continue the compressed
+               string that called it. */
+            bitnum = destaddr;
+            inmiddle = 0xE1;
+            addr = pc;
+        }
+        else {
+            fatal_error("Function-terminator call stub at end of string.");
+        }
+
+        qlog("### continue, addr="+addr+"/"+bitnum);
+    }
+}
+
 /* Generate a function which outputs the string, or rather one path of it.
    Like function paths, a string path only runs up to the first internal
    call; then it exits so that the main terp loop can start working on
    the function.
 
+   The generated function returns true if a VM function is set up to
+   go next, or false if another string is set up. In the latter case,
+   a string-callstub needs to be popped and used.
+
    If the string begins *and* ends with no sub-strings or sub-calls (the
    substring flag stays false, and there is no stack activity), then this
    doesn't bother with a function. It returns a plain string.
 */
-function compile_string(startaddr, inmiddle, startbitnum) {
+function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     var addr = startaddr;
     var bitnum = startbitnum;
     var alldone = false;
@@ -2347,6 +2416,7 @@ function compile_string(startaddr, inmiddle, startbitnum) {
         startbitnum: startbitnum,
         buffer: [],
         code: [],
+        cp: nextcp, //###
     }
 
     while (!alldone) {
@@ -2414,13 +2484,70 @@ function compile_string(startaddr, inmiddle, startbitnum) {
                         context.buffer.push(CharToString(ch));
                         node = Mem4(stringtable+8);
                         break;
+                    case 0x03: /* C string */
+                        //###iosys
+                        while (true) {
+                            ch = Mem1(node);
+                            if (ch == 0)
+                                break;
+                            context.buffer.push(CharToString(ch));
+                            node++;
+                        }
+                        node = Mem4(stringtable+8);
+                        break;
+                    case 0x05: /* C Unicode string */
+                        //###iosys
+                        while (true) {
+                            ch = Mem4(node);
+                            if (ch == 0)
+                                break;
+                            context.buffer.push(CharToString(ch));
+                            node += 4;
+                        }
+                        node = Mem4(stringtable+8);
+                        break;
+                    case 0x08:
+                    case 0x09:
+                    case 0x0A:
+                    case 0x0B: 
+                        var oaddr, otype;
+                        oaddr = Mem4(node);
+                        if (nodetype == 0x09 || nodetype == 0x0B)
+                            oaddr = Mem4(oaddr); //#### load the node!
+                        otype = Mem1(oaddr);
+                        if (!substring) {
+                            oputil_push_callstub(context, "0x11,0"); // cp
+                            substring = true;
+                        }
+                        oputil_flush_string(context);
+                        if (otype >= 0xE0 && otype <= 0xFF) {
+                            context.cp = addr;
+                            oputil_push_callstub(context, "0x10,"+bitnum);
+                            inmiddle = 0;
+                            addr = oaddr;
+                            done = 2;
+                        }
+                        else if (otype >= 0xC0 && otype <= 0xDF) {
+                            var ix, argc = 0;
+                            if (nodetype == 0x0A || nodetype == 0x0B) {
+                                argc = Mem4(node+4);
+                                for (ix=0; ix<argc; ix++)
+                                    context.code.push("tempcallargs["+ix+"]=Mem4("+(node+8+4*ix)+");");
+                            }
+                            context.cp = addr;
+                            oputil_push_callstub(context, "0x10,"+bitnum);
+                            context.code.push("enter_function("+oaddr+", "+argc+");");
+                            context.code.push("return;"); //### needed?
+                            done = 3;
+                        }
+                        else {
+                            fatal_error("Unknown object while decoding string indirect reference.", otype);
+                        }
+                        break;
                     default:
-                        fatal_error("Unknown entity in string decoding.");
+                        fatal_error("Unknown entity in string decoding.", nodetype);
                         break;
                     }
-                }
-                if (done > 1) {
-                    continue; /* restart the top-level loop */
                 }
             }
         }
@@ -2453,26 +2580,21 @@ function compile_string(startaddr, inmiddle, startbitnum) {
             fatal_error("Attempt to print non-string.");
         }
 
-        if (!substring) {
-            /* Just get straight out. */
-            alldone = true;
-        }
-        else {
-            /* Pop a stub and see what's to be done. */
-            addr /*###,bitnum*/ = pop_callstub_string();
-            if (addr == 0) {
-                alldone = TRUE;
-            }
-            else {
-                inmiddle = 0xE1;
-            }
-        }
+        alldone = true; //### scratch top-level loop
     }
 
-    /* The simple case. */
-    if (context.code.length)
-        fatal_error("Simple-case string generated code."); //###assert
-    return context.buffer.join("");
+    if (!substring) {
+        /* The simple case. */
+        if (context.code.length)
+            fatal_error("Simple-case string generated code."); //###assert
+        return context.buffer.join("");
+    }
+    else {
+        if (context.buffer.length)
+            fatal_error("Complex-case string left text.", context.buffer.join("")); //###assert
+        //### push return true/false
+        return make_code(context.code.join("\n"));
+    }
 }
 
 /* The VM state variables */
