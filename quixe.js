@@ -194,9 +194,14 @@ function fatal_error(msg) {
 }
 
 /* Turn a string containing JS statements into a function object that
-   executes those statements. */
-function make_code(val) {
-    eval("function _func() {\n" + val + "\n}");
+   executes those statements. If an arg is provided, it becomes the
+   function argument. (It can also be a comma-separated list of
+   arguments, if you want more than one.) */
+function make_code(val, arg) {
+    if (arg === undefined)
+        eval("function _func() {\n" + val + "\n}");
+    else
+        eval("function _func("+arg+") {\n" + val + "\n}");
     return _func;
 }
 
@@ -2378,7 +2383,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             strop = compile_string(nextcp, addr, inmiddle, bitnum);
         }
 
-        qlog("### strop(" + addrkey + "): " + strop);
+        qlog("### strop(" + addrkey + ")" + (substring?"[sub]":"") + ": " + strop);
     
         if (!(strop instanceof Function)) {
             glk_buffer.push(strop);
@@ -2386,7 +2391,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
                 return false;
         }
         else {
-            res = strop();
+            res = strop(substring);
             if (res == -1) {
                 /* Entered a function */
                 return true;
@@ -2421,12 +2426,11 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             bitnum = destaddr;
             inmiddle = 0xE1;
             addr = pc;
+            qlog("### end; pop to addr="+addr+"/"+inmiddle+"/"+bitnum);
         }
         else {
             fatal_error("Function-terminator call stub at end of string.");
         }
-
-        qlog("### end; pop to addr="+addr+"/"+inmiddle+"/"+bitnum);
     }
 }
 
@@ -2440,15 +2444,14 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
    the string has ended normally. In the latter case, a string-callstub needs
    to be popped and used.
 
-   If the string begins *and* ends with no sub-strings or sub-calls (the
-   substring flag stays false, and there is no stack activity), then this
-   doesn't bother with a function. It returns a plain string.
+   If the string ends with no sub-strings or sub-calls (the substring flag
+   stays false, and there is no stack activity), then this doesn't bother with
+   a function. It returns a plain string.
 */
 function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     var addr = startaddr;
     var bitnum = startbitnum;
-    var alldone = false;
-    var substring = (inmiddle != 0);
+    var substring = false;
     var retval = undefined;
     var ch, type;
 
@@ -2565,7 +2568,9 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
                         oaddr = Mem4(oaddr);
                     otype = Mem1(oaddr);
                     if (!substring) {
+                        context.code.push("if (!substring) { substring=true;");
                         oputil_push_callstub(context, "0x11,0"); // cp
+                        context.code.push("}");
                         substring = true;
                     }
                     oputil_flush_string(context);
@@ -2630,7 +2635,8 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     }
 
     if (!substring) {
-        /* The simple case. */
+        /* The simple case. Equivalent to a function that prints text
+           and returns zero. */
         if (context.code.length)
             fatal_error("Simple-case string generated code."); //###assert
         return context.buffer.join("");
@@ -2638,7 +2644,7 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     else {
         oputil_flush_string(context);
         context.code.push("return " + retval + ";");
-        return make_code(context.code.join("\n"));
+        return make_code(context.code.join("\n"), "substring");
     }
 }
 
