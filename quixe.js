@@ -2186,6 +2186,35 @@ function pop_callstub(val) {
     case 3:
         frame.valstack.push(val);
         return;
+
+    case 0x11:
+        fatal_error("String-terminator call stub at end of function call.");
+        return;
+
+    case 0x10:
+        /* This call stub was pushed during a string-decoding operation!
+           We have to restart it. (Note that the return value is discarded.) */
+        stream_string(0, pc, 0xE1, destaddr); 
+        return;
+
+    case 0x12:
+        /* This call stub was pushed during a number-printing operation.
+           Restart that. (Return value discarded.) */
+        stream_num(pc, TRUE, destaddr); //### implement
+        return;
+
+    case 0x13:
+        /* This call stub was pushed during a C-string printing operation.
+           We have to restart it. (Note that the return value is discarded.) */
+        stream_string(0, pc, 0xE0, destaddr); 
+        return;
+
+    case 0x14:
+        /* This call stub was pushed during a Unicode printing operation.
+           We have to restart it. (Note that the return value is discarded.) */
+        stream_string(0, pc, 0xE2, destaddr); 
+        return;
+
     default:
         fatal_error("Unrecognized desttype in callstub.", desttype);
     }
@@ -2216,7 +2245,7 @@ function set_string_table(addr) {
         var tablelen = Mem4(stringtable);
         var rootaddr = Mem4(stringtable+8);
         var cache_stringtable = (stringtable+tablelen <= ramstart);
-        // cache_stringtable = false; // for debugging
+        cache_stringtable = true;//### // for debugging
         if (cache_stringtable) {
             qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
             var tmparray = Array(1);
@@ -2325,6 +2354,7 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
    whole thing got printed.
 */
 function stream_string(nextcp, addr, inmiddle, bitnum) {
+    var substring = (inmiddle != 0);
     var addrkey, strop, res;
     var desttype, destaddr;
 
@@ -2332,10 +2362,10 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
 
     while (true) {
         strop = undefined;
-        if (bitnum == 0)
+        if (inmiddle == 0)
             addrkey = addr;
         else
-            addrkey = addr+'/'+bitnum;
+            addrkey = addr+"/"+inmiddle+"/"+bitnum;
 
         if (!(vmstring_table === undefined)) {
             strop = vmstring_table[addrkey];
@@ -2352,14 +2382,27 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
     
         if (!(strop instanceof Function)) {
             glk_buffer.push(strop);
-            return false;
+            if (!substring)
+                return false;
         }
-
-        res = strop();
-        if (res)
-            return true;
+        else {
+            res = strop();
+            if (res == -1) {
+                /* Entered a function */
+                return true;
+            }
+            if (res != 0) {
+                /* Entered a substring */
+                substring = true;
+                inmiddle = 0;
+                bitnum = 0;
+                addr = res;
+                qlog("### push to addr="+addr+"/"+inmiddle+"/"+bitnum);
+                continue;
+            }
+        }
         
-        /* Carry out a pop_callstub_string(). */
+        /* String terminated. Carry out a pop_callstub_string(). */
         if (frame.valstack.pop() != frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
         pc = frame.valstack.pop();
@@ -2374,6 +2417,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         else if (desttype == 0x10) {
             /* The call stub for a sub-function. Continue the compressed
                string that called it. */
+            substring = true;
             bitnum = destaddr;
             inmiddle = 0xE1;
             addr = pc;
@@ -2382,7 +2426,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             fatal_error("Function-terminator call stub at end of string.");
         }
 
-        qlog("### continue, addr="+addr+"/"+bitnum);
+        qlog("### end; pop to addr="+addr+"/"+inmiddle+"/"+bitnum);
     }
 }
 
@@ -2391,9 +2435,10 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
    call; then it exits so that the main terp loop can start working on
    the function.
 
-   The generated function returns true if a VM function is set up to
-   go next, or false if another string is set up. In the latter case,
-   a string-callstub needs to be popped and used.
+   The generated function returns -1 if a VM function is set up to go next; a
+   positive number (the string address) if another string is set up; or 0 if
+   the string has ended normally. In the latter case, a string-callstub needs
+   to be popped and used.
 
    If the string begins *and* ends with no sub-strings or sub-calls (the
    substring flag stays false, and there is no stack activity), then this
@@ -2404,6 +2449,7 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     var bitnum = startbitnum;
     var alldone = false;
     var substring = (inmiddle != 0);
+    var retval = undefined;
     var ch, type;
 
     if (!addr)
@@ -2419,168 +2465,168 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
         cp: nextcp, //###
     }
 
-    while (!alldone) {
-        if (inmiddle == 0) {
-            type = Mem1(addr);
-            if (type == 0xE2)
-                addr+=4;
-            else
-                addr++;
-            bitnum = 0;
+    if (inmiddle == 0) {
+        type = Mem1(addr);
+        if (type == 0xE2)
+            addr+=4;
+        else
+            addr++;
+        bitnum = 0;
+    }
+    else {
+        type = inmiddle;
+    }
+
+    if (type == 0xE1) {
+        //### iosys
+        if (0) {
+            //### decoding_tree
         }
         else {
-            type = inmiddle;
-        }
+            var node, byte, nodetype;
+            var done = false;
 
-        if (type == 0xE1) {
-            //### iosys
-            if (0) {
-                //### decoding_tree
-            }
-            else {
-                var node, byte, nodetype;
-                var done=0;
+            /* No decoding_tree available. */
+            if (!stringtable)
+                fatal_error("Attempted to print a compressed string with no table set.");
+            /* bitnum is already set right */
+            byte = Mem1(addr);
+            if (bitnum)
+                byte >>= bitnum;
+            node = Mem4(stringtable+8);
 
-                /* No decoding_tree available. */
-                if (!stringtable)
-                    fatal_error("Attempted to print a compressed string with no table set.");
-                /* bitnum is already set right */
-                byte = Mem1(addr);
-                if (bitnum)
-                    byte >>= bitnum;
-                node = Mem4(stringtable+8);
-
-                while (!done) {
-                    nodetype = Mem1(node);
-                    node++;
-                    switch (nodetype) {
-                    case 0x00: /* non-leaf node */
-                        if (byte & 1) 
-                            node = Mem4(node+4);
-                        else
-                            node = Mem4(node+0);
-                        if (bitnum == 7) {
-                            bitnum = 0;
-                            addr++;
-                            byte = Mem1(addr);
-                        }
-                        else {
-                            bitnum++;
-                            byte >>= 1;
-                        }
-                        break;
-                    case 0x01: /* string terminator */
-                        done = 1;
-                        break;
-                    case 0x02: /* single character */
-                        ch = Mem1(node);
-                        //###iosys
-                        context.buffer.push(CharToString(ch));
-                        node = Mem4(stringtable+8);
-                        break;
-                    case 0x04: /* single Unicode character */
-                        ch = Mem4(node);
-                        //###iosys
-                        context.buffer.push(CharToString(ch));
-                        node = Mem4(stringtable+8);
-                        break;
-                    case 0x03: /* C string */
-                        //###iosys
-                        while (true) {
-                            ch = Mem1(node);
-                            if (ch == 0)
-                                break;
-                            context.buffer.push(CharToString(ch));
-                            node++;
-                        }
-                        node = Mem4(stringtable+8);
-                        break;
-                    case 0x05: /* C Unicode string */
-                        //###iosys
-                        while (true) {
-                            ch = Mem4(node);
-                            if (ch == 0)
-                                break;
-                            context.buffer.push(CharToString(ch));
-                            node += 4;
-                        }
-                        node = Mem4(stringtable+8);
-                        break;
-                    case 0x08:
-                    case 0x09:
-                    case 0x0A:
-                    case 0x0B: 
-                        var oaddr, otype;
-                        oaddr = Mem4(node);
-                        if (nodetype == 0x09 || nodetype == 0x0B)
-                            oaddr = Mem4(oaddr); //#### load the node!
-                        otype = Mem1(oaddr);
-                        if (!substring) {
-                            oputil_push_callstub(context, "0x11,0"); // cp
-                            substring = true;
-                        }
-                        oputil_flush_string(context);
-                        if (otype >= 0xE0 && otype <= 0xFF) {
-                            context.cp = addr;
-                            oputil_push_callstub(context, "0x10,"+bitnum);
-                            inmiddle = 0;
-                            addr = oaddr;
-                            done = 2;
-                        }
-                        else if (otype >= 0xC0 && otype <= 0xDF) {
-                            var ix, argc = 0;
-                            if (nodetype == 0x0A || nodetype == 0x0B) {
-                                argc = Mem4(node+4);
-                                for (ix=0; ix<argc; ix++)
-                                    context.code.push("tempcallargs["+ix+"]=Mem4("+(node+8+4*ix)+");");
-                            }
-                            context.cp = addr;
-                            oputil_push_callstub(context, "0x10,"+bitnum);
-                            context.code.push("enter_function("+oaddr+", "+argc+");");
-                            context.code.push("return;"); //### needed?
-                            done = 3;
-                        }
-                        else {
-                            fatal_error("Unknown object while decoding string indirect reference.", otype);
-                        }
-                        break;
-                    default:
-                        fatal_error("Unknown entity in string decoding.", nodetype);
-                        break;
+            while (!done) {
+                nodetype = Mem1(node);
+                node++;
+                switch (nodetype) {
+                case 0x00: /* non-leaf node */
+                    if (byte & 1) 
+                        node = Mem4(node+4);
+                    else
+                        node = Mem4(node+0);
+                    if (bitnum == 7) {
+                        bitnum = 0;
+                        addr++;
+                        byte = Mem1(addr);
                     }
+                    else {
+                        bitnum++;
+                        byte >>= 1;
+                    }
+                    break;
+                case 0x01: /* string terminator */
+                    retval = 0;
+                    done = true;
+                    break;
+                case 0x02: /* single character */
+                    ch = Mem1(node);
+                    //###iosys
+                    context.buffer.push(CharToString(ch));
+                    node = Mem4(stringtable+8);
+                    break;
+                case 0x04: /* single Unicode character */
+                    ch = Mem4(node);
+                    //###iosys
+                    context.buffer.push(CharToString(ch));
+                    node = Mem4(stringtable+8);
+                    break;
+                case 0x03: /* C string */
+                    //###iosys
+                    while (true) {
+                        ch = Mem1(node);
+                        if (ch == 0)
+                            break;
+                        context.buffer.push(CharToString(ch));
+                        node++;
+                    }
+                    node = Mem4(stringtable+8);
+                    break;
+                case 0x05: /* C Unicode string */
+                    //###iosys
+                    while (true) {
+                        ch = Mem4(node);
+                        if (ch == 0)
+                            break;
+                        context.buffer.push(CharToString(ch));
+                        node += 4;
+                    }
+                    node = Mem4(stringtable+8);
+                    break;
+                case 0x08:
+                case 0x09:
+                case 0x0A:
+                case 0x0B: 
+                    var oaddr, otype;
+                    //#### unless this is a single-indirect to a ROM address,
+                    // we have to do all the loading and type-checking at
+                    // runtime, not compile-time. ####
+                    oaddr = Mem4(node);
+                    if (nodetype == 0x09 || nodetype == 0x0B)
+                        oaddr = Mem4(oaddr);
+                    otype = Mem1(oaddr);
+                    if (!substring) {
+                        oputil_push_callstub(context, "0x11,0"); // cp
+                        substring = true;
+                    }
+                    oputil_flush_string(context);
+                    if (otype >= 0xE0 && otype <= 0xFF) {
+                        context.cp = addr;
+                        oputil_push_callstub(context, "0x10,"+bitnum);
+                        inmiddle = 0;
+                        retval = oaddr;
+                        done = true;
+                    }
+                    else if (otype >= 0xC0 && otype <= 0xDF) {
+                        var ix, argc = 0;
+                        if (nodetype == 0x0A || nodetype == 0x0B) {
+                            argc = Mem4(node+4);
+                            for (ix=0; ix<argc; ix++)
+                                context.code.push("tempcallargs["+ix+"]=Mem4("+(node+8+4*ix)+");");
+                        }
+                        context.cp = addr;
+                        oputil_push_callstub(context, "0x10,"+bitnum);
+                        context.code.push("enter_function("+oaddr+", "+argc+");");
+                        retval = -1;
+                        done = true;
+                    }
+                    else {
+                        fatal_error("Unknown object while decoding string indirect reference.", otype);
+                    }
+                    break;
+                default:
+                    fatal_error("Unknown entity in string decoding.", nodetype);
+                    break;
                 }
             }
         }
-        else if (type == 0xE0) {
-            //### iosys
-            var ch;
-            while (1) {
-                ch = Mem1(addr);
-                addr++;
-                if (ch == 0)
-                    break;
-                context.buffer.push(CharToString(ch));
-            }
+    }
+    else if (type == 0xE0) {
+        //### iosys
+        var ch;
+        while (1) {
+            ch = Mem1(addr);
+            addr++;
+            if (ch == 0)
+                break;
+            context.buffer.push(CharToString(ch));
         }
-        else if (type == 0xE2) {
-            //### iosys
-            var ch;
-            while (1) {
-                ch = Mem4(addr);
-                addr+=4;
-                if (ch == 0)
-                    break;
-                context.buffer.push(CharToString(ch));
-            }
+    }
+    else if (type == 0xE2) {
+        //### iosys
+        var ch;
+        while (1) {
+            ch = Mem4(addr);
+            addr+=4;
+            if (ch == 0)
+                break;
+            context.buffer.push(CharToString(ch));
         }
-        else if (type >= 0xE0 && type <= 0xFF) {
-            fatal_error("Attempt to print unknown type of string.");
-        }
-        else {
-            fatal_error("Attempt to print non-string.");
-        }
-
-        alldone = true; //### scratch top-level loop
+    }
+    else if (type >= 0xE0 && type <= 0xFF) {
+        fatal_error("Attempt to print unknown type of string.");
+    }
+    else {
+        fatal_error("Attempt to print non-string.");
     }
 
     if (!substring) {
@@ -2590,9 +2636,8 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
         return context.buffer.join("");
     }
     else {
-        if (context.buffer.length)
-            fatal_error("Complex-case string left text.", context.buffer.join("")); //###assert
-        //### push return true/false
+        oputil_flush_string(context);
+        context.code.push("return " + retval + ";");
         return make_code(context.code.join("\n"));
     }
 }
@@ -2749,7 +2794,11 @@ function execute_loop() {
     }
 
     qlog("### done executing.");
-    qlog("### final vmstring_table: " + qobjdump(vmstring_table));
+    for (var ix in vmtextenv_table) {
+        qlog("### textenv("+ix+"):");
+        var env = vmtextenv_table[ix];
+        qlog("###...table 0: " + qobjdump(env.vmstring_tables[0]));
+    }
 
     var text = glk_buffer.join("");
     glk_buffer.length = 0;
