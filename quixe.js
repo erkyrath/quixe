@@ -7,7 +7,7 @@
 // Is "x instanceof Function" efficient? Should compile_string return a 
 //   tiny tagged object instead?
 // ### And don't forget to check up on the negative-value bug.
-//   (($ffffffff & $ffffffff) != $ffffffff)
+//   (($ffffffff & $ffffffff) != $ffffffff)  ... but >>>0 works
 
 Quixe = function() {
 
@@ -515,6 +515,20 @@ function oputil_store(context, funcop, operand) {
 */
 function oputil_push_callstub(context, operand) {
     context.code.push("frame.valstack.push("+operand+","+context.cp+",frame.framestart);");
+}
+
+/* Conditionally push a type-0x11 call stub. This logically happens at
+   the beginning of any compiled string function. In practice, we delay
+   it until the first time it's needed; that's what the substring flag
+   tracks.
+
+   This relies on context.cp being the next opcode address (as passed
+   to compile_string() in the nextcp parameter).
+*/
+function oputil_push_substring_callstub(context) {
+    context.code.push("if (!substring) { substring=true;");
+    context.code.push("frame.valstack.push(0x11,0,"+context.cp+",frame.framestart);");
+    context.code.push("}");
 }
 
 /* Move all values on the offstack to the real stack. A handler should
@@ -2383,7 +2397,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             strop = compile_string(nextcp, addr, inmiddle, bitnum);
         }
 
-        qlog("### strop(" + addrkey + ")" + (substring?"[sub]":"") + ": " + strop);
+        qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
     
         if (!(strop instanceof Function)) {
             glk_buffer.push(strop);
@@ -2451,7 +2465,6 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
 function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     var addr = startaddr;
     var bitnum = startbitnum;
-    var substring = false;
     var retval = undefined;
     var ch, type;
 
@@ -2559,44 +2572,40 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
                 case 0x09:
                 case 0x0A:
                 case 0x0B: 
-                    var oaddr, otype;
-                    //#### unless this is a single-indirect to a ROM address,
-                    // we have to do all the loading and type-checking at
-                    // runtime, not compile-time. ####
-                    oaddr = Mem4(node);
-                    if (nodetype == 0x09 || nodetype == 0x0B)
-                        oaddr = Mem4(oaddr);
-                    otype = Mem1(oaddr);
-                    if (!substring) {
-                        context.code.push("if (!substring) { substring=true;");
-                        oputil_push_callstub(context, "0x11,0"); // cp
-                        context.code.push("}");
-                        substring = true;
-                    }
                     oputil_flush_string(context);
-                    if (otype >= 0xE0 && otype <= 0xFF) {
-                        context.cp = addr;
-                        oputil_push_callstub(context, "0x10,"+bitnum);
-                        inmiddle = 0;
-                        retval = oaddr;
-                        done = true;
+                    oputil_push_substring_callstub(context);
+                    /* It's not worth precomputing this type-test. We could
+                       do it for a single-indirect to a ROM address, and
+                       it'd be mostly okay if we weren't caching this
+                       JIT code. But those aren't the common cases, so
+                       let's not bother. */
+                    context.code.push("var otype, retval;");
+                    context.code.push("var oaddr = "+Mem4(node)+";");
+                    if (nodetype == 0x09 || nodetype == 0x0B)
+                        context.code.push("oaddr = Mem4(oaddr);");
+                    context.code.push("otype = Mem1(oaddr);");
+                    context.cp = addr; // for callstub
+                    retval = "retval";
+                    done = true;
+
+                    oputil_push_callstub(context, "0x10,"+bitnum);
+                    context.code.push("if (otype >= 0xE0 && otype <= 0xFF) {");
+                    inmiddle = 0; //### will have to return this
+                    context.code.push("retval = oaddr;");
+                    context.code.push("}");
+                    context.code.push("else if (otype >= 0xC0 && otype <= 0xDF) {");
+                    var argc = 0;
+                    if (nodetype == 0x0A || nodetype == 0x0B) {
+                        argc = Mem4(node+4);
+                        for (var ix=0; ix<argc; ix++)
+                            context.code.push("tempcallargs["+ix+"]="+Mem4(node+8+4*ix)+";");
                     }
-                    else if (otype >= 0xC0 && otype <= 0xDF) {
-                        var ix, argc = 0;
-                        if (nodetype == 0x0A || nodetype == 0x0B) {
-                            argc = Mem4(node+4);
-                            for (ix=0; ix<argc; ix++)
-                                context.code.push("tempcallargs["+ix+"]=Mem4("+(node+8+4*ix)+");");
-                        }
-                        context.cp = addr;
-                        oputil_push_callstub(context, "0x10,"+bitnum);
-                        context.code.push("enter_function("+oaddr+", "+argc+");");
-                        retval = -1;
-                        done = true;
-                    }
-                    else {
-                        fatal_error("Unknown object while decoding string indirect reference.", otype);
-                    }
+                    context.code.push("enter_function(oaddr, "+argc+");");
+                    context.code.push("retval = -1;");
+                    context.code.push("}");
+                    context.code.push("else {");
+                    context.code.push("fatal_error('Unknown object while decoding string indirect reference.', otype);");
+                    context.code.push("}");
                     break;
                 default:
                     fatal_error("Unknown entity in string decoding.", nodetype);
@@ -2634,9 +2643,9 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
         fatal_error("Attempt to print non-string.");
     }
 
-    if (!substring) {
-        /* The simple case. Equivalent to a function that prints text
-           and returns zero. */
+    if (!retval) {
+        /* The simple case; retval is zero or undefined. Equivalent to a
+           function that prints text and returns zero. */
         if (context.code.length)
             fatal_error("Simple-case string generated code."); //###assert
         return context.buffer.join("");
