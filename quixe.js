@@ -6,6 +6,7 @@
 //   the scope chain.
 // Is "x instanceof Function" efficient? Should compile_string return a 
 //   tiny tagged object instead?
+// Probably don't want to cache string-functions in filter mode.
 // ### And don't forget to check up on the negative-value bug.
 //   (($ffffffff & $ffffffff) != $ffffffff)  ... but >>>0 works
 
@@ -1254,13 +1255,27 @@ var opcode_table = {
     },
 
     0x70: function(context, operands) { /* streamchar */
-        //### iosys
-        if (quot_isconstant(operands[0])) {
-            var val = Number(operands[0]) & 0xff;
-            context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
-        }
-        else {
-            context.code.push("glk_buffer.push(CharToString(("+operands[0]+")&0xff));");
+        switch (context.curiosys) {
+        case 2: /* glk */
+            if (quot_isconstant(operands[0])) {
+                var val = Number(operands[0]) & 0xff;
+                context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
+            }
+            else {
+                context.code.push("glk_buffer.push(CharToString(("+operands[0]+")&0xff));");
+            }
+            break;
+        case 1: /* filter */
+            oputil_unload_offstack(context);
+            context.code.push("tempcallargs[0]=("+operands[0]+");");
+            oputil_push_callstub(context, "0,0");
+            context.code.push("enter_function(iosysrock, 1);");
+            context.code.push("return;");
+            context.path_ends = true;
+            break;
+        case 0: /* null */
+            context.code.push("// null streamchar " + operands[0]); //###debug
+            break;
         }
     },
 
@@ -1288,6 +1303,26 @@ var opcode_table = {
 
     0x141: function(context, operands) { /* setstringtbl */
         context.code.push("set_string_table("+operands[0]+");");
+    },
+
+    0x148: function(context, operands) { /* getiosys */
+        //###
+    },
+
+    0x149: function(context, operands) { /* setiosys */
+        context.code.push("set_iosys("+operands[0]+","+operands[1]+");");
+        if (quot_isconstant(operands[0])) {
+            var val = Number(operands[0]);
+            context.curiosys = val;
+        }
+        else {
+            /* We can't compile with an unknown iosysmode. So, stop 
+               compiling. */
+            oputil_unload_offstack(context);
+            context.code.push("pc = "+context.cp+";");
+            context.code.push("return;");
+            context.path_ends = true;
+        }
     },
 }
 
@@ -2282,6 +2317,32 @@ function set_string_table(addr) {
     vmstring_table = textenv.vmstring_tables[iosysmode];
 }
 
+function set_iosys(mode, rock) {
+    switch (mode) {
+    case 0: /* null */
+        rock = 0;
+        break;
+    case 1: /* filter */
+        break;
+    case 2: /* glk */
+        rock = 0;
+        break;
+    default: /* pretend it's null */
+        mode = 0;
+        rock = 0;
+        break;
+    }
+
+    iosysmode = mode;
+    iosysrock = rock;
+
+    var textenv = vmtextenv_table[stringtable];
+    if (textenv === undefined)
+        vmstring_table = undefined;
+    else
+        vmstring_table = textenv.vmstring_tables[iosysmode];
+}
+
 /* The form of the decoding tree is a tree of arrays and leaf objects.
    An array always has 16 entries (2^CACHESIZE). Every object, including
    the array, has a "type" field corresponding to the Glulx node type.
@@ -2406,19 +2467,20 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         }
         else {
             res = strop(substring);
-            if (res == -1) {
-                /* Entered a function */
-                return true;
-            }
-            if (res != 0) {
+            if (res instanceof Array) {
                 /* Entered a substring */
                 substring = true;
-                inmiddle = 0;
-                bitnum = 0;
-                addr = res;
+                addr = res[0];
+                inmiddle = res[1];
+                bitnum = res[2];
                 qlog("### push to addr="+addr+"/"+inmiddle+"/"+bitnum);
                 continue;
             }
+            if (res) {
+                /* Entered a function. The pc is set. */
+                return true;
+            }
+            /* Else, string terminated. */
         }
         
         /* String terminated. Carry out a pop_callstub_string(). */
@@ -2453,10 +2515,10 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
    call; then it exits so that the main terp loop can start working on
    the function.
 
-   The generated function returns -1 if a VM function is set up to go next; a
-   positive number (the string address) if another string is set up; or 0 if
-   the string has ended normally. In the latter case, a string-callstub needs
-   to be popped and used.
+   The generated function returns true if a VM function is set up to go next;
+   an array [addr, inmiddle, bitnum] if a new (or re-entering) string is set
+   up; or false if the string has ended normally. In the latter case, a
+   string-callstub needs to be popped and used.
 
    If the string ends with no sub-strings or sub-calls (the substring flag
    stays false, and there is no stack activity), then this doesn't bother with
@@ -2531,7 +2593,7 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
                     }
                     break;
                 case 0x01: /* string terminator */
-                    retval = 0;
+                    retval = false;
                     done = true;
                     break;
                 case 0x02: /* single character */
@@ -2590,8 +2652,7 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
 
                     oputil_push_callstub(context, "0x10,"+bitnum);
                     context.code.push("if (otype >= 0xE0 && otype <= 0xFF) {");
-                    inmiddle = 0; //### will have to return this
-                    context.code.push("retval = oaddr;");
+                    context.code.push("retval = [oaddr, 0, 0];");
                     context.code.push("}");
                     context.code.push("else if (otype >= 0xC0 && otype <= 0xDF) {");
                     var argc = 0;
@@ -2601,7 +2662,7 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
                             context.code.push("tempcallargs["+ix+"]="+Mem4(node+8+4*ix)+";");
                     }
                     context.code.push("enter_function(oaddr, "+argc+");");
-                    context.code.push("retval = -1;");
+                    context.code.push("retval = true;");
                     context.code.push("}");
                     context.code.push("else {");
                     context.code.push("fatal_error('Unknown object while decoding string indirect reference.', otype);");
@@ -2644,8 +2705,8 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
     }
 
     if (!retval) {
-        /* The simple case; retval is zero or undefined. Equivalent to a
-           function that prints text and returns zero. */
+        /* The simple case; retval is false or undefined. Equivalent to a
+           function that prints text and returns false. */
         if (context.code.length)
             fatal_error("Simple-case string generated code."); //###assert
         return context.buffer.join("");
