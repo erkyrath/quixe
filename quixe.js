@@ -7,6 +7,8 @@
 // Is "x instanceof Function" efficient? Should compile_string return a 
 //   tiny tagged object instead?
 // Probably don't want to cache string-functions in filter mode.
+// If a compiled path has no iosys dependencies, we could cache it in
+//   all three iosys caches for the function.
 // ### And don't forget to check up on the negative-value bug.
 //   (($ffffffff & $ffffffff) != $ffffffff)  ... but >>>0 works
 
@@ -69,6 +71,7 @@ function setup_bytestring_table() {
 
     for (ix=0; ix<0x100; ix++) {
         if (ix >= 0x20 && ix < 0x7f) {
+            /* Escape quote, double-quote, backslash. */
             if (ix == 0x22 || ix == 0x27 || ix == 0x5c)
                 val = "\\"+String.fromCharCode(ix);
             else
@@ -176,6 +179,19 @@ function QuoteCharToString(val) {
         val = 0xDC00 + (val & 0x3FF);
         return ("\\u" + val2.toString(16) + "\\u" + val.toString(16));
     }
+}
+
+/* Turn a length-1 string to a fragment of a JS string literal.
+*/
+function QuoteStr1ToString(val) {
+    return QuoteCharToString(val.charCodeAt(0));
+}
+
+var regexp_string_unsafe = /[^a-zA-Z0-9 .,;:?!=_+()-]/g;
+
+function QuoteEscapeString(val) {
+    val = val.replace(regexp_string_unsafe, QuoteStr1ToString);
+    return '"' + val + '"';
 }
 
 function fatal_error(msg) {
@@ -564,7 +580,7 @@ function oputil_flush_string(context) {
     var str = context.buffer.join("");
     context.buffer.length = 0;
 
-    context.code.push("glk_buffer.push('"+str+"');"); //### escape(str)
+    context.code.push("glk_buffer.push("+QuoteEscapeString(str)+");");
 }
 
 /* Return the signed equivalent of a value. If it is a high-bit constant, 
@@ -1275,6 +1291,31 @@ var opcode_table = {
             break;
         case 0: /* null */
             context.code.push("// null streamchar " + operands[0]); //###debug
+            break;
+        }
+    },
+
+    0x71: function(context, operands) { /* streamnum */
+        var sign0 = oputil_signify_operand(context, operands[0]);
+        switch (context.curiosys) {
+        case 2: /* glk */
+            if (quot_isconstant(operands[0])) {
+                var val = Number(sign0).toString(10);
+                context.code.push("glk_buffer.push("+QuoteEscapeString(val)+");");
+            }
+            else {
+                context.code.push("glk_buffer.push(("+sign0+").toString(10));");
+            }
+            break;
+        case 1: /* filter */
+            oputil_unload_offstack(context);
+            context.code.push("stream_num("+context.cp+","+operands[0]+", false, 0);");
+            /* stream_num always creates a new frame in filter mode. */
+            context.code.push("return;");
+            context.path_ends = true;
+            break;
+        case 0: /* null */
+            context.code.push("// null streamnum " + sign0); //###debug
             break;
         }
     },
@@ -2254,7 +2295,7 @@ function pop_callstub(val) {
     case 0x12:
         /* This call stub was pushed during a number-printing operation.
            Restart that. (Return value discarded.) */
-        stream_num(pc, TRUE, destaddr); //### implement
+        stream_num(0, pc, true, destaddr);
         return;
 
     case 0x13:
@@ -2420,6 +2461,56 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     depthbit = (1 << depth);
     for (ix = mask; ix < 16 /* CACHESIZE */; ix += depthbit) {
         cablist[ix] = cab;
+    }
+}
+
+/* Print a (signed, decimal) integer.
+
+   This is only called when the iosysmode is filter. However, we could
+   re-enter (with inmiddle true) with some other iosysmode, so we handle
+   all the cases.
+*/
+function stream_num(nextcp, value, inmiddle, charnum) {
+    var buf = value.toString(10);
+    qlog("### stream_num(" + nextcp + ", " + value + ", " + inmiddle + ", " + charnum + ") iosys " + iosysmode);
+
+    switch (iosysmode) {
+    case 2: /* glk */
+        if (charnum)
+            buf = buf.slice(charnum);
+        glk_buffer.push(buf);
+        break;
+
+    case 1: /* filter */
+        if (!inmiddle) {
+            // push_callstub(0x11, 0);
+            frame.valstack.push(0x11, 0, nextcp, frame.framestart);
+            inmiddle = true;
+        }
+        if (charnum < buf.length) {
+            var ch = buf.charCodeAt(charnum);
+            // push_callstub(0x12, charnum+1);
+            frame.valstack.push(0x12, charnum+1, value, frame.framestart);
+            tempcallargs[0] = ch;
+            enter_function(iosysrock, 1);
+            return true;
+        }
+        break;
+
+    case 0: /* null */
+        break;
+    }
+
+    if (inmiddle) {
+        var desttype, destaddr;
+        /* String terminated. Carry out a pop_callstub_string(). */
+        if (frame.valstack.pop() != frame.framestart)
+            fatal_error("Call stub frameptr does not match frame.");
+        pc = frame.valstack.pop();
+        destaddr = frame.valstack.pop();
+        desttype = frame.valstack.pop();
+        if (desttype != 0x11) 
+            fatal_error("String-on-string call stub while printing number.");
     }
 }
 
