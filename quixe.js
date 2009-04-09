@@ -539,12 +539,12 @@ function oputil_push_callstub(context, operand) {
    it until the first time it's needed; that's what the substring flag
    tracks.
 
-   This relies on context.cp being the next opcode address (as passed
-   to compile_string() in the nextcp parameter).
+   This relies on nextcp being the next opcode address (as passed
+   to the compiled string function as an argument).
 */
 function oputil_push_substring_callstub(context) {
     context.code.push("if (!substring) { substring=true;");
-    context.code.push("frame.valstack.push(0x11,0,"+context.cp+",frame.framestart);");
+    context.code.push("frame.valstack.push(0x11,0,nextcp,frame.framestart);");
     context.code.push("}");
 }
 
@@ -1283,7 +1283,7 @@ var opcode_table = {
             break;
         case 1: /* filter */
             oputil_unload_offstack(context);
-            context.code.push("tempcallargs[0]=("+operands[0]+");");
+            context.code.push("tempcallargs[0]=(("+operands[0]+")&0xff);");
             oputil_push_callstub(context, "0,0");
             context.code.push("enter_function(iosysrock, 1);");
             context.code.push("return;");
@@ -1332,13 +1332,27 @@ var opcode_table = {
     },
 
     0x73: function(context, operands) { /* streamunichar */
-        //### iosys
-        if (quot_isconstant(operands[0])) {
-            var val = Number(operands[0]);
-            context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
-        }
-        else {
-            context.code.push("glk_buffer.push(CharToString("+operands[0]+"));");
+        switch (context.curiosys) {
+        case 2: /* glk */
+            if (quot_isconstant(operands[0])) {
+                var val = Number(operands[0]);
+                context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
+            }
+            else {
+                context.code.push("glk_buffer.push(CharToString("+operands[0]+"));");
+            }
+            break;
+        case 1: /* filter */
+            oputil_unload_offstack(context);
+            context.code.push("tempcallargs[0]=("+operands[0]+");");
+            oputil_push_callstub(context, "0,0");
+            context.code.push("enter_function(iosysrock, 1);");
+            context.code.push("return;");
+            context.path_ends = true;
+            break;
+        case 0: /* null */
+            context.code.push("// null streamchar " + operands[0]); //###debug
+            break;
         }
     },
 
@@ -2545,12 +2559,12 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         if (!(vmstring_table === undefined)) {
             strop = vmstring_table[addrkey];
             if (strop === undefined) {
-                strop = compile_string(iosysmode, nextcp, addr, inmiddle, bitnum);
+                strop = compile_string(iosysmode, addr, inmiddle, bitnum);
                 vmstring_table[addrkey] = strop;
             }
         }
         else {
-            strop = compile_string(iosysmode, nextcp, addr, inmiddle, bitnum);
+            strop = compile_string(iosysmode, addr, inmiddle, bitnum);
         }
 
         qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
@@ -2561,7 +2575,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
                 return false;
         }
         else {
-            res = strop(substring);
+            res = strop(nextcp, substring);
             if (res instanceof Array) {
                 /* Entered a substring */
                 substring = true;
@@ -2619,7 +2633,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
    stays false, and there is no stack activity), then this doesn't bother with
    a function. It returns a plain string.
 */
-function compile_string(curiosys, nextcp, startaddr, inmiddle, startbitnum) {
+function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     var addr = startaddr;
     var bitnum = startbitnum;
     var retval = undefined;
@@ -2635,7 +2649,10 @@ function compile_string(curiosys, nextcp, startaddr, inmiddle, startbitnum) {
         startbitnum: startbitnum,
         buffer: [],
         code: [],
-        cp: nextcp, //###
+        /* oputil_push_callstub() pulls one field out of context.cp, and
+           we'll need to fill that in, even though it's not really a
+           compilation point. */
+        cp: undefined,
     }
 
     if (inmiddle == 0) {
@@ -2835,7 +2852,7 @@ function compile_string(curiosys, nextcp, startaddr, inmiddle, startbitnum) {
     else {
         oputil_flush_string(context);
         context.code.push("return " + retval + ";");
-        return make_code(context.code.join("\n"), "substring");
+        return make_code(context.code.join("\n"), "nextcp,substring");
     }
 }
 
