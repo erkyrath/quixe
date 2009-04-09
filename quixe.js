@@ -1325,6 +1325,10 @@ var opcode_table = {
         oputil_unload_offstack(context);
         //### can we avoid unloading in the simple case?
         context.code.push("if (stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
+        //### in the complex case, can we throw a termination point after
+        //    the opcode? Because there's no point compiling further if we're
+        //    in filter mode. (Complex strings are harder to detect, and
+        //    rarer.)
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -2529,7 +2533,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
     var addrkey, strop, res;
     var desttype, destaddr;
 
-    qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16));
+    qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16)+" in iosys "+iosysmode);
 
     while (true) {
         strop = undefined;
@@ -2541,12 +2545,12 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         if (!(vmstring_table === undefined)) {
             strop = vmstring_table[addrkey];
             if (strop === undefined) {
-                strop = compile_string(nextcp, addr, inmiddle, bitnum);
+                strop = compile_string(iosysmode, nextcp, addr, inmiddle, bitnum);
                 vmstring_table[addrkey] = strop;
             }
         }
         else {
-            strop = compile_string(nextcp, addr, inmiddle, bitnum);
+            strop = compile_string(iosysmode, nextcp, addr, inmiddle, bitnum);
         }
 
         qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
@@ -2615,7 +2619,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
    stays false, and there is no stack activity), then this doesn't bother with
    a function. It returns a plain string.
 */
-function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
+function compile_string(curiosys, nextcp, startaddr, inmiddle, startbitnum) {
     var addr = startaddr;
     var bitnum = startbitnum;
     var retval = undefined;
@@ -2689,14 +2693,40 @@ function compile_string(nextcp, startaddr, inmiddle, startbitnum) {
                     break;
                 case 0x02: /* single character */
                     ch = Mem1(node);
-                    //###iosys
-                    context.buffer.push(CharToString(ch));
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        context.buffer.push(CharToString(ch));
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        context.cp = addr; // for callstub
+                        oputil_push_callstub(context, "0x10,"+bitnum);
+                        context.code.push("tempcallargs[0]="+ch+";");
+                        context.code.push("enter_function(iosysrock, 1);");
+                        retval = true;
+                        done = true;
+                        break;
+                    }
                     node = Mem4(stringtable+8);
                     break;
                 case 0x04: /* single Unicode character */
                     ch = Mem4(node);
-                    //###iosys
-                    context.buffer.push(CharToString(ch));
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        context.buffer.push(CharToString(ch));
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        context.cp = addr; // for callstub
+                        oputil_push_callstub(context, "0x10,"+bitnum);
+                        context.code.push("tempcallargs[0]="+ch+";");
+                        context.code.push("enter_function(iosysrock, 1);");
+                        retval = true;
+                        done = true;
+                        break;
+                    }
                     node = Mem4(stringtable+8);
                     break;
                 case 0x03: /* C string */
