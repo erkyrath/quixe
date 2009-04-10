@@ -58,6 +58,18 @@ function qobjdump(obj, depth) {
     return "{ " + proplist.join(", ") + " }";
 }
 
+function qstrcachedump(obj) {
+    var key, ls, val;
+    ls = []
+    for (key in obj) {
+        val = obj[key];
+        if (val instanceof Function)
+            val = "<func>";
+        ls.push(key + ":" + val);
+    }
+    return "{ " + ls.join(", ") + " }";
+}
+
 var bytestring_table = Array(256);
 var quotechar_table = Array(256);
 function setup_bytestring_table() {
@@ -529,6 +541,9 @@ function oputil_store(context, funcop, operand) {
 
 /* Push the four-value call stub onto the stack. The operand should be the
    output of a "C" operand -- a string of the form "DESTTYPE,DESTADDR". 
+
+   The last argument, addr, is optional. If not provided, it defaults to
+   context.cp -- the address of the next opcode (to be compiled).
 */
 function oputil_push_callstub(context, operand, addr) {
     if (addr === undefined)
@@ -1323,7 +1338,6 @@ var opcode_table = {
     },
 
     0x72: function(context, operands) { /* streamstr */
-        //### iosys
         oputil_unload_offstack(context);
         //### can we avoid unloading in the simple case?
         context.code.push("if (stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
@@ -2666,7 +2680,6 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     }
 
     if (type == 0xE1) {
-        //### iosys
         if (0) {
             //### decoding_tree
         }
@@ -2743,24 +2756,44 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     node = Mem4(stringtable+8);
                     break;
                 case 0x03: /* C string */
-                    //###iosys
-                    while (true) {
-                        ch = Mem1(node);
-                        if (ch == 0)
-                            break;
-                        context.buffer.push(CharToString(ch));
-                        node++;
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        while (true) {
+                            ch = Mem1(node);
+                            if (ch == 0)
+                                break;
+                            context.buffer.push(CharToString(ch));
+                            node++;
+                        }
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
+                        retval = "["+node+", 0xE0, 0]";
+                        done = true;
+                        break;
                     }
                     node = Mem4(stringtable+8);
                     break;
                 case 0x05: /* C Unicode string */
-                    //###iosys
-                    while (true) {
-                        ch = Mem4(node);
-                        if (ch == 0)
-                            break;
-                        context.buffer.push(CharToString(ch));
-                        node += 4;
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        while (true) {
+                            ch = Mem4(node);
+                            if (ch == 0)
+                                break;
+                            context.buffer.push(CharToString(ch));
+                            node += 4;
+                        }
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
+                        retval = "["+node+", 0xE2, 0]";
+                        done = true;
+                        break;
                     }
                     node = Mem4(stringtable+8);
                     break;
@@ -2809,25 +2842,61 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         }
     }
     else if (type == 0xE0) {
-        //### iosys
         var ch;
-        while (1) {
+        switch (curiosys) {
+        case 2: /* glk */
+            while (1) {
+                ch = Mem1(addr);
+                addr++;
+                if (ch == 0)
+                    break;
+                context.buffer.push(CharToString(ch));
+            }
+            break;
+        case 1: /* filter */
+            oputil_flush_string(context);
+            oputil_push_substring_callstub(context);
             ch = Mem1(addr);
             addr++;
-            if (ch == 0)
-                break;
-            context.buffer.push(CharToString(ch));
+            if (ch != 0) {
+                oputil_push_callstub(context, "0x13,0", addr);
+                context.code.push("tempcallargs[0]="+ch+";");
+                context.code.push("enter_function(iosysrock, 1);");
+                retval = true;
+            }
+            else {
+                retval = "false";
+            }
+            break;
         }
     }
     else if (type == 0xE2) {
-        //### iosys
         var ch;
-        while (1) {
+        switch (curiosys) {
+        case 2: /* glk */
+            while (1) {
+                ch = Mem4(addr);
+                addr+=4;
+                if (ch == 0)
+                    break;
+                context.buffer.push(CharToString(ch));
+            }
+            break;
+        case 1: /* filter */
+            oputil_flush_string(context);
+            oputil_push_substring_callstub(context);
             ch = Mem4(addr);
             addr+=4;
-            if (ch == 0)
-                break;
-            context.buffer.push(CharToString(ch));
+            if (ch != 0) {
+                oputil_push_callstub(context, "0x14,0", addr);
+                context.code.push("tempcallargs[0]="+ch+";");
+                context.code.push("enter_function(iosysrock, 1);");
+                retval = true;
+            }
+            else {
+                retval = "false";
+            }
+            break;
         }
     }
     else if (type >= 0xE0 && type <= 0xFF) {
@@ -3006,7 +3075,9 @@ function execute_loop() {
     for (var ix in vmtextenv_table) {
         qlog("### textenv("+ix+"):");
         var env = vmtextenv_table[ix];
-        qlog("###...table 0: " + qobjdump(env.vmstring_tables[0]));
+        qlog("###...table null: " + qstrcachedump(env.vmstring_tables[0]));
+        qlog("###...table filt: " + qstrcachedump(env.vmstring_tables[1]));
+        qlog("###...table glk : " + qstrcachedump(env.vmstring_tables[2]));
     }
 
     var text = glk_buffer.join("");
