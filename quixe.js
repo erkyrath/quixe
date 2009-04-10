@@ -530,8 +530,10 @@ function oputil_store(context, funcop, operand) {
 /* Push the four-value call stub onto the stack. The operand should be the
    output of a "C" operand -- a string of the form "DESTTYPE,DESTADDR". 
 */
-function oputil_push_callstub(context, operand) {
-    context.code.push("frame.valstack.push("+operand+","+context.cp+",frame.framestart);");
+function oputil_push_callstub(context, operand, addr) {
+    if (addr === undefined)
+        addr = context.cp;
+    context.code.push("frame.valstack.push("+operand+","+addr+",frame.framestart);");
 }
 
 /* Conditionally push a type-0x11 call stub. This logically happens at
@@ -2649,10 +2651,6 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         startbitnum: startbitnum,
         buffer: [],
         code: [],
-        /* oputil_push_callstub() pulls one field out of context.cp, and
-           we'll need to fill that in, even though it's not really a
-           compilation point. */
-        cp: undefined,
     }
 
     if (inmiddle == 0) {
@@ -2717,8 +2715,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     case 1: /* filter */
                         oputil_flush_string(context);
                         oputil_push_substring_callstub(context);
-                        context.cp = addr; // for callstub
-                        oputil_push_callstub(context, "0x10,"+bitnum);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
                         context.code.push("tempcallargs[0]="+ch+";");
                         context.code.push("enter_function(iosysrock, 1);");
                         retval = true;
@@ -2736,8 +2733,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     case 1: /* filter */
                         oputil_flush_string(context);
                         oputil_push_substring_callstub(context);
-                        context.cp = addr; // for callstub
-                        oputil_push_callstub(context, "0x10,"+bitnum);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
                         context.code.push("tempcallargs[0]="+ch+";");
                         context.code.push("enter_function(iosysrock, 1);");
                         retval = true;
@@ -2784,11 +2780,10 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     if (nodetype == 0x09 || nodetype == 0x0B)
                         context.code.push("oaddr = Mem4(oaddr);");
                     context.code.push("otype = Mem1(oaddr);");
-                    context.cp = addr; // for callstub
                     retval = "retval";
                     done = true;
 
-                    oputil_push_callstub(context, "0x10,"+bitnum);
+                    oputil_push_callstub(context, "0x10,"+bitnum, addr);
                     context.code.push("if (otype >= 0xE0 && otype <= 0xFF) {");
                     context.code.push("retval = [oaddr, 0, 0];");
                     context.code.push("}");
