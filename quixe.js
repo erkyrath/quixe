@@ -9,8 +9,6 @@
 // Probably don't want to cache string-functions in filter mode.
 // If a compiled path has no iosys dependencies, we could cache it in
 //   all three iosys caches for the function.
-// ### And don't forget to check up on the negative-value bug.
-//   (($ffffffff & $ffffffff) != $ffffffff)  ... but >>>0 works
 
 Quixe = function() {
 
@@ -99,28 +97,29 @@ function setup_bytestring_table() {
     }
 }
 
+/* Functions to read values from memory (or other byte-arrays). These must
+   always produce unsigned integers.
+
+   We use arithmetic rather than bitwise operations. *,+ are slightly slower
+   than <<,| but *,+ produce positive results, whereas <<,| produces a signed
+   result for values over 0x80000000. So we save the cost of the >>>0, which
+   is worthwhile.
+*/
+
 function ByteRead4(arr, addr) {
-    return (arr[addr] << 24) + (arr[addr+1] << 16) 
-        + (arr[addr+2] << 8) + (arr[addr+3]);
+    return (arr[addr] * 0x1000000) + (arr[addr+1] * 0x10000) 
+        + (arr[addr+2] * 0x100) + (arr[addr+3]);
 }
 
 function Mem1(addr) {
     return memmap[addr];
 }
 function Mem2(addr) {
-    return (memmap[addr] << 8) + (memmap[addr+1]);
+    return (memmap[addr] * 0x100) + (memmap[addr+1]);
 }
 function Mem4(addr) {
-    return (memmap[addr] << 24) + (memmap[addr+1] << 16) 
-        + (memmap[addr+2] << 8) + (memmap[addr+3]);
-}
-function SignMem1(addr) { //### needed?
-    var val = memmap[addr];
-    return (val & 0x80) ? (val |= 0xFFFFFF00) : val;
-}
-function SignMem2(addr) { //### needed?
-    var val = (memmap[addr] << 8) + (memmap[addr+1]);
-    return (val & 0x8000) ? (val |= 0xFFFF0000) : val;
+    return (memmap[addr] * 0x1000000) + (memmap[addr+1] * 0x10000) 
+        + (memmap[addr+2] * 0x100) + (memmap[addr+3]);
 }
 function MemW1(addr, val) {
     // ignore high bytes if necessary
@@ -602,19 +601,35 @@ function oputil_flush_string(context) {
 
 /* Return the signed equivalent of a value. If it is a high-bit constant, 
    this returns its negative equivalent as a constant. If it is a _hold
-   variable, a new _hold is returned with the new (or old) value.
+   variable or expression, a new expression is returned with the signed
+   value.
+
+   If the hold parameter is true, the expression will be assigned to a
+   new _hold var. Use this if you intend to use the returned value more
+   than once.
 */
-function oputil_signify_operand(context, operand) {
+function oputil_signify_operand(context, operand, hold) {
+    var val;
     if (quot_isconstant(operand)) {
-        var val = Number(operand);
+        val = Number(operand);
         if (val & 0x80000000)
             return ""+(val - 0x100000000);
         else
             return operand;
     }
-    var holdvar = alloc_holdvar(context);
-    context.code.push(holdvar+"=(("+operand+"&0x80000000)?("+operand+"-0x100000000):("+operand+"));");
-    return holdvar;
+
+    /* By a quirk of Javascript, you can turn an unsigned 32-bit number
+       into a signed one by bit-anding it with 0xffffffff. */
+
+    val = "("+operand+"&0xffffffff)";
+    if (hold) {
+        var holdvar = alloc_holdvar(context);
+        context.code.push(holdvar+"="+val+";");
+        return holdvar;
+    }
+    else {
+        return val;
+    }
 }
 
 /* Generate code for a branch to operand. This includes the usual branch
@@ -639,7 +654,7 @@ function oputil_perform_jump(context, operand, unconditional) {
         }
         else {
             oputil_unload_offstack(context, !unconditional);
-            var newpc = (context.cp+val-2) & 0xffffffff;
+            var newpc = (context.cp+val-2) >>>0;
             context.code.push("pc = "+newpc+";");
             context.vmfunc.pathaddrs[newpc] = true;
         }
@@ -652,7 +667,7 @@ function oputil_perform_jump(context, operand, unconditional) {
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
-        context.code.push("pc = ("+context.cp+"+("+operand+")-2) & 0xffffffff;");
+        context.code.push("pc = ("+context.cp+"+("+operand+")-2) >>>0;");
         context.code.push("}");
     }
     context.code.push("return;");
@@ -665,54 +680,60 @@ var opcode_table = {
     0x10: function(context, operands) { /* add */
         /* Commutative, so we don't care about the order of evaluation of
            the two expressions. */
-        context.code.push(operands[2]+"(("+operands[0]+")+("+operands[1]+")) & 0xffffffff);");
+        /* We truncate the sum with >>>0, which always gives an unsigned
+           32-bit integer. */
+        context.code.push(operands[2]+"(("+operands[0]+")+("+operands[1]+")) >>>0);");
     },
 
     0x11: function(context, operands) { /* sub */
         /* We hold operand 0, to ensure that it's evaluated first. Op 1
            is an expression. */
-        context.code.push(operands[2]+"(("+operands[0]+")-("+operands[1]+")) & 0xffffffff);");
+        context.code.push(operands[2]+"(("+operands[0]+")-("+operands[1]+")) >>>0);");
     },
 
     0x12: function(context, operands) { /* mul */
         var sign0 = oputil_signify_operand(context, operands[0]);
         var sign1 = oputil_signify_operand(context, operands[1]);
-        context.code.push(operands[2]+"(("+sign0+")*("+sign1+")) & 0xffffffff);");
+        context.code.push(operands[2]+"(("+sign0+")*("+sign1+")) >>>0);");
     },
 
+    //### 0x13: function(context, operands) { /* div */
+
+    //### 0x14: function(context, operands) { /* mod */
+
     0x15: function(context, operands) { /* neg */
-        context.code.push(operands[1]+"(-("+operands[0]+")) & 0xffffffff);");
+        context.code.push(operands[1]+"(-("+operands[0]+")) >>>0);");
     },
 
     0x18: function(context, operands) { /* bitand */
         /* Commutative. */
-        context.code.push(operands[2]+"("+operands[0]+")&("+operands[1]+"));");
+        context.code.push(operands[2]+"(("+operands[0]+")&("+operands[1]+")) >>>0);");
     },
 
     0x19: function(context, operands) { /* bitor */
         /* Commutative. */
-        context.code.push(operands[2]+"("+operands[0]+")|("+operands[1]+"));");
+        context.code.push(operands[2]+"(("+operands[0]+")|("+operands[1]+")) >>>0);");
     },
 
     0x1a: function(context, operands) { /* bitxor */
         /* Commutative. */
-        context.code.push(operands[2]+"("+operands[0]+")^("+operands[1]+"));");
+        context.code.push(operands[2]+"(("+operands[0]+")^("+operands[1]+")) >>>0);");
     },
 
     0x1b: function(context, operands) { /* bitnot */
-        context.code.push(operands[1]+"(~("+operands[0]+")) & 0xffffffff);");
+        context.code.push(operands[1]+"(~("+operands[0]+")) >>>0);");
     },
 
     0x1c: function(context, operands) { /* shiftl */
         if (quot_isconstant(operands[1])) {
             var val = Number(operands[1]);
             if (val < 32)
-                context.code.push(operands[2]+"(("+operands[0]+")<<"+val+") & 0xffffffff);");
+                context.code.push(operands[2]+"(("+operands[0]+")<<"+val+") >>>0);");
             else
                 context.code.push(operands[2]+"0);");
         }
         else {
-            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+"<<"+operands[1]+") & 0xffffffff) : 0);");
+            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+"<<"+operands[1]+") >>>0) : 0);");
         }
     },
 
@@ -720,15 +741,15 @@ var opcode_table = {
         if (quot_isconstant(operands[1])) {
             var val = Number(operands[1]);
             if (val < 32)
-                context.code.push(operands[2]+"(("+operands[0]+")>>"+val+") & 0xffffffff);");
+                context.code.push(operands[2]+"(("+operands[0]+")>>"+val+") >>>0);");
             else
                 context.code.push(operands[2]+"(("+operands[0]+")&0x80000000) ? 0xffffffff : 0);");
         }
         else {
             context.code.push("if ("+operands[0]+" & 0x80000000) {");
-            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>"+operands[1]+") & 0xffffffff) : 0xffffffff);");
+            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>"+operands[1]+") >>>0) : 0xffffffff);");
             context.code.push("} else {");
-            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>"+operands[1]+") & 0xffffffff) : 0);");
+            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>"+operands[1]+") >>>0) : 0);");
             context.code.push("}");
         }
     },
@@ -737,12 +758,12 @@ var opcode_table = {
         if (quot_isconstant(operands[1])) {
             var val = Number(operands[1]);
             if (val < 32)
-                context.code.push(operands[2]+"(("+operands[0]+")>>>"+val+") & 0xffffffff);");
+                context.code.push(operands[2]+"("+operands[0]+")>>>"+val+");");
             else
                 context.code.push(operands[2]+"0);");
         }
         else {
-            context.code.push(operands[2]+"("+operands[1]+"<32) ? (("+operands[0]+">>>"+operands[1]+") & 0xffffffff) : 0);");
+            context.code.push(operands[2]+"("+operands[1]+"<32) ? ("+operands[0]+">>>"+operands[1]+") : 0);");
         }
     },
 
@@ -975,18 +996,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]) * 4;
-                val = "Mem4("+(addr & 0xffffffff)+")";
+                val = "Mem4("+(addr >>>0)+")";
             }
             else {
                 var addr = Number(operands[1]) * 4;
                 if (addr)
-                    val = "Mem4(("+operands[0]+"+"+addr+") & 0xffffffff)";
+                    val = "Mem4(("+operands[0]+"+"+addr+") >>>0)";
                 else
                     val = "Mem4("+operands[0]+")";
             }
         }
         else {
-            val = "Mem4(("+operands[0]+"+4*"+operands[1]+") & 0xffffffff)";
+            val = "Mem4(("+operands[0]+"+4*"+operands[1]+") >>>0)";
         }
         context.code.push(operands[2]+val+");");
     },
@@ -997,18 +1018,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]) * 2;
-                val = "Mem2("+(addr & 0xffffffff)+")";
+                val = "Mem2("+(addr >>>0)+")";
             }
             else {
                 var addr = Number(operands[1]) * 2;
                 if (addr)
-                    val = "Mem2(("+operands[0]+"+"+addr+") & 0xffffffff)";
+                    val = "Mem2(("+operands[0]+"+"+addr+") >>>0)";
                 else
                     val = "Mem2("+operands[0]+")";
             }
         }
         else {
-            val = "Mem2(("+operands[0]+"+2*"+operands[1]+") & 0xffffffff)";
+            val = "Mem2(("+operands[0]+"+2*"+operands[1]+") >>>0)";
         }
         context.code.push(operands[2]+val+");");
     },
@@ -1019,18 +1040,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]);
-                val = "Mem1("+(addr & 0xffffffff)+")";
+                val = "Mem1("+(addr >>>0)+")";
             }
             else {
                 var addr = Number(operands[1]);
                 if (addr)
-                    val = "Mem1(("+operands[0]+"+"+addr+") & 0xffffffff)";
+                    val = "Mem1(("+operands[0]+"+"+addr+") >>>0)";
                 else
                     val = "Mem1("+operands[0]+")";
             }
         }
         else {
-            val = "Mem1(("+operands[0]+"+"+operands[1]+") & 0xffffffff)";
+            val = "Mem1(("+operands[0]+"+"+operands[1]+") >>>0)";
         }
         context.code.push(operands[2]+val+");");
     },
@@ -1041,18 +1062,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]) * 4;
-                val = (addr & 0xffffffff)+",";
+                val = (addr >>>0)+",";
             }
             else {
                 var addr = Number(operands[1]) * 4;
                 if (addr)
-                    val = "("+operands[0]+"+"+addr+") & 0xffffffff"+",";
+                    val = "("+operands[0]+"+"+addr+") >>>0"+",";
                 else
                     val = operands[0]+",";
             }
         }
         else {
-            val = "("+operands[0]+"+4*"+operands[1]+") & 0xffffffff"+",";
+            val = "("+operands[0]+"+4*"+operands[1]+") >>>0"+",";
         }
         context.code.push("MemW4("+val+operands[2]+")"+";");
     },
@@ -1063,18 +1084,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]) * 2;
-                val = (addr & 0xffffffff)+",";
+                val = (addr >>>0)+",";
             }
             else {
                 var addr = Number(operands[1]) * 2;
                 if (addr)
-                    val = "("+operands[0]+"+"+addr+") & 0xffffffff"+",";
+                    val = "("+operands[0]+"+"+addr+") >>>0"+",";
                 else
                     val = operands[0]+",";
             }
         }
         else {
-            val = "("+operands[0]+"+2*"+operands[1]+") & 0xffffffff"+",";
+            val = "("+operands[0]+"+2*"+operands[1]+") >>>0"+",";
         }
         context.code.push("MemW2("+val+operands[2]+")"+";");
     },
@@ -1085,18 +1106,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]);
-                val = (addr & 0xffffffff)+",";
+                val = (addr >>>0)+",";
             }
             else {
                 var addr = Number(operands[1]);
                 if (addr)
-                    val = "("+operands[0]+"+"+addr+") & 0xffffffff"+",";
+                    val = "("+operands[0]+"+"+addr+") >>>0"+",";
                 else
                     val = operands[0]+",";
             }
         }
         else {
-            val = "("+operands[0]+"+"+operands[1]+") & 0xffffffff"+",";
+            val = "("+operands[0]+"+"+operands[1]+") >>>0"+",";
         }
         context.code.push("MemW1("+val+operands[2]+")"+";");
     },
@@ -1104,9 +1125,7 @@ var opcode_table = {
     0x4b: function(context, operands) { /* aloadbit */
         if (quot_isconstant(operands[1])) {
             var bitx, addrx, bitnum;
-            bitnum = Number(operands[1]);
-            if (bitnum & 0x80000000)
-                bitnum -= 0x100000000;
+            bitnum = Number(operands[1]) & 0xffffffff; /* signed */
             bitx = bitnum & 7;
             if (quot_isconstant(operands[0])) {
                 /* Generate addrx as a number. */
@@ -1133,7 +1152,7 @@ var opcode_table = {
         else {
             context.varsused["bitx"] = true;
             context.varsused["addrx"] = true;
-            var sign1 = oputil_signify_operand(context, operands[1]);
+            var sign1 = oputil_signify_operand(context, operands[1], true);
             context.code.push("bitx = "+sign1+"&7;");
             context.code.push("if ("+sign1+">=0) addrx = "+operands[0]+" + ("+sign1+">>3);");
             context.code.push("else addrx = "+operands[0]+" - (1+((-1-("+sign1+"))>>3));");
@@ -1144,9 +1163,7 @@ var opcode_table = {
     0x4f: function(context, operands) { /* astorebit */
         var bitx, addrx, mask, bitnum;
         if (quot_isconstant(operands[1])) {
-            bitnum = Number(operands[1]);
-            if (bitnum & 0x80000000)
-                bitnum -= 0x100000000;
+            bitnum = Number(operands[1]) & 0xffffffff; /* signed */
             bitx = bitnum & 7;
             if (quot_isconstant(operands[0])) {
                 /* Generate addrx as a number. */
@@ -1173,7 +1190,7 @@ var opcode_table = {
         else {
             context.varsused["bitx"] = true;
             context.varsused["addrx"] = true;
-            var sign1 = oputil_signify_operand(context, operands[1]);
+            var sign1 = oputil_signify_operand(context, operands[1], true);
             context.code.push("bitx = "+sign1+"&7;");
             context.code.push("if ("+sign1+">=0) addrx = "+operands[0]+" + ("+sign1+">>3);");
             context.code.push("else addrx = "+operands[0]+" - (1+((-1-("+sign1+"))>>3));");
@@ -1238,8 +1255,8 @@ var opcode_table = {
         context.varsused["pos"] = true;
         context.varsused["roll"] = true;
         context.varsused["vals1"] = true;
-        var sign0 = oputil_signify_operand(context, operands[0]);
-        var sign1 = oputil_signify_operand(context, operands[1]);
+        var sign0 = oputil_signify_operand(context, operands[0], true);
+        var sign1 = oputil_signify_operand(context, operands[1], true);
         context.code.push("if ("+sign0+" > 0) {");
         context.code.push("if ("+sign1+" > 0) {");
         context.code.push("vals1 = "+sign1+" % "+sign0+";");
@@ -1313,9 +1330,9 @@ var opcode_table = {
     },
 
     0x71: function(context, operands) { /* streamnum */
-        var sign0 = oputil_signify_operand(context, operands[0]);
         switch (context.curiosys) {
         case 2: /* glk */
+            var sign0 = oputil_signify_operand(context, operands[0]);
             if (quot_isconstant(operands[0])) {
                 var val = Number(sign0).toString(10);
                 context.code.push("glk_buffer.push("+QuoteEscapeString(val)+");");
@@ -1332,7 +1349,7 @@ var opcode_table = {
             context.path_ends = true;
             break;
         case 0: /* null */
-            context.code.push("// null streamnum " + sign0); //###debug
+            context.code.push("// null streamnum " + operands[0]); //###debug
             break;
         }
     },
@@ -2139,17 +2156,17 @@ function compile_path(vmfunc, startaddr, startiosys) {
             if (opcode & 0x40) {
                 /* Four-byte opcode */
                 opcode &= 0x3F;
-                opcode = (opcode << 8) | Mem1(cp);
+                opcode = (opcode * 0x100) | Mem1(cp);
                 cp++;
-                opcode = (opcode << 8) | Mem1(cp);
+                opcode = (opcode * 0x100) | Mem1(cp);
                 cp++;
-                opcode = (opcode << 8) | Mem1(cp);
+                opcode = (opcode * 0x100) | Mem1(cp);
                 cp++;
             }
             else {
                 /* Two-byte opcode */
                 opcode &= 0x7F;
-                opcode = (opcode << 8) | Mem1(cp);
+                opcode = (opcode * 0x100) | Mem1(cp);
                 cp++;
             }
         }
@@ -2182,7 +2199,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
                 context.holduse[key] = false;
         }
 
-        context.code.push("// offstack: " + context.offstack.join(",")); //###debug
+        if (context.offstack.length) context.code.push("// offstack: " + context.offstack.join(",")); //###debug
 
         /* Check if any other compilation starts, or will start, at this
            address. If so, no need to compile further. */
@@ -2498,15 +2515,18 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     }
 }
 
-/* Print a (signed, decimal) integer.
+/* Print a (signed, decimal) integer. The incoming value is actually
+   unsigned, so we have to convert it (using the "& 0xffffffff" trick)
+   before stringifying it.
 
    This is only called when the iosysmode is filter. However, we could
    re-enter (with inmiddle true) with some other iosysmode, so we handle
    all the cases.
 */
 function stream_num(nextcp, value, inmiddle, charnum) {
-    var buf = value.toString(10);
-    qlog("### stream_num(" + nextcp + ", " + value + ", " + inmiddle + ", " + charnum + ") iosys " + iosysmode);
+    var buf = (value & 0xffffffff).toString(10);
+
+    qlog("### stream_num(" + nextcp + ", " + buf + ", " + inmiddle + ", " + charnum + ") iosys " + iosysmode);
 
     switch (iosysmode) {
     case 2: /* glk */
@@ -2523,6 +2543,8 @@ function stream_num(nextcp, value, inmiddle, charnum) {
         }
         if (charnum < buf.length) {
             var ch = buf.charCodeAt(charnum);
+            /* Note that value is unsigned here -- only unsigned values
+               go on the stack. */
             // push_callstub(0x12, charnum+1);
             frame.valstack.push(0x12, charnum+1, value, frame.framestart);
             tempcallargs[0] = ch;
