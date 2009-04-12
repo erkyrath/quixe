@@ -337,7 +337,7 @@ function VMTextEnv(addr, dectab) {
         fatal_error("Tried to create a VMTextEnv for address zero.");
 
     this.addr = addr;
-    this.cacheable = !(dectab === undefined);
+    this.cacheable = (dectab !== undefined);
     this.decoding_tree = dectab;
 
     /* The string tables for the various iosys modes. */
@@ -582,7 +582,7 @@ function oputil_unload_offstack(context, keepstack) {
             var holdvar;
             while (context.offstack.length) {
                 holdvar = context.offstack.pop();
-                if (!(context.holduse[holdvar] === undefined))
+                if (context.holduse[holdvar] !== undefined)
                     context.holduse[holdvar] = false;
             }
             /* Now offstack is empty, and all its variables are marked not 
@@ -2612,7 +2612,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         else
             addrkey = addr+"/"+inmiddle+"/"+bitnum;
 
-        if (!(vmstring_table === undefined)) {
+        if (vmstring_table !== undefined) {
             strop = vmstring_table[addrkey];
             if (strop === undefined) {
                 strop = compile_string(iosysmode, addr, inmiddle, bitnum);
