@@ -986,6 +986,10 @@ var opcode_table = {
         context.path_ends = true;
     },
 
+    //### 0x32: function(context, operands) { /* catch */
+
+    //### 0x33: function(context, operands) { /* throw */
+
     0x40: function(context, operands) { /* copy */
         oputil_store(context, operands[1], operands[0]);
     },
@@ -1309,9 +1313,19 @@ var opcode_table = {
         }
     },
 
+    //### 0x100: function(context, operands) { /* gestalt */
+
     0x101: function(context, operands) { /* debugtrap */
         context.code.push("fatal_error('User debugtrap encountered.', "+operands[0]+");");
     },
+
+    //### 0x102: function(context, operands) { /* getmemsize */
+
+    //### 0x103: function(context, operands) { /* setmemsize */
+
+    //### 0x110: function(context, operands) { /* random */
+
+    //### 0x111: function(context, operands) { /* setrandom */
 
     0x120: function(context, operands) { /* quit */
         /* Quash the offstack. No more execution. */
@@ -1321,6 +1335,18 @@ var opcode_table = {
         context.code.push("return;");
         context.path_ends = true;
     },
+
+    //### 0x121: function(context, operands) { /* verify */
+
+    //### 0x122: function(context, operands) { /* restart */
+
+    //### save, restore, saveundo, restoreundo, protect
+
+    //### mzero, mcopy, malloc, mfree
+
+    //### accelfunc, accelparam
+
+    //### linearsearch, binarysearch, linkedsearch
 
     0x70: function(context, operands) { /* streamchar */
         switch (context.curiosys) {
@@ -1434,6 +1460,8 @@ var opcode_table = {
             context.path_ends = true;
         }
     },
+
+    // 0x130: function(context, operands) { /* glk */
 }
 
 /* Select a currently-unused "_hold*" variable, and mark it used. 
