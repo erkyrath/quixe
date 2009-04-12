@@ -9,6 +9,8 @@
 // Probably don't want to cache string-functions in filter mode.
 // If a compiled path has no iosys dependencies, we could cache it in
 //   all three iosys caches for the function.
+// ### Also: put in debug asserts for valid stack values (at push/pop)
+//   (check isFinite and non-negative)
 
 Quixe = function() {
 
@@ -697,9 +699,25 @@ var opcode_table = {
         context.code.push(operands[2]+"(("+sign0+")*("+sign1+")) >>>0);");
     },
 
-    //### 0x13: function(context, operands) { /* div */
+    0x13: function(context, operands) { /* div */
+        var sign0 = oputil_signify_operand(context, operands[0]);
+        var sign1 = oputil_signify_operand(context, operands[1]);
+        var holdvar = alloc_holdvar(context);
+        context.code.push(holdvar+"=(("+sign0+")/("+sign1+"));");
+        context.code.push("if (!isFinite("+holdvar+")) fatal_error('Division by zero.');");
+        context.code.push(operands[2]+"("+holdvar+">=0)?Math.floor("+holdvar+"):(-Math.floor(-"+holdvar+") >>>0));");
+    },
 
-    //### 0x14: function(context, operands) { /* mod */
+    0x14: function(context, operands) { /* mod */
+        /* Javascript modulo follows the same sign laws as Glulx, which
+           is convenient. */
+        var sign0 = oputil_signify_operand(context, operands[0]);
+        var sign1 = oputil_signify_operand(context, operands[1]);
+        var holdvar = alloc_holdvar(context);
+        context.code.push(holdvar+"=(("+sign0+")%("+sign1+"));");
+        context.code.push("if (!isFinite("+holdvar+")) fatal_error('Modulo division by zero.');");
+        context.code.push(operands[2]+holdvar+" >>>0);");
+    },
 
     0x15: function(context, operands) { /* neg */
         context.code.push(operands[1]+"(-("+operands[0]+")) >>>0);");
