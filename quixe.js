@@ -1004,11 +1004,13 @@ var opcode_table = {
 
     0x44: function(context, operands) { /* sexs */
         /* ### fold constant? */
+        //### check sign problem
         context.code.push(operands[1]+"("+operands[0]+" & 0x8000) ? ("+operands[0]+" | 0xffff0000) : ("+operands[0]+" & 0xffff));");
     },
 
     0x45: function(context, operands) { /* sexb */
         /* ### fold constant? */
+        //### check sign problem
         context.code.push(operands[1]+"("+operands[0]+" & 0x80) ? ("+operands[0]+" | 0xffffff00) : ("+operands[0]+" & 0xff));");
     },
 
@@ -1323,9 +1325,34 @@ var opcode_table = {
 
     //### 0x103: function(context, operands) { /* setmemsize */
 
-    //### 0x110: function(context, operands) { /* random */
+    0x110: function(context, operands) { /* random */
+        var expr;
+        if (quot_isconstant(operands[0])) {
+            var val = Number(operands[0]) & 0xffffffff; /* signed */
+            if (val == 0)
+                expr = "Math.floor(random_func() * 0x100000000)";
+            else if (val > 0)
+                expr = "Math.floor(random_func() * "+val+")";
+            else
+                expr = "-Math.floor(random_func() * "+(-val)+")";
+        }
+        else {
+            var sign0 = oputil_signify_operand(context, operands[0], true);
+            var holdvar = alloc_holdvar(context);
+            expr = holdvar;
+            context.code.push("if ("+sign0+" > 0)");
+            context.code.push(holdvar+" = Math.floor(random_func() * "+sign0+");");
+            context.code.push("else if ("+sign0+" < 0)");
+            context.code.push(holdvar+" = -Math.floor(random_func() * -"+sign0+");");
+            context.code.push("else");
+            context.code.push(holdvar+" = Math.floor(random_func() * 0x100000000);");
+        }
+        context.code.push(operands[1]+expr+");");
+    },
 
-    //### 0x111: function(context, operands) { /* setrandom */
+    0x111: function(context, operands) { /* setrandom */
+        context.code.push("set_random(" + operands[0] + ");");
+    },
 
     0x120: function(context, operands) { /* quit */
         /* Quash the offstack. No more execution. */
@@ -2412,6 +2439,13 @@ function pop_callstub(val) {
     }
 }
 
+function set_random(val) {
+    if (val == 0)
+        random_func = Math.random;
+    else
+        random_func = Math.random; //#### put something deterministic here
+}
+
 /* Set the current table address, and rebuild decoding tree. */
 function set_string_table(addr) {
     if (stringtable == addr)
@@ -3004,6 +3038,8 @@ var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
 var decoding_tree; /* binary tree of string nodes */
 var vmstring_table; /* maps addresses to functions or strings */
 
+var random_func; /* Math.random or deterministic equivalent */
+
 /* Header constants. */
 var ramstart;
 var endgamefile;   // always game_image.length
@@ -3073,7 +3109,7 @@ function setup_vm() {
     decoding_tree = undefined;
     vmstring_table = undefined;
     tempcallargs = Array(8);
-    //### glulx_setrandom(0);
+    set_random(0);
 
     endmem = origendmem;
     stringtable = 0;
