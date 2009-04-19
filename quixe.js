@@ -1469,7 +1469,8 @@ var opcode_table = {
     },
 
     0x148: function(context, operands) { /* getiosys */
-        //###
+        context.code.push(operands[0]+"iosysmode)");
+        context.code.push(operands[1]+"iosysrock)");
     },
 
     0x149: function(context, operands) { /* setiosys */
