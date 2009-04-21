@@ -9,6 +9,8 @@
 // Probably don't want to cache string-functions in filter mode.
 // If a compiled path has no iosys dependencies, we could cache it in
 //   all three iosys caches for the function.
+// Can the "if (stack.length == 0)..." check at every "return" be turned
+//   into a JS exception? Would save a lot of compilation.
 // ### Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 
@@ -382,7 +384,7 @@ function setup_operandlist_table() {
     var list_2EF = new OperandList("EF", 2);
     var list_S = new OperandList("S");
     var list_SS = new OperandList("SS");
-    var list_SL = new OperandList("SL");
+    var list_CL = new OperandList("CL");
     operandlist_table = { 
         0x00: list_none, /* nop */
         0x10: list_EES, /* add */
@@ -413,7 +415,7 @@ function setup_operandlist_table() {
         0x2D: list_LLL, /* jleu */
         0x30: list_LLC, /* call */
         0x31: list_L, /* return */
-        0x32: list_SL, /* catch */
+        0x32: list_CL, /* catch */
         0x33: list_LL, /* throw */
         0x34: list_LL, /* tailcall */
         0x40: list_EF, /* copy */
@@ -986,7 +988,13 @@ var opcode_table = {
         context.path_ends = true;
     },
 
-    //### 0x32: function(context, operands) { /* catch */
+    0x32: function(context, operands) { /* catch */
+        oputil_unload_offstack(context);
+        oputil_push_callstub(context, operands[0]);
+        context.code.push("store_operand("+operands[0]+",frame.framestart+frame.framelen+4*frame.valstack.length);");
+        oputil_perform_jump(context, operands[1], true);
+        context.path_ends = true;
+    },
 
     //### 0x33: function(context, operands) { /* throw */
 
@@ -2392,8 +2400,6 @@ function pop_callstub(val) {
     destaddr = frame.valstack.pop();
     desttype = frame.valstack.pop();
 
-    //### string callstub magic
-
     switch (desttype) {
     case 0:
         return;
@@ -2435,6 +2441,27 @@ function pop_callstub(val) {
         stream_string(0, pc, 0xE2, destaddr); 
         return;
 
+    default:
+        fatal_error("Unrecognized desttype in callstub.", desttype);
+    }
+}
+
+/* Do the value-storing part of an already-popped call stub. (This is a
+   subset of the pop_callstub() work.) 
+*/
+function store_operand(desttype, destaddr, val) {
+    switch (desttype) {
+    case 0:
+        return;
+    case 1:
+        MemW4(destaddr, val);
+        return;
+    case 2:
+        frame.locals[destaddr] = val;
+        return;
+    case 3:
+        frame.valstack.push(val);
+        return;
     default:
         fatal_error("Unrecognized desttype in callstub.", desttype);
     }
