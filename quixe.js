@@ -996,7 +996,16 @@ var opcode_table = {
         context.path_ends = true;
     },
 
-    //### 0x33: function(context, operands) { /* throw */
+    0x33: function(context, operands) { /* throw */
+        /* Quash the offstack; we're about to blow away the stack frame, or
+           at minimum reset it. A valid call stub cannot be on the offstack. */
+        context.code.push("// quashing offstack for throw: " + context.offstack.length); //###debug
+        context.offstack.length = 0;
+        context.code.push("pop_stack_to("+operands[1]+");");
+        context.code.push("pop_callstub("+operands[0]+");");
+        context.code.push("return;");
+        context.path_ends = true;
+    },
 
     0x40: function(context, operands) { /* copy */
         oputil_store(context, operands[1], operands[0]);
@@ -2385,6 +2394,27 @@ function leave_function() {
 
     if (frame.depth != olddepth-1)
         fatal_error("Stack inconsistent after function exit.");
+}
+
+/* Pop the stack down until it has length val. Used in the throw opcode. */
+function pop_stack_to(val) {
+    /* Down to the correct frame, if necessary. */
+    while (stack.length && stack[stack.length-1].framestart > val)
+        stack.pop();
+    if (stack.length == 0)
+        fatal_error("Stack evaporated during throw.");
+    frame = stack[stack.length-1];
+
+    val -= (frame.framestart+frame.framelen);
+    if (val < 0)
+        fatal_error("Attempted to throw below the frame value stack.");
+    if (val & 3)
+        fatal_error("Attempted to throw to an unaligned address.");
+    val >>>= 2;
+    if (val > frame.valstack.length)
+        fatal_error("Attempted to throw beyond the frame value stack.");
+    /* Down to the correct position in the valstack. */
+    frame.valstack.length = val;
 }
 
 function pop_callstub(val) {
