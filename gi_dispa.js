@@ -1,5 +1,15 @@
 GiDispa = function() {
 
+/* A table of the Glk classes, and their index numbers. This is derived from
+   gi_dispa.c, although it's too simple to bother auto-generating.
+*/
+var class_defs = {
+    0: 'window',
+    1: 'stream',
+    2: 'fileref',
+    3: 'schannel',
+};
+
 /* FuncSpec is a data representation of a Glk function's prototype.
    The table of FuncSpecs is generated, ultimately, from the Glk
    prototype description strings in gi_dispa.c.
@@ -275,7 +285,6 @@ function qlog(msg) {
         opera.postError(msg);
 }
 
-//### class_*_from_id, class_*_to_id
 //### retain_array
 
 /* Convert one simple value (int, char, string, class) from a Glulx
@@ -306,7 +315,7 @@ function convert_arg(arg, passin, val) {
     }
     if (arg instanceof ArgClass) {
         if (passin) {
-            return 'class_'+arg.name+'_from_id('+val+')';
+            return 'class_map.'+arg.name+'['+val+']';
         }
         else {
             return 'null';
@@ -329,7 +338,7 @@ function unconvert_arg(arg, val) {
             return 'uncast_signed_char('+val+')'
     }
     if (arg instanceof ArgClass) {
-        return 'class_'+arg.name+'_to_id('+val+')';
+        return val+'.disprock';
     }
     return '???';
 }
@@ -580,8 +589,46 @@ function get_function(id) {
     return func;
 }
 
+/* Table of tables of registered Glk objects. class_map['window'] is the
+   table of windows, and so on.
+*/
+var class_map = {};
+/* Source of numeric ids that are used to identify Glk objects. */
+var last_used_id;
+
+function class_register(clas, obj) {
+    if (obj.disprock)
+        throw('class_register: object is already registered');
+    obj.disprock = last_used_id;
+    last_used_id++;
+
+    class_map[clas][obj.disprock] = obj;
+}
+
+function class_unregister(clas, obj) {
+    if (obj.disprock == 0 || class_map[clas][obj.disprock] === undefined)
+        throw('class_unregister: object is not registered');
+    
+    delete class_map[clas][obj.disprock];
+    obj.disprock = undefined;
+}
+
+function init_module() {
+    var ix, key;
+
+    last_used_id = 1 + Math.round(Math.random() * 1000);
+
+    for (ix in class_defs) {
+        key = class_defs[ix];
+        class_map[key] = {};
+    }
+};
+
+init_module();
 return {
     get_function: get_function,
+    class_register: class_register,
+    class_unregister: class_unregister,
 };
 
 }();
