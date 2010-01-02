@@ -323,7 +323,7 @@ function convert_arg(arg, passin, val) {
     }
     if (arg instanceof ArgClass) {
         if (passin) {
-            return 'class_map.'+arg.name+'['+val+']';
+            return 'class_obj_from_id("'+arg.name+'", '+val+')';
         }
         else {
             return 'null';
@@ -346,7 +346,7 @@ function unconvert_arg(arg, val) {
             return 'uncast_signed_char('+val+')'
     }
     if (arg instanceof ArgClass) {
-        return val+'.disprock';
+        return 'class_obj_to_id("'+arg.name+'", '+val+')';
     }
     return '???';
 }
@@ -368,6 +368,18 @@ function uncast_signed_char(val) {
     if (val & 0x80)
         val += 0xFFFFFF00;
     return val;
+}
+
+function class_obj_from_id(clas, val) {
+    if (val == 0)
+        return null;
+    return class_map[clas][val];
+}
+
+function class_obj_to_id(clas, val) {
+    if (!val)
+        return 0;
+    return val.disprock;
 }
 
 /* Convert a FuncSpec object into a Javascript function. The function,
@@ -684,7 +696,7 @@ function class_register(clas, obj) {
 /* Note a just-destroyed Glk object.
 */
 function class_unregister(clas, obj) {
-    if (obj.disprock == 0 || class_map[clas][obj.disprock] === undefined)
+    if (!obj.disprock || class_map[clas][obj.disprock] === undefined)
         throw('class_unregister: object is not registered');
     
     delete class_map[clas][obj.disprock];

@@ -1,3 +1,61 @@
+/* All the numeric constants used by the Glk interface. We push these into
+   an object, for tidiness. */
+
+var Const = {
+    wintype_AllTypes : 0,
+    wintype_Pair : 1,
+    wintype_Blank : 2,
+    wintype_TextBuffer : 3,
+    wintype_TextGrid : 4,
+    wintype_Graphics : 5,
+
+    winmethod_Left  : 0x00,
+    winmethod_Right : 0x01,
+    winmethod_Above : 0x02,
+    winmethod_Below : 0x03,
+    winmethod_DirMask : 0x0f,
+
+    winmethod_Fixed : 0x10,
+    winmethod_Proportional : 0x20,
+    winmethod_DivisionMask : 0xf0,
+
+    fileusage_Data : 0x00,
+    fileusage_SavedGame : 0x01,
+    fileusage_Transcript : 0x02,
+    fileusage_InputRecord : 0x03,
+    fileusage_TypeMask : 0x0f,
+
+    fileusage_TextMode   : 0x100,
+    fileusage_BinaryMode : 0x000,
+
+    filemode_Write : 0x01,
+    filemode_Read : 0x02,
+    filemode_ReadWrite : 0x03,
+    filemode_WriteAppend : 0x05,
+
+    seekmode_Start : 0,
+    seekmode_Current : 1,
+    seekmode_End : 2,
+
+    stylehint_Indentation : 0,
+    stylehint_ParaIndentation : 1,
+    stylehint_Justification : 2,
+    stylehint_Size : 3,
+    stylehint_Weight : 4,
+    stylehint_Oblique : 5,
+    stylehint_Proportional : 6,
+    stylehint_TextColor : 7,
+    stylehint_BackColor : 8,
+    stylehint_ReverseColor : 9,
+    stylehint_NUMHINTS : 10,
+
+      stylehint_just_LeftFlush : 0,
+      stylehint_just_LeftRight : 1,
+      stylehint_just_Centered : 2,
+      stylehint_just_RightFlush : 3,
+};
+
+
 /* RefBox: Simple class used for "call-by-reference" Glk arguments. The object
    is just a box containing a single value, which can be written and read.
 */
@@ -34,20 +92,165 @@ function RefStruct(numels) {
     }
 }
 
+/* Beginning of linked list of windows. */
+var gli_windowlist = null;
+var gli_rootwin = null;
+var content_box = null; //###?
+
+/* Beginning of linked list of streams. */
+var gli_streamlist = null;
+/* Beginning of linked list of filerefs. */
+var gli_filereflist = null;
+
+function gli_new_window(type, rock) {
+    var win = {};
+    win.type = type;
+    win.rock = rock;
+    win.disprock = undefined;
+
+    win.parent = null;
+    win.str = null; //### gli_stream_open_window(win);
+    win.echostr = null;
+
+    win.prev = null;
+    win.next = gli_windowlist;
+    gli_windowlist = win;
+    if (win.next)
+        win.next.prev = win;
+
+    if (window.GiDispa)
+        GiDispa.class_register('window', win);
+
+    return win;
+}
+
+function gli_delete_window(win) {
+    var prev, next;
+
+    if (window.GiDispa)
+        GiDispa.class_unregister('window', win);
+    
+    win.echostr = null;
+    if (win.str) {
+        gli_delete_stream(win.str);
+        win.str = null;
+    }
+
+    prev = win.prev;
+    next = win.next;
+    win.prev = null;
+    win.next = null;
+
+    if (prev)
+        prev.next = next;
+    else
+        gli_windowlist = next;
+    if (next)
+        next.prev = prev;
+
+    win.parent = null;
+}
+
 function glk_exit() { /*###*/ }
 function glk_tick() { /*###*/ }
 function glk_gestalt(a1, a2) { /*###*/ }
 function glk_gestalt_ext(a1, a2, a3) { /*###*/ }
-function glk_window_iterate(a1, a2) { /*###*/ }
-function glk_window_get_rock(a1) { /*###*/ }
-function glk_window_get_root() { /*###*/ }
-function glk_window_open(a1, a2, a3, a4, a5) { /*###*/ }
+
+function glk_window_iterate(win, rockref) {
+    if (!win)
+        win = gli_windowlist;
+    else
+        win = win.next;
+
+    if (win) {
+        if (rockref)
+            rockref.set_value(win.rock);
+        return win;
+    }
+
+    if (rockref)
+        rockref.set_value(0);
+    return null;
+}
+
+function glk_window_get_rock(win) {
+    if (!win)
+        throw('glk_window_get_rock: invalid window');
+    return win.rock;
+}
+
+function glk_window_get_root() {
+    return gli_rootwin;
+}
+
+function glk_window_open(splitwin, method, size, wintype, rock) {
+    var oldparent, box, val;
+    var pairwin, newwin;
+
+    if (!gli_rootwin) {
+        if (splitwin)
+            throw('glk_window_open: splitwin must be null for first window');
+
+        oldparent = null;
+        box = content_box;
+    }
+    else {
+        if (!splitwin)
+            throw('glk_window_open: splitwin must not be null');
+
+        val = (method & Const.winmethod_DivisionMask);
+        if (val != Const.winmethod_Fixed && val != Const.winmethod_Proportional)
+            throw('glk_window_open: invalid method (not fixed or proportional)');
+
+        val = (method & Const.winmethod_DirMask);
+        if (val != Const.winmethod_Above && val != Const.winmethod_Below 
+            && val != Const.winmethod_Left && val != Const.winmethod_Right) 
+            throw('glk_window_open: invalid method (bad direction)');
+        
+        box = splitwin.bbox;
+
+        oldparent = splitwin.parent;
+        if (oldparent && oldparent.type != Const.wintype_Pair) 
+            throw('glk_window_open: parent window is not Pair');
+    }
+
+    newwin = gli_new_window(wintype, rock);
+    //#### subtype data
+
+    if (!splitwin) {
+        gli_rootwin = newwin;
+        //### gli_window_rearrange(newwin, box);
+    }
+    else {
+        /* create pairwin, with newwin as the key */
+        pairwin = gli_new_window(Const.wintype_Pair, 0);
+        //#### subtype data
+
+        //####
+
+        //### gli_window_rearrange(pairwin, box);
+    }
+
+    return newwin;
+}
+
 function glk_window_close(a1, a2) { /*###*/ }
 function glk_window_get_size(a1, a2, a3) { /*###*/ }
 function glk_window_set_arrangement(a1, a2, a3, a4) { /*###*/ }
 function glk_window_get_arrangement(a1, a2, a3, a4) { /*###*/ }
-function glk_window_get_type(a1) { /*###*/ }
-function glk_window_get_parent(a1) { /*###*/ }
+
+function glk_window_get_type(win) {
+    if (!win)
+        throw('glk_window_get_type: invalid window');
+    return win.type;
+}
+
+function glk_window_get_parent(win) {
+    if (!win)
+        throw('glk_window_get_parent: invalid window');
+    return win.parent;
+}
+
 function glk_window_clear(a1) { /*###*/ }
 function glk_window_move_cursor(a1, a2, a3) { /*###*/ }
 function glk_window_get_stream(a1) { /*###*/ }
@@ -138,6 +341,7 @@ function glk_request_line_event_uni(a1, a2, a3) { /*###*/ }
 
 /* ### change to a namespace */
 Glk = {
+    Const : Const,
     RefBox : RefBox,
     RefStruct : RefStruct,
 
