@@ -92,6 +92,21 @@ function RefStruct(numels) {
     }
 }
 
+/* Dummy return value, which means that the Glk call is still in progress,
+   or will never return at all. This is used by glk_exit() and glk_select().
+*/
+var DidNotReturn = { dummy: 'Glk call has not yet returned' };
+
+/* This returns a hint for whether the Glk call (by selector number)
+   might block or never return. True for glk_exit() and glk_select().
+*/
+function call_may_not_return(id) {
+    if (id == 1 || id == 192)
+        return true;
+    else
+        return false;
+}
+
 /* Beginning of linked list of windows. */
 var gli_windowlist = null;
 var gli_rootwin = null;
@@ -151,8 +166,15 @@ function gli_delete_window(win) {
     win.parent = null;
 }
 
-function glk_exit() { /*###*/ }
-function glk_tick() { /*###*/ }
+function glk_exit() {
+    //### set a library-exited flag?
+    return DidNotReturn;
+}
+
+function glk_tick() {
+    /* Do nothing. */
+}
+
 function glk_gestalt(a1, a2) { /*###*/ }
 function glk_gestalt_ext(a1, a2, a3) { /*###*/ }
 
@@ -344,6 +366,8 @@ Glk = {
     Const : Const,
     RefBox : RefBox,
     RefStruct : RefStruct,
+    DidNotReturn : DidNotReturn,
+    call_may_not_return : call_may_not_return,
 
     glk_exit : glk_exit,
     glk_tick : glk_tick,

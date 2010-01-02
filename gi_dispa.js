@@ -394,6 +394,7 @@ function build_function(func) {
     var ix, jx;
     var form, retarg, argpos, argjoin, subargs;
     var arg, refarg, tmpvar, val, retval, ls;
+    var mayblock;
 
     /* We will accumulate a list of Javascript lines in the out array. */
     var out = [];
@@ -405,6 +406,9 @@ function build_function(func) {
     retarg = null;
     if (form.retarg)
         retarg = form.retarg.arg;
+
+    /* If this is true, the call might return DidNotReturn. */
+    mayblock = Glk.call_may_not_return(func.id);
 
     /* Load the argument values into local variables, for use in the
        call. For array, struct, and reference arguments, we also need
@@ -491,9 +495,11 @@ function build_function(func) {
         }
     }
 
+    out.push('if (callargs.length != '+argpos+') throw "glk '+func.name+': wrong number of arguments";');
+
     /* Perform the call itself. */
 
-    if (retarg) {
+    if (retarg || mayblock) {
         locals['glkret'] = true;
         retval = 'glkret = ';
     }
@@ -501,6 +507,12 @@ function build_function(func) {
         retval = '';
     }
     out.push(retval + 'Glk.glk_' + func.name + '(' + argjoin.join(', ') + ');');
+
+    if (mayblock) {
+        out.push('if (glkret === Glk.DidNotReturn) return glkret;');
+        //### we also need to save enough info to unload values at
+        //### resume time.
+    }
 
     /* For reference/array/struct arguments, unload the referred-to values
        back out to the VM. */

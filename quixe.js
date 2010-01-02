@@ -28,6 +28,14 @@ function quixe_init() {
     execute_loop();
 }
 
+/* This is called by the page after a "blocking" operation completes.
+   (That is, a user event has triggered the completion of glk_select().)
+*/
+function quixe_resume() {
+    //### catch exceptions
+    execute_loop();
+}
+
 /* Log the message in the browser's error log, if it has one. (This shows
    up in Safari, in Opera, and in Firefox if you have Firebug installed.)
 */
@@ -1506,7 +1514,48 @@ var opcode_table = {
         }
     },
 
-    // 0x130: function(context, operands) { /* glk */
+    0x130: function(context, operands) { /* glk */
+        var mayblock;
+        if (quot_isconstant(operands[0])) {
+            mayblock = (Number(operands[0]) == 1 || Number(operands[0]) == 192); //### temp
+            //###mayblock = Glk.call_may_not_return(Number(operands[0]));
+        }
+        else {
+            mayblock = true;
+        }
+        context.code.push("tempglkargs.length = " + operands[1] + ";");
+        if (quot_isconstant(operands[1])) {
+            var ix;
+            var argc = Number(operands[1]);
+            for (ix=0; ix<argc; ix++) {
+                if (context.offstack.length) {
+                    var holdvar = pop_offstack_holdvar(context);
+                    context.code.push("tempglkargs["+ix+"]="+holdvar+";");
+                }
+                else {
+                    context.code.push("tempglkargs["+ix+"]=frame.valstack.pop();");
+                }
+            }
+            oputil_unload_offstack(context);
+        }
+        else {
+            context.varsused["ix"] = true;
+            oputil_unload_offstack(context);
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempglkargs[ix]=frame.valstack.pop(); }");
+        }
+        context.varsused["glkret"] = true;
+        context.code.push("glkret = GiDispa.get_function("+operands[0]+")(tempglkargs);");
+        if (mayblock) {
+            context.code.push("if (glkret === Glk.DidNotReturn) {");
+            /* This assumes that a delayed-return Glk function always returns
+               zero (or nothing). Currently this is true. */
+            context.code.push("  "+operands[2]+"0);");
+            context.code.push("  done_executing = true;");
+            context.code.push("  return;");
+            context.code.push("}");
+        }
+        context.code.push(operands[2]+"glkret);");
+    },
 }
 
 /* Select a currently-unused "_hold*" variable, and mark it used. 
@@ -3087,6 +3136,7 @@ var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
 var tempcallargs; /* only used momentarily, for enter_function() */
+var tempglkargs; /* only used momentarily, for the @glk opcode */
 var done_executing;
 
 var vmfunc_table; /* maps addresses to VMFuncs */
@@ -3114,7 +3164,7 @@ var endmem;        // always memmap.length
 var protectstart, protectend;
 var iosysmode, iosysrock;
 
-/* ### accumulator */
+/* ### accumulator (temporary) */
 var glk_buffer;
 
 /* Set up all the initial VM state.
@@ -3167,6 +3217,7 @@ function setup_vm() {
     decoding_tree = undefined;
     vmstring_table = undefined;
     tempcallargs = Array(8);
+    tempglkargs = Array(1);
     set_random(0);
 
     endmem = origendmem;
@@ -3233,6 +3284,8 @@ function execute_loop() {
         path();
     }
 
+    //### check whether Glk has exited?
+
     qlog("### done executing.");
     for (var ix in vmtextenv_table) {
         qlog("### textenv("+ix+"):");
@@ -3251,6 +3304,7 @@ function execute_loop() {
 return {
     version: '0.0.0',
     init: quixe_init,
+    resume: quixe_resume,
 };
 
 }();
