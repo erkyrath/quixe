@@ -423,13 +423,13 @@ function build_function(func) {
             if ((refarg instanceof ArgInt)
                 || (refarg instanceof ArgChar)
                 || (refarg instanceof ArgClass)) {
-                out.push('  '+tmpvar+' = Glk.RefBox();');
+                out.push('  '+tmpvar+' = new Glk.RefBox();');
                 val = convert_arg(refarg, arg.passin, 'VM.ReadWord(callargs['+argpos+'])');
                 out.push('  '+tmpvar+'.set_value('+val+');');
             }
             else if (refarg instanceof ArgStruct) {
                 subargs = refarg.form.args;
-                out.push('  '+tmpvar+' = Glk.RefStruct('+subargs.length+');');
+                out.push('  '+tmpvar+' = new Glk.RefStruct('+subargs.length+');');
                 for (jx=0; jx<subargs.length; jx++) {
                     val = convert_arg(subargs[jx], arg.passin, 'VM.ReadField(callargs['+argpos+'], '+jx+')');
                     out.push('  '+tmpvar+'.push_field('+val+');');
@@ -488,7 +488,7 @@ function build_function(func) {
     else {
         retval = '';
     }
-    out.push(retval + 'Glk.' + func.name + '(' + argjoin.join(', ') + ');');
+    out.push(retval + 'Glk.glk_' + func.name + '(' + argjoin.join(', ') + ');');
 
     /* For reference/array/struct arguments, unload the referred-to values
        back out to the VM. */
