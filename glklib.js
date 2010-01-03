@@ -309,8 +309,23 @@ function glk_set_style_stream(a1, a2) { /*###*/ }
 function glk_get_char_stream(a1) { /*###*/ }
 function glk_get_line_stream(a1, a2) { /*###*/ }
 function glk_get_buffer_stream(a1, a2) { /*###*/ }
-function glk_char_to_lower(a1) { /*###*/ }
-function glk_char_to_upper(a1) { /*###*/ }
+
+function glk_char_to_lower(val) {
+    if (val >= 0x41 && val <= 0x5A)
+        return val + 0x20;
+    if (val >= 0xC0 && val <= 0xDE && val != 0xD7)
+        return val + 0x20;
+    return val;
+}
+
+function glk_char_to_upper(val) {
+    if (val >= 0x61 && val <= 0x7A)
+        return val - 0x20;
+    if (val >= 0xE0 && val <= 0xFE && val != 0xF7)
+        return val - 0x20;
+    return val;
+}
+
 function glk_stylehint_set(a1, a2, a3, a4) { /*###*/ }
 function glk_stylehint_clear(a1, a2, a3) { /*###*/ }
 function glk_style_distinguish(a1, a2, a3) { /*###*/ }
