@@ -107,6 +107,10 @@ function call_may_not_return(id) {
         return false;
 }
 
+var strtype_File = 1;
+var strtype_Window = 2;
+var strtype_Memory = 3;
+
 /* Beginning of linked list of windows. */
 var gli_windowlist = null;
 var gli_rootwin = null;
@@ -116,6 +120,9 @@ var content_box = null; //###?
 var gli_streamlist = null;
 /* Beginning of linked list of filerefs. */
 var gli_filereflist = null;
+
+/* The current output stream. */
+var gli_currentstr = null;
 
 function gli_new_window(type, rock) {
     var win = {};
@@ -165,6 +172,76 @@ function gli_delete_window(win) {
 
     win.parent = null;
 }
+
+function gli_windows_unechostream(str) {
+    var win;
+    
+    for (win=gli_windowlist; win; win=win.next) {
+        if (win.echostr === str)
+            win.echostr = null;
+    }
+}
+
+function gli_new_stream(type, readable, writable, rock) {
+    var str = {};
+    str.type = type;
+    str.rock = rock;
+    str.disprock = undefined;
+
+    str.unicode = false;
+    str.win = null;
+    str.file = null;
+    str.buf = null;
+
+    str.readcount = 0;
+    str.writecount = 0;
+    str.readable = readable;
+    str.writable = writable;
+
+    str.prev = null;
+    str.next = gli_streamlist;
+    gli_streamlist = str;
+    if (str.next)
+        str.next.prev = str;
+
+    if (window.GiDispa)
+        GiDispa.class_register('stream', str);
+
+    return str;
+}
+
+function gli_delete_stream(str) {
+    var prev, next;
+    
+    if (str === gli_currentstr) {
+        gli_currentstr = null;
+    }
+
+    gli_windows_unechostream(str);
+
+    if (str.type == strtype_Memory) {
+        if (window.GiDispa)
+            GiDispa.unretain_array(str.buf);
+    }
+
+    if (window.GiDispa)
+        GiDispa.class_unregister('stream', str);
+
+    prev = str.prev;
+    next = str.next;
+    str.prev = null;
+    str.next = null;
+
+    if (prev)
+        prev.next = next;
+    else
+        gli_streamlist = next;
+    if (next)
+        next.prev = prev;
+}
+
+
+/* The catalog of Glk API functions. */
 
 function glk_exit() {
     //### set a library-exited flag?
@@ -278,17 +355,53 @@ function glk_window_move_cursor(a1, a2, a3) { /*###*/ }
 function glk_window_get_stream(a1) { /*###*/ }
 function glk_window_set_echo_stream(a1, a2) { /*###*/ }
 function glk_window_get_echo_stream(a1) { /*###*/ }
-function glk_set_window(a1) { /*###*/ }
+
+function glk_set_window(win) {
+    if (!win)
+        gli_currentstr = null;
+    else
+        gli_currentstr = win.str;
+}
+
 function glk_window_get_sibling(a1) { /*###*/ }
-function glk_stream_iterate(a1, a2) { /*###*/ }
-function glk_stream_get_rock(a1) { /*###*/ }
+
+function glk_stream_iterate(str, rockref) {
+    if (!str)
+        str = gli_streamlist;
+    else
+        str = str.next;
+
+    if (str) {
+        if (rockref)
+            rockref.set_value(str.rock);
+        return str;
+    }
+
+    if (rockref)
+        rockref.set_value(0);
+    return null;
+}
+
+function glk_stream_get_rock(str) {
+    if (!str)
+        throw('glk_stream_get_rock: invalid stream');
+    return str.rock;
+}
+
 function glk_stream_open_file(a1, a2, a3) { /*###*/ }
 function glk_stream_open_memory(a1, a2, a3) { /*###*/ }
 function glk_stream_close(a1, a2) { /*###*/ }
 function glk_stream_set_position(a1, a2, a3) { /*###*/ }
 function glk_stream_get_position(a1) { /*###*/ }
-function glk_stream_set_current(a1) { /*###*/ }
-function glk_stream_get_current() { /*###*/ }
+
+function glk_stream_set_current(str) {
+    gli_currentstr = str;
+}
+
+function glk_stream_get_current() {
+    return gli_currentstr;
+}
+
 function glk_fileref_create_temp(a1, a2) { /*###*/ }
 function glk_fileref_create_by_name(a1, a2, a3) { /*###*/ }
 function glk_fileref_create_by_prompt(a1, a2, a3) { /*###*/ }
