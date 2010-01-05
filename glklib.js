@@ -87,6 +87,9 @@ function RefStruct(numels) {
     this.set_field = function(pos, val) {
         this.fields[pos] = val;
     }
+    this.get_field = function(pos) {
+        return this.fields[pos];
+    }
     this.get_fields = function() {
         return this.fields;
     }
@@ -131,7 +134,7 @@ function gli_new_window(type, rock) {
     win.disprock = undefined;
 
     win.parent = null;
-    win.str = null; //### gli_stream_open_window(win);
+    win.str = gli_stream_open_window(win);
     win.echostr = null;
 
     win.prev = null;
@@ -192,6 +195,9 @@ function gli_new_stream(type, readable, writable, rock) {
     str.win = null;
     str.file = null;
     str.buf = null;
+    str.bufpos = 0;
+    str.buflen = 0;
+    str.bufeof = 0;
 
     str.readcount = 0;
     str.writecount = 0;
@@ -240,6 +246,61 @@ function gli_delete_stream(str) {
         next.prev = prev;
 }
 
+function gli_stream_open_window(win) {
+    var str;
+    str = gli_new_stream(strtype_Window, FALSE, TRUE, 0);
+    str.unicode = true;
+    str.win = win;
+    return str;
+}
+
+/* Write one character (given as a Unicode value) to a stream.
+   This is called by both the one-byte and four-byte character APIs.
+*/
+function gli_put_char(str, ch) {
+    if (!str || !str.writable)
+        throw('gli_put_char: invalid stream');
+
+    if (!str.unicode)
+        ch = ch & 0xFF;
+
+    str.writecount += 1;
+    
+    switch (str.type) {
+    case strtype_Memory:
+        if (str.bufpos < str.buflen) {
+            str.buf[str.bufpos] = ch;
+            str.bufpos += 1;
+            if (str.bufpos > str.bufeof)
+                str.bufeof = str.bufpos;
+        }
+        break;
+    case strtype_Window:
+        if (str.win.line_request)
+            throw('gli_put_char: window has pending line request');
+        gli_window_put_char(str.win, ch);
+        if (str.win.echostr)
+            gli_put_char(str.win.echostr, ch);
+        break;
+    case strtype_File:
+        throw('gli_put_char: file streams not supported');
+    }
+}
+
+function gli_stream_fill_result(str, result) {
+    if (!result)
+        return;
+    result.set_field(0, str.readcount);
+    result.set_field(1, str.writecount);
+}
+
+function glk_put_jstring(val) {
+    //###
+}
+
+function glk_put_jstring_stream(str, val) {
+    //###
+}
 
 /* The catalog of Glk API functions. */
 
@@ -388,9 +449,50 @@ function glk_stream_get_rock(str) {
     return str.rock;
 }
 
-function glk_stream_open_file(a1, a2, a3) { /*###*/ }
-function glk_stream_open_memory(a1, a2, a3) { /*###*/ }
-function glk_stream_close(a1, a2) { /*###*/ }
+function glk_stream_open_file(fref, fmode, rock) {
+    throw('glk_stream_open_file: file streams not supported');
+}
+
+function glk_stream_open_memory(buf, fmode, rock) {
+    var str;
+
+    if (fmode != Const.filemode_Read 
+        && fmode != Const.filemode_Write 
+        && fmode != Const.filemode_ReadWrite) 
+        throw('glk_stream_open_memory: illegal filemode');
+
+    str = gli_new_stream(strtype_Memory, 
+        (fmode != Const.filemode_Write), 
+        (fmode != Const.filemode_Read), 
+        rock);
+    str.unicode = false;
+
+    if (buf) {
+        str.buf = buf;
+        str.buflen = buf.length;
+        str.bufpos = 0;
+        if (fmode == Const.filemode_Write)
+            str.bufeof = 0;
+        else
+            str.bufeof = str.buflen;
+        if (window.GiDispa)
+            GiDispa.retain_array(buf);
+    }
+
+    return str;
+}
+
+function glk_stream_close(str, result) {
+    if (!str)
+        throw('glk_stream_close: invalid stream');
+
+    if (str.type == strtype_Window)
+        throw('glk_stream_close: cannot close window stream');
+
+    gli_stream_fill_result(str, result);
+    gli_delete_stream(str);
+}
+
 function glk_stream_set_position(a1, a2, a3) { /*###*/ }
 function glk_stream_get_position(a1) { /*###*/ }
 
@@ -411,8 +513,15 @@ function glk_fileref_get_rock(a1) { /*###*/ }
 function glk_fileref_delete_file(a1) { /*###*/ }
 function glk_fileref_does_file_exist(a1) { /*###*/ }
 function glk_fileref_create_from_fileref(a1, a2, a3) { /*###*/ }
-function glk_put_char(a1) { /*###*/ }
-function glk_put_char_stream(a1, a2) { /*###*/ }
+
+function glk_put_char(ch) {
+    gli_put_char(gli_currentstr, ch & 0xFF);
+}
+
+function glk_put_char_stream(str, ch) {
+    gli_put_char(str, ch & 0xFF);
+}
+
 function glk_put_string(a1) { /*###*/ }
 function glk_put_string_stream(a1, a2) { /*###*/ }
 function glk_put_buffer(a1) { /*###*/ }
@@ -475,17 +584,57 @@ function glk_cancel_hyperlink_event(a1) { /*###*/ }
 function glk_buffer_to_lower_case_uni(a1, a2) { /*###*/ }
 function glk_buffer_to_upper_case_uni(a1, a2) { /*###*/ }
 function glk_buffer_to_title_case_uni(a1, a2, a3) { /*###*/ }
-function glk_put_char_uni(a1) { /*###*/ }
-function glk_put_string_uni(a1) { /*###*/ }
+
+function glk_put_char_uni(ch) {
+    gli_put_char(gli_currentstr, ch);
+}
+
+function glk_put_string_uni(a1) { /* ### */ }
 function glk_put_buffer_uni(a1) { /*###*/ }
-function glk_put_char_stream_uni(a1, a2) { /*###*/ }
+
+function glk_put_char_stream_uni(str, ch) {
+    gli_put_char(str, ch);
+}
+
 function glk_put_string_stream_uni(a1, a2) { /*###*/ }
 function glk_put_buffer_stream_uni(a1, a2) { /*###*/ }
 function glk_get_char_stream_uni(a1) { /*###*/ }
 function glk_get_buffer_stream_uni(a1, a2) { /*###*/ }
 function glk_get_line_stream_uni(a1, a2) { /*###*/ }
-function glk_stream_open_file_uni(a1, a2, a3) { /*###*/ }
-function glk_stream_open_memory_uni(a1, a2, a3) { /*###*/ }
+
+function glk_stream_open_file_uni(fref, fmode, rock) {
+    throw('glk_stream_open_file_uni: file streams not supported');
+}
+
+function glk_stream_open_memory_uni(buf, fmode, rock) {
+    var str;
+
+    if (fmode != Const.filemode_Read 
+        && fmode != Const.filemode_Write 
+        && fmode != Const.filemode_ReadWrite) 
+        throw('glk_stream_open_memory: illegal filemode');
+
+    str = gli_new_stream(strtype_Memory, 
+        (fmode != Const.filemode_Write), 
+        (fmode != Const.filemode_Read), 
+        rock);
+    str.unicode = true;
+
+    if (buf) {
+        str.buf = buf;
+        str.buflen = buf.length;
+        str.bufpos = 0;
+        if (fmode == Const.filemode_Write)
+            str.bufeof = 0;
+        else
+            str.bufeof = str.buflen;
+        if (window.GiDispa)
+            GiDispa.retain_array(buf);
+    }
+
+    return str;
+}
+
 function glk_request_char_event_uni(a1) { /*###*/ }
 function glk_request_line_event_uni(a1, a2, a3) { /*###*/ }
 
@@ -496,6 +645,9 @@ Glk = {
     RefStruct : RefStruct,
     DidNotReturn : DidNotReturn,
     call_may_not_return : call_may_not_return,
+
+    glk_put_jstring : glk_put_jstring,
+    glk_put_jstring_stream : glk_put_jstring_stream,
 
     glk_exit : glk_exit,
     glk_tick : glk_tick,

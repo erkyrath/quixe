@@ -608,7 +608,7 @@ function oputil_flush_string(context) {
     var str = context.buffer.join("");
     context.buffer.length = 0;
 
-    context.code.push("glk_buffer.push("+QuoteEscapeString(str)+");");
+    context.code.push("Glk.put_jstring("+QuoteEscapeString(str)+");");
 }
 
 /* Return the signed equivalent of a value. If it is a high-bit constant, 
@@ -1405,10 +1405,10 @@ var opcode_table = {
         case 2: /* glk */
             if (quot_isconstant(operands[0])) {
                 var val = Number(operands[0]) & 0xff;
-                context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
+                context.code.push("Glk.put_jstring(\""+QuoteCharToString(val)+"\");");
             }
             else {
-                context.code.push("glk_buffer.push(CharToString(("+operands[0]+")&0xff));");
+                context.code.push("Glk.put_jstring(CharToString(("+operands[0]+")&0xff));");
             }
             break;
         case 1: /* filter */
@@ -1431,10 +1431,10 @@ var opcode_table = {
             var sign0 = oputil_signify_operand(context, operands[0]);
             if (quot_isconstant(operands[0])) {
                 var val = Number(sign0).toString(10);
-                context.code.push("glk_buffer.push("+QuoteEscapeString(val)+");");
+                context.code.push("Glk.put_jstring("+QuoteEscapeString(val)+");");
             }
             else {
-                context.code.push("glk_buffer.push(("+sign0+").toString(10));");
+                context.code.push("Glk.put_jstring(("+sign0+").toString(10));");
             }
             break;
         case 1: /* filter */
@@ -1465,10 +1465,10 @@ var opcode_table = {
         case 2: /* glk */
             if (quot_isconstant(operands[0])) {
                 var val = Number(operands[0]);
-                context.code.push("glk_buffer.push(\""+QuoteCharToString(val)+"\");");
+                context.code.push("Glk.put_jstring(\""+QuoteCharToString(val)+"\");");
             }
             else {
-                context.code.push("glk_buffer.push(CharToString("+operands[0]+"));");
+                context.code.push("Glk.put_jstring(CharToString("+operands[0]+"));");
             }
             break;
         case 1: /* filter */
@@ -1517,8 +1517,7 @@ var opcode_table = {
     0x130: function(context, operands) { /* glk */
         var mayblock;
         if (quot_isconstant(operands[0])) {
-            mayblock = (Number(operands[0]) == 1 || Number(operands[0]) == 192); //### temp
-            //###mayblock = Glk.call_may_not_return(Number(operands[0]));
+            mayblock = Glk.call_may_not_return(Number(operands[0]));
         }
         else {
             mayblock = true;
@@ -2719,7 +2718,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
     case 2: /* glk */
         if (charnum)
             buf = buf.slice(charnum);
-        glk_buffer.push(buf);
+        Glk.put_jstring(buf);
         break;
 
     case 1: /* filter */
@@ -2795,7 +2794,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
     
         if (!(strop instanceof Function)) {
-            glk_buffer.push(strop);
+            Glk.put_jstring(strop);
             if (!substring)
                 return false;
         }
@@ -3164,9 +3163,6 @@ var endmem;        // always memmap.length
 var protectstart, protectend;
 var iosysmode, iosysrock;
 
-/* ### accumulator (temporary) */
-var glk_buffer;
-
 /* Set up all the initial VM state.
    ### where does game_image come from?
 */
@@ -3251,7 +3247,6 @@ function vm_restart() {
     iosysmode = 0;
     iosysrock = 0;
     set_string_table(origstringtable);
-    glk_buffer = [];
 
     /* Note that we do not reset the protection range. */
     
@@ -3268,8 +3263,6 @@ function vm_restart() {
 function execute_loop() {
     var vmfunc, pathtab, path;
 
-    glk_buffer.length = 0;
-
     while (!done_executing) {
         //qlog("### pc now " + pc.toString(16));
         vmfunc = frame.vmfunc;
@@ -3284,6 +3277,8 @@ function execute_loop() {
         path();
     }
 
+    Glk.temp_update(); //###
+
     //### check whether Glk has exited?
 
     qlog("### done executing.");
@@ -3294,11 +3289,6 @@ function execute_loop() {
         qlog("###...table filt: " + qstrcachedump(env.vmstring_tables[1]));
         qlog("###...table glk : " + qstrcachedump(env.vmstring_tables[2]));
     }
-
-    var text = glk_buffer.join("");
-    glk_buffer.length = 0;
-    var el = document.getElementById('story');
-    el.appendChild(document.createTextNode(text));
 }
 
 return {
