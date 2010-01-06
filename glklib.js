@@ -55,6 +55,95 @@ var Const = {
       stylehint_just_RightFlush : 3,
 };
 
+/* Convert a 32-bit Unicode value to a JS string. */
+function CharToString(val) {
+    if (val < 0x10000) {
+        return String.fromCharCode(val);
+    }
+    else {
+        val -= 0x10000;
+        return String.fromCharCode(0xD800 + (val >> 10), 0xDC00 + (val & 0x3FF));
+    }
+}
+
+/* Given an array, return an array of the same length with all the values
+   trimmed to the range 0-255. This may be the same array. */
+function TrimArrayToBytes(arr) {
+    var ix, newarr;
+    var len = arr.length;
+    for (ix=0; ix<len; ix++) {
+        if (arr[ix] < 0 || arr[ix] >= 0x100) 
+            break;
+    }
+    if (ix == len) {
+        return arr;
+    }
+    newarr = Array(len);
+    for (ix=0; ix<len; ix++) {
+        newarr[ix] = (arr[ix] & 0xFF);
+    }
+    return newarr;
+}
+
+/* Convert an array of 8-bit values to a JS string, trimming if
+   necessary. */
+function ByteArrayToString(arr) {
+    var ix, newarr;
+    var len = arr.length;
+    if (len == 0)
+        return '';
+    for (ix=0; ix<len; ix++) {
+        if (arr[ix] < 0 || arr[ix] >= 0x100) 
+            break;
+    }
+    if (ix == len) {
+        return String.fromCharCode.apply(this, arr);
+    }
+    newarr = Array(len);
+    for (ix=0; ix<len; ix++) {
+        newarr[ix] = String.fromCharCode(arr[ix] & 0xFF);
+    }
+    return newarr.join('');
+}
+
+/* Convert an array of 32-bit Unicode values to a JS string. If they're
+   all in the 16-bit range, this is easy; otherwise we have to do
+   some munging. */
+function UniArrayToString(arr) {
+    var ix, val, newarr;
+    var len = arr.length;
+    if (len == 0)
+        return '';
+    for (ix=0; ix<len; ix++) {
+        if (arr[ix] >= 0x10000) 
+            break;
+    }
+    if (ix == len) {
+        return String.fromCharCode.apply(this, arr);
+    }
+    newarr = Array(len);
+    for (ix=0; ix<len; ix++) {
+        val = arr[ix];
+        if (val < 0x10000) {
+            newarr[ix] = String.fromCharCode(val);
+        }
+        else {
+            val -= 0x10000;
+            newarr[ix] = String.fromCharCode(0xD800 + (val >> 10), 0xDC00 + (val & 0x3FF));
+        }
+    }
+    return newarr.join('');
+}
+
+/* Log the message in the browser's error log, if it has one. (This shows
+   up in Safari, in Opera, and in Firefox if you have Firebug installed.)
+*/
+function qlog(msg) {
+    if (window.console && console.log)
+        console.log(msg);
+    else if (window.opera && opera.postError)
+        opera.postError(msg);
+}
 
 /* RefBox: Simple class used for "call-by-reference" Glk arguments. The object
    is just a box containing a single value, which can be written and read.
@@ -137,6 +226,12 @@ function gli_new_window(type, rock) {
     win.str = gli_stream_open_window(win);
     win.echostr = null;
 
+    switch (win.type) {
+    case Const.wintype_TextBuffer:
+        win.accum = [];
+        break;
+    }
+
     win.prev = null;
     win.next = gli_windowlist;
     gli_windowlist = win;
@@ -182,6 +277,18 @@ function gli_windows_unechostream(str) {
     for (win=gli_windowlist; win; win=win.next) {
         if (win.echostr === str)
             win.echostr = null;
+    }
+}
+
+/* Add a (Javascript) string to the given window's display. */
+function gli_window_put_string(win, val) {
+    switch (win.type) {
+    case Const.wintype_TextBuffer:
+        win.accum.push(val);
+        break;
+    case Const.wintype_TextGrid:
+        //###
+        break;
     }
 }
 
@@ -244,11 +351,17 @@ function gli_delete_stream(str) {
         gli_streamlist = next;
     if (next)
         next.prev = prev;
+
+    str.buf = null;
+    str.readable = false;
+    str.writable = false;
+    str.win = null;
+    str.file = null;
 }
 
 function gli_stream_open_window(win) {
     var str;
-    str = gli_new_stream(strtype_Window, FALSE, TRUE, 0);
+    str = gli_new_stream(strtype_Window, false, true, 0);
     str.unicode = true;
     str.win = win;
     return str;
@@ -278,12 +391,57 @@ function gli_put_char(str, ch) {
     case strtype_Window:
         if (str.win.line_request)
             throw('gli_put_char: window has pending line request');
-        gli_window_put_char(str.win, ch);
+        gli_window_put_string(str.win, CharToString(ch));
         if (str.win.echostr)
             gli_put_char(str.win.echostr, ch);
         break;
     case strtype_File:
         throw('gli_put_char: file streams not supported');
+    }
+}
+
+/* Write characters (given as an array of Unicode values) to a stream.
+   This is called by both the one-byte and four-byte character APIs.
+   The "allbytes" argument is a hint that all the array values are
+   already in the range 0-255.
+*/
+function gli_put_array(str, arr, allbytes) {
+    var ix, len, val;
+
+    if (!str || !str.writable)
+        throw('gli_put_array: invalid stream');
+
+    if (!str.unicode && !allbytes) {
+        arr = TrimArrayToBytes(arr);
+        allbytes = true;
+    }
+
+    str.writecount += arr.length;
+    
+    switch (str.type) {
+    case strtype_Memory:
+        len = arr.length;
+        if (len > str.buflen-str.bufpos)
+            len = str.buflen-str.bufpos;
+        for (ix=0; ix<len; ix++)
+            str.buf[str.bufpos+ix] = arr[ix];
+        str.bufpos += len;
+        if (str.bufpos > str.bufeof)
+            str.bufeof = str.bufpos;
+        break;
+    case strtype_Window:
+        if (str.win.line_request)
+            throw('gli_put_array: window has pending line request');
+        if (allbytes)
+            val = String.fromCharCode.apply(this, arr);
+        else
+            val = UniArrayToString(arr);
+        gli_window_put_string(str.win, val);
+        if (str.win.echostr)
+            gli_put_array(str.win.echostr, arr, allbytes);
+        break;
+    case strtype_File:
+        throw('gli_put_array: file streams not supported');
     }
 }
 
@@ -522,10 +680,21 @@ function glk_put_char_stream(str, ch) {
     gli_put_char(str, ch & 0xFF);
 }
 
-function glk_put_string(a1) { /*###*/ }
-function glk_put_string_stream(a1, a2) { /*###*/ }
-function glk_put_buffer(a1) { /*###*/ }
-function glk_put_buffer_stream(a1, a2) { /*###*/ }
+function glk_put_string(arr) {
+    arr = TrimArrayToBytes(arr);
+    gli_put_array(gli_currentstr, arr, true);
+}
+
+function glk_put_string_stream(str, arr) {
+    arr = TrimArrayToBytes(arr);
+    gli_put_array(str, arr, true);
+}
+
+// function glk_put_buffer(arr) { }
+glk_put_buffer = glk_put_string;
+// function glk_put_buffer_stream(str, arr) { }
+glk_put_buffer_stream = glk_put_string_stream;
+
 function glk_set_style(a1) { /*###*/ }
 function glk_set_style_stream(a1, a2) { /*###*/ }
 function glk_get_char_stream(a1) { /*###*/ }
@@ -589,15 +758,24 @@ function glk_put_char_uni(ch) {
     gli_put_char(gli_currentstr, ch);
 }
 
-function glk_put_string_uni(a1) { /* ### */ }
-function glk_put_buffer_uni(a1) { /*###*/ }
+function glk_put_string_uni(arr) {
+    gli_put_array(gli_currentstr, arr, false);
+}
+
+// function glk_put_buffer_uni(a1) { }
+glk_put_buffer_uni = glk_put_string_uni;
 
 function glk_put_char_stream_uni(str, ch) {
     gli_put_char(str, ch);
 }
 
-function glk_put_string_stream_uni(a1, a2) { /*###*/ }
-function glk_put_buffer_stream_uni(a1, a2) { /*###*/ }
+function glk_put_string_stream_uni(str, arr) {
+    gli_put_array(str, arr, false);
+}
+
+// function glk_put_buffer_stream_uni(str, arr) { }
+glk_put_buffer_stream_uni = glk_put_string_stream_uni;
+
 function glk_get_char_stream_uni(a1) { /*###*/ }
 function glk_get_buffer_stream_uni(a1, a2) { /*###*/ }
 function glk_get_line_stream_uni(a1, a2) { /*###*/ }
