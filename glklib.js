@@ -1,3 +1,51 @@
+/* Known problems:
+
+   Some places in the library get confused about Unicode characters
+   beyond 0xFFFF. They are handled correctly by streams, but grid windows
+   will think they occupy two characters rather than one, which will
+   throw off the grid spacing. 
+
+   Also, the glk_put_jstring() function can't handle them at all. Quixe
+   printing operations that funnel through glk_put_jstring() -- meaning, 
+   most native string printing -- will break up three-byte characters 
+   into a UTF-16-encoded pair of two-byte characters. This will come
+   out okay in a buffer window, but it will again mess up grid windows,
+   and will also double the write-count in a stream.
+*/
+
+/* The VM interface object. */
+var VM = null;
+
+/* Initialize the library, initialize the VM, and set it running. (It will 
+   run until the first glk_select() or glk_exit() call.)
+
+   The argument must be an appropriate VM interface object. (For example, 
+   Quixe.) It must have init() and resume() methods. 
+*/
+function init(vm_api) {
+    VM = vm_api;
+    if (window.GiDispa)
+        GiDispa.set_vm(VM);
+    VM.init();
+}
+
+function update() {
+    var win, text, el;
+
+    //### replace with GlkOte work
+    for (win=gli_windowlist; win; win=win.next) {
+        if (win.type == Const.wintype_TextBuffer) {
+            text = win.accum.join("");
+            if (text.length) {
+                qlog("### update text: " + text.length + " chars: " + text);
+                win.accum.length = 0;
+                el = document.getElementById('story');
+                el.appendChild(document.createTextNode(text));
+            }
+        }
+    }
+}
+
 /* All the numeric constants used by the Glk interface. We push these into
    an object, for tidiness. */
 
@@ -453,11 +501,44 @@ function gli_stream_fill_result(str, result) {
 }
 
 function glk_put_jstring(val) {
-    //###
+    glk_put_jstring_stream(gli_currentstr, val);
 }
 
 function glk_put_jstring_stream(str, val) {
-    //###
+    var ix, len;
+
+    if (!str || !str.writable)
+        throw('gli_put_jstring: invalid stream');
+
+    str.writecount += val.length;
+    
+    switch (str.type) {
+    case strtype_Memory:
+        len = val.length;
+        if (len > str.buflen-str.bufpos)
+            len = str.buflen-str.bufpos;
+        if (str.unicode) {
+            for (ix=0; ix<len; ix++)
+                str.buf[str.bufpos+ix] = val.charCodeAt(ix);
+        }
+        else {
+            for (ix=0; ix<len; ix++)
+                str.buf[str.bufpos+ix] = val.charCodeAt(ix) & 0xFF;
+        }
+        str.bufpos += len;
+        if (str.bufpos > str.bufeof)
+            str.bufeof = str.bufpos;
+        break;
+    case strtype_Window:
+        if (str.win.line_request)
+            throw('gli_put_jstring: window has pending line request');
+        gli_window_put_string(str.win, val);
+        if (str.win.echostr)
+            glk_put_jstring_stream(str.win.echostr, val);
+        break;
+    case strtype_File:
+        throw('gli_put_jstring: file streams not supported');
+    }
 }
 
 /* The catalog of Glk API functions. */
@@ -818,6 +899,8 @@ function glk_request_line_event_uni(a1, a2, a3) { /*###*/ }
 
 /* ### change to a namespace */
 Glk = {
+    init : init,
+    update : update,
     Const : Const,
     RefBox : RefBox,
     RefStruct : RefStruct,

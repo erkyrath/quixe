@@ -1,5 +1,16 @@
 GiDispa = function() {
 
+/* The VM interface object. GiDispa needs this to load and store reference
+   arguments, from and to VM memory. */
+var VM = null;
+
+/* Set the VM interface object. This is called by the Glk library, before
+   the VM starts running. 
+*/
+function set_vm(vm_api) {
+    VM = vm_api;
+}
+
 /* A table of the Glk classes, and their index numbers. This is derived from
    gi_dispa.c, although it's too simple to bother auto-generating.
 */
@@ -774,6 +785,7 @@ function init_module() {
 
 init_module();
 return {
+    set_vm: set_vm,
     get_function: get_function,
     class_register: class_register,
     class_unregister: class_unregister,

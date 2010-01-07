@@ -17,7 +17,7 @@
 Quixe = function() {
 
 /* This is called by the page (or the page's display library) when it
-   starts up. 
+   starts up. It executes until the first glk_select() or glk_exit().
 */
 function quixe_init() {
     setup_bytestring_table();
@@ -30,6 +30,7 @@ function quixe_init() {
 
 /* This is called by the page after a "blocking" operation completes.
    (That is, a user event has triggered the completion of glk_select().)
+   It executes until the next glk_select() or glk_exit().
 */
 function quixe_resume() {
     //### catch exceptions
@@ -609,7 +610,7 @@ function oputil_flush_string(context) {
     var str = context.buffer.join("");
     context.buffer.length = 0;
 
-    context.code.push("Glk.put_jstring("+QuoteEscapeString(str)+");");
+    context.code.push("Glk.glk_put_jstring("+QuoteEscapeString(str)+");");
 }
 
 /* Return the signed equivalent of a value. If it is a high-bit constant, 
@@ -1407,10 +1408,10 @@ var opcode_table = {
         case 2: /* glk */
             if (quot_isconstant(operands[0])) {
                 var val = Number(operands[0]) & 0xff;
-                context.code.push("Glk.put_jstring(\""+QuoteCharToString(val)+"\");");
+                context.code.push("Glk.glk_put_jstring(\""+QuoteCharToString(val)+"\");");
             }
             else {
-                context.code.push("Glk.put_jstring(CharToString(("+operands[0]+")&0xff));");
+                context.code.push("Glk.glk_put_jstring(CharToString(("+operands[0]+")&0xff));");
             }
             break;
         case 1: /* filter */
@@ -1433,10 +1434,10 @@ var opcode_table = {
             var sign0 = oputil_signify_operand(context, operands[0]);
             if (quot_isconstant(operands[0])) {
                 var val = Number(sign0).toString(10);
-                context.code.push("Glk.put_jstring("+QuoteEscapeString(val)+");");
+                context.code.push("Glk.glk_put_jstring("+QuoteEscapeString(val)+");");
             }
             else {
-                context.code.push("Glk.put_jstring(("+sign0+").toString(10));");
+                context.code.push("Glk.glk_put_jstring(("+sign0+").toString(10));");
             }
             break;
         case 1: /* filter */
@@ -1467,10 +1468,10 @@ var opcode_table = {
         case 2: /* glk */
             if (quot_isconstant(operands[0])) {
                 var val = Number(operands[0]);
-                context.code.push("Glk.put_jstring(\""+QuoteCharToString(val)+"\");");
+                context.code.push("Glk.glk_put_jstring(\""+QuoteCharToString(val)+"\");");
             }
             else {
-                context.code.push("Glk.put_jstring(CharToString("+operands[0]+"));");
+                context.code.push("Glk.glk_put_jstring(CharToString("+operands[0]+"));");
             }
             break;
         case 1: /* filter */
@@ -2722,7 +2723,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
     case 2: /* glk */
         if (charnum)
             buf = buf.slice(charnum);
-        Glk.put_jstring(buf);
+        Glk.glk_put_jstring(buf);
         break;
 
     case 1: /* filter */
@@ -2798,7 +2799,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
     
         if (!(strop instanceof Function)) {
-            Glk.put_jstring(strop);
+            Glk.glk_put_jstring(strop);
             if (!substring)
                 return false;
         }
@@ -3260,9 +3261,8 @@ function vm_restart() {
     /* We're now ready to execute. */
 }
 
-/* Begin executing code, compiling as necessary. If glk_select is invoked,
-   this calls GlkOte.update() and exits. If, instead, the game ends, it
-   just exits.
+/* Begin executing code, compiling as necessary. When glk_select is invoked,
+   or the game ends, this calls Glk.update() and exits.
 */
 function execute_loop() {
     var vmfunc, pathtab, path;
@@ -3281,11 +3281,12 @@ function execute_loop() {
         path();
     }
 
-    Glk.temp_update(); //###
+    Glk.update();
 
     //### check whether Glk has exited?
 
     qlog("### done executing.");
+    /*
     for (var ix in vmtextenv_table) {
         qlog("### textenv("+ix+"):");
         var env = vmtextenv_table[ix];
@@ -3293,12 +3294,18 @@ function execute_loop() {
         qlog("###...table filt: " + qstrcachedump(env.vmstring_tables[1]));
         qlog("###...table glk : " + qstrcachedump(env.vmstring_tables[2]));
     }
+    */
 }
 
 return {
     version: '0.0.0',
     init: quixe_init,
     resume: quixe_resume,
+
+    ReadByte: Mem1,
+    WriteByte: MemW1,
+    ReadWord: Mem4,
+    WritWord: MemW4,
 };
 
 }();
