@@ -387,6 +387,7 @@ function setup_operandlist_table() {
     var list_EES = new OperandList("EES");
     var list_F = new OperandList("F");
     var list_LF = new OperandList("LF");
+    var list_LLF = new OperandList("LLF");
     var list_EF = new OperandList("EF");
     var list_1EF = new OperandList("EF", 1);
     var list_2EF = new OperandList("EF", 2);
@@ -463,7 +464,7 @@ function setup_operandlist_table() {
         0x125: list_S, /* saveundo */
         0x126: list_S, /* restoreundo */
         0x127: list_LL, /* protect */
-        0x130: list_LLS, /* glk */
+        0x130: list_LLF, /* glk */
         0x140: list_S, /* getstringtbl */
         0x141: list_L, /* setstringtbl */
         0x148: list_SS, /* getiosys */
@@ -585,7 +586,7 @@ function oputil_push_substring_callstub(context) {
    "return" which does not end compilation.
 */
 function oputil_unload_offstack(context, keepstack) {
-    context.code.push("// unload offstack: " + context.offstack.length + (keepstack ? " (conditional)" : "")); //###debug
+    context.code.push("// unload offstack: " + context.offstack.length + " items" + (keepstack ? " (conditional)" : "")); //###debug
     if (context.offstack.length) {
         context.code.push("frame.valstack.push("+context.offstack.join(",")+");");
         if (!keepstack) {
@@ -1383,6 +1384,7 @@ var opcode_table = {
         /* Quash the offstack. No more execution. */
         context.code.push("// quashing offstack for quit: " + context.offstack.length); //###debug
         context.offstack.length = 0;
+        //### Glk.glk.exit()?
         context.code.push("done_executing = true;");
         context.code.push("return;");
         context.path_ends = true;
@@ -1548,12 +1550,14 @@ var opcode_table = {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
             /* This assumes that a delayed-return Glk function always returns
                zero (or nothing). Currently this is true. */
-            context.code.push("  "+operands[2]+"0);");
+            oputil_store(context, operands[2], "0");
+            oputil_unload_offstack(context);
+            context.code.push("  pc = "+context.cp+";");
             context.code.push("  done_executing = true;");
             context.code.push("  return;");
             context.code.push("}");
         }
-        context.code.push(operands[2]+"glkret);");
+        oputil_store(context, operands[2], "glkret");
     },
 }
 
