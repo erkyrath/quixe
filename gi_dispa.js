@@ -1,5 +1,8 @@
 GiDispa = function() {
 
+//### Should split WriteWord into a WriteRefWord and WriteArrayWord,
+//### with different handling of -1. Etc.
+
 /* The VM interface object. GiDispa needs this to load and store reference
    arguments, from and to VM memory. */
 var VM = null;

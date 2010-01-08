@@ -48,6 +48,7 @@ function update() {
 
 /*###*/
 function temp_glk_line_enter() {
+    var ix;
     var el = document.getElementById('input');
     var input = el.value;
     el.value = '';
@@ -57,13 +58,25 @@ function temp_glk_line_enter() {
         return;
 
     var win = gli_windowlist;
-    if (!win)
+    if (!win || !win.line_request)
         return;
+
+    if (input.length > win.linebuf.length)
+        input = input.slice(0, win.linebuf.length);
+
+    for (ix=0; ix<input.length; ix++)
+        win.linebuf[ix] = input.charCodeAt(ix);
 
     gli_selectref.set_field(0, Const.evtype_LineInput);
     gli_selectref.set_field(1, win);
     gli_selectref.set_field(2, input.length);
     gli_selectref.set_field(3, 0);
+
+    if (window.GiDispa)
+        GiDispa.unretain_array(win.linebuf);
+    win.line_request = false;
+    win.line_request_uni = null;
+    win.linebuf = null;
 
     if (window.GiDispa)
         GiDispa.prepare_resume(gli_selectref);
@@ -332,6 +345,12 @@ function gli_new_window(type, rock) {
     win.parent = null;
     win.str = gli_stream_open_window(win);
     win.echostr = null;
+
+    win.linebuf = null;
+    win.char_request = false;
+    win.line_request = false;
+    win.char_request_uni = null;
+    win.line_request_uni = null;
 
     switch (win.type) {
     case Const.wintype_TextBuffer:
@@ -869,9 +888,45 @@ function glk_select(ref) {
 }
 
 function glk_select_poll(a1) { /*###*/ }
-function glk_request_line_event(a1, a2, a3) { /*###*/ }
+
+function glk_request_line_event(win, buf, initlen) {
+    if (!win)
+        throw('glk_request_line_event: invalid window');
+    if (win.char_request || win.line_request)
+        throw('glk_request_line_event: window already has keyboard request');
+
+    if (win.type == Const.wintype_TextBuffer 
+        || win.type == Const.wintype_TextGrid) {
+        win.line_request = true;
+        win.line_request_uni = false;
+        win.linebuf = buf;
+        //### grab initlen chars
+        if (window.GiDispa)
+            GiDispa.retain_array(buf);
+    }
+    else {
+        throw('glk_request_line_event: window does not support keyboard input');
+    }
+}
+
 function glk_cancel_line_event(a1, a2) { /*###*/ }
-function glk_request_char_event(a1) { /*###*/ }
+
+function glk_request_char_event(win) {
+    if (!win)
+        throw('glk_request_char_event: invalid window');
+    if (win.char_request || win.line_request)
+        throw('glk_request_char_event: window already has keyboard request');
+
+    if (win.type == Const.wintype_TextBuffer 
+        || win.type == Const.wintype_TextGrid) {
+        win.char_request = true;
+        win.char_request_uni = false;
+    }
+    else {
+        throw('glk_request_char_event: window does not support keyboard input');
+    }
+}
+
 function glk_cancel_char_event(a1) { /*###*/ }
 function glk_request_mouse_event(a1) { /*###*/ }
 function glk_cancel_mouse_event(a1) { /*###*/ }
@@ -959,8 +1014,41 @@ function glk_stream_open_memory_uni(buf, fmode, rock) {
     return str;
 }
 
-function glk_request_char_event_uni(a1) { /*###*/ }
-function glk_request_line_event_uni(a1, a2, a3) { /*###*/ }
+function glk_request_char_event_uni(win) {
+    if (!win)
+        throw('glk_request_char_event: invalid window');
+    if (win.char_request || win.line_request)
+        throw('glk_request_char_event: window already has keyboard request');
+
+    if (win.type == Const.wintype_TextBuffer 
+        || win.type == Const.wintype_TextGrid) {
+        win.char_request = true;
+        win.char_request_uni = true;
+    }
+    else {
+        throw('glk_request_char_event: window does not support keyboard input');
+    }
+}
+
+function glk_request_line_event_uni(win, buf, initlen) {
+    if (!win)
+        throw('glk_request_line_event: invalid window');
+    if (win.char_request || win.line_request)
+        throw('glk_request_line_event: window already has keyboard request');
+
+    if (win.type == Const.wintype_TextBuffer 
+        || win.type == Const.wintype_TextGrid) {
+        win.line_request = true;
+        win.line_request_uni = true;
+        win.linebuf = buf;
+        //### grab initlen chars
+        if (window.GiDispa)
+            GiDispa.retain_array(buf);
+    }
+    else {
+        throw('glk_request_line_event: window does not support keyboard input');
+    }
+}
 
 /* ### change to a namespace */
 Glk = {
