@@ -486,6 +486,22 @@ function setup_operandlist_table() {
     }
 }
 
+/* A brief lecture on the offstack:
+
+   One way we optimize JIT-compiled code is to do a running static analysis,
+   and try to determine what values are on top of the VM stack at any given
+   kind. (That is, during any given instruction.) This list is the "offstack",
+   and it can contain both numeric literals and (Javascript) temporary
+   variables. When we add a value to the offstack, we delay generating the code
+   that pushes it into the real (VM) stack. If we're lucky, we never have to do
+   that push at all.
+
+   Whenever anything happens to the stack that can't be statically analyzed --
+   notably, any jump, call, or return -- we "unload the offstack", by
+   generating the appropriate VM stack pushes. This must certainly be
+   done at the end of a code path, and we have asserts to ensure this.
+*/
+
 /* Some utility functions for opcode handlers. */
 
 /* Store the result of an opcode, using the information specified in
@@ -1519,12 +1535,10 @@ var opcode_table = {
 
     0x130: function(context, operands) { /* glk */
         var mayblock;
-        if (quot_isconstant(operands[0])) {
+        if (quot_isconstant(operands[0]))
             mayblock = Glk.call_may_not_return(Number(operands[0]));
-        }
-        else {
+        else
             mayblock = true;
-        }
         context.code.push("tempglkargs.length = " + operands[1] + ";");
         if (quot_isconstant(operands[1])) {
             var ix;
@@ -1545,6 +1559,12 @@ var opcode_table = {
             oputil_unload_offstack(context);
             context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempglkargs[ix]=frame.valstack.pop(); }");
         }
+        /* We treat the offstack a little cavalierly, here. We need to store
+           the glk return value in two places -- the blocking case (always
+           zero) and the normal case. This means calling oputil_store twice,
+           which could leave two values on the offstack. Fortunately, we
+           want to unload in between the two lines -- and we just unloaded
+           anyhow, so we know the offstack is empty right now. */
         context.varsused["glkret"] = true;
         context.code.push("glkret = GiDispa.get_function("+operands[0]+")(tempglkargs);");
         if (mayblock) {
