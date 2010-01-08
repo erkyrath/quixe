@@ -34,6 +34,7 @@ function quixe_init() {
 */
 function quixe_resume() {
     //### catch exceptions
+    done_executing = false;
     execute_loop();
 }
 
@@ -170,6 +171,48 @@ function QuoteMem4(addr) {
     if (memmap[addr+2]) 
         return "0x" + bytestring_table[memmap[addr+2]] + bytestring_table[memmap[addr+3]];
     return "0x" + bytestring_table[memmap[addr+3]];
+}
+
+function ReadArgByte(addr) {
+    if (addr == 0xffffffff)
+        return frame.valstack.pop() & 0xFF;
+    else
+        return Mem1(addr);
+}
+
+function WriteArgByte(addr, val) {
+    if (addr == 0xffffffff)
+        frame.valstack.push(val & 0xFF);
+    else
+        MemW1(addr, val);
+}
+
+function ReadArgWord(addr) {
+    if (addr == 0xffffffff)
+        return frame.valstack.pop();
+    else
+        return Mem4(addr);
+}
+
+function WriteArgWord(addr, val) {
+    if (addr == 0xffffffff)
+        frame.valstack.push(val);
+    else
+        MemW4(addr, val);
+}
+
+function ReadStructField(addr, fieldnum) {
+    if (addr == 0xffffffff)
+        return frame.valstack.pop();
+    else
+        return Mem4(addr + 4*fieldnum);
+}
+
+function WriteStructField(addr, fieldnum, val) {
+    if (addr == 0xffffffff)
+        frame.valstack.push(val);
+    else
+        MemW4(addr + 4*fieldnum, val);
 }
 
 /* Convert a 32-bit Unicode value to a JS string. */
@@ -3161,7 +3204,7 @@ var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
 var tempcallargs; /* only used momentarily, for enter_function() */
 var tempglkargs; /* only used momentarily, for the @glk opcode */
-var done_executing;
+var done_executing; //### split, please
 
 var vmfunc_table; /* maps addresses to VMFuncs */
 var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
@@ -3322,10 +3365,12 @@ return {
     init: quixe_init,
     resume: quixe_resume,
 
-    ReadByte: Mem1,
-    WriteByte: MemW1,
-    ReadWord: Mem4,
-    WritWord: MemW4,
+    ReadByte: ReadArgByte,
+    WriteByte: WriteArgByte,
+    ReadWord: ReadArgWord,
+    WriteWord: WriteArgWord,
+    ReadStructField: ReadStructField,
+    WriteStructField: WriteStructField,
 };
 
 }();

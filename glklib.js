@@ -37,7 +37,7 @@ function update() {
         if (win.type == Const.wintype_TextBuffer) {
             text = win.accum.join("");
             if (text.length) {
-                qlog("### update text: " + text.length + " chars: " + text);
+                !qlog("### update text: " + text.length + " chars: " + text);
                 win.accum.length = 0;
                 el = document.getElementById('story');
                 el.appendChild(document.createTextNode(text));
@@ -46,10 +46,65 @@ function update() {
     }
 }
 
+/*###*/
+function temp_glk_line_enter() {
+    var el = document.getElementById('input');
+    var input = el.value;
+    el.value = '';
+    qlog("Enter: " + input);
+
+    if (!gli_selectref)
+        return;
+
+    var win = gli_windowlist;
+    if (!win)
+        return;
+
+    gli_selectref.set_field(0, Const.evtype_LineInput);
+    gli_selectref.set_field(1, win);
+    gli_selectref.set_field(2, input.length);
+    gli_selectref.set_field(3, 0);
+
+    if (window.GiDispa)
+        GiDispa.prepare_resume(gli_selectref);
+    gli_selectref = null;
+    VM.resume();
+}
+
 /* All the numeric constants used by the Glk interface. We push these into
    an object, for tidiness. */
 
 var Const = {
+    gestalt_Version : 0,
+    gestalt_CharInput : 1,
+    gestalt_LineInput : 2,
+    gestalt_CharOutput : 3,
+      gestalt_CharOutput_CannotPrint : 0,
+      gestalt_CharOutput_ApproxPrint : 1,
+      gestalt_CharOutput_ExactPrint : 2,
+    gestalt_MouseInput : 4,
+    gestalt_Timer : 5,
+    gestalt_Graphics : 6,
+    gestalt_DrawImage : 7,
+    gestalt_Sound : 8,
+    gestalt_SoundVolume : 9,
+    gestalt_SoundNotify : 10,
+    gestalt_Hyperlinks : 11,
+    gestalt_HyperlinkInput : 12,
+    gestalt_SoundMusic : 13,
+    gestalt_GraphicsTransparency : 14,
+    gestalt_Unicode : 15,
+
+    evtype_None : 0,
+    evtype_Timer : 1,
+    evtype_CharInput : 2,
+    evtype_LineInput : 3,
+    evtype_MouseInput : 4,
+    evtype_Arrange : 5,
+    evtype_Redraw : 6,
+    evtype_SoundNotify : 7,
+    evtype_Hyperlink : 8,
+
     wintype_AllTypes : 0,
     wintype_Pair : 1,
     wintype_Blank : 2,
@@ -263,6 +318,10 @@ var gli_filereflist = null;
 
 /* The current output stream. */
 var gli_currentstr = null;
+
+/* During a glk_select() block, this is the RefStruct which will contain
+   the result. */
+var gli_selectref = null;
 
 function gli_new_window(type, rock) {
     var win = {};
@@ -545,6 +604,7 @@ function glk_put_jstring_stream(str, val) {
 
 function glk_exit() {
     //### set a library-exited flag?
+    gli_selectref = null;
     return DidNotReturn;
 }
 
@@ -802,7 +862,12 @@ function glk_stylehint_set(a1, a2, a3, a4) { /*###*/ }
 function glk_stylehint_clear(a1, a2, a3) { /*###*/ }
 function glk_style_distinguish(a1, a2, a3) { /*###*/ }
 function glk_style_measure(a1, a2, a3, a4) { /*###*/ }
-function glk_select(a1) { /*###*/ }
+
+function glk_select(ref) {
+    gli_selectref = ref;
+    return DidNotReturn;
+}
+
 function glk_select_poll(a1) { /*###*/ }
 function glk_request_line_event(a1, a2, a3) { /*###*/ }
 function glk_cancel_line_event(a1, a2) { /*###*/ }

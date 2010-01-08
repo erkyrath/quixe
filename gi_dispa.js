@@ -458,7 +458,7 @@ function build_function(func) {
                 subargs = refarg.form.args;
                 out.push('  '+tmpvar+' = new Glk.RefStruct('+subargs.length+');');
                 for (jx=0; jx<subargs.length; jx++) {
-                    val = convert_arg(subargs[jx], arg.passin, 'VM.ReadField(callargs['+argpos+'], '+jx+')');
+                    val = convert_arg(subargs[jx], arg.passin, 'VM.ReadStructField(callargs['+argpos+'], '+jx+')');
                     out.push('  '+tmpvar+'.push_field('+val+');');
                 }
             }
@@ -524,9 +524,13 @@ function build_function(func) {
     out.push(retval + 'Glk.glk_' + func.name + '(' + argjoin.join(', ') + ');');
 
     if (mayblock) {
-        out.push('if (glkret === Glk.DidNotReturn) return glkret;');
-        //### we also need to save enough info to unload values at
-        //### resume time.
+        /* If the call blocks, we need to stash away the arguments and
+           then return early. */
+        out.push('if (glkret === Glk.DidNotReturn) {');
+        out.push('  blocked_selector = ' + func.id + ';');
+        out.push('  blocked_callargs = callargs.slice(0);');
+        out.push('  return glkret;');
+        out.push('}');
     }
 
     /* For reference/array/struct arguments, unload the referred-to values
@@ -555,7 +559,7 @@ function build_function(func) {
                     subargs = refarg.form.args;
                     for (jx=0; jx<subargs.length; jx++) {
                         val = unconvert_arg(subargs[jx], tmpvar+'.get_field('+jx+')');
-                        out.push('  VM.WriteField(callargs['+argpos+'], '+jx+', '+val+');');
+                        out.push('  VM.WriteStructField(callargs['+argpos+'], '+jx+', '+val+');');
                     }
                 }
                 else {
@@ -639,6 +643,32 @@ function get_function(id) {
         function_map[id] = func;
     }
     return func;
+}
+
+/* The stashed arguments of the call that blocked. If we are not blocked
+   on a Glk call, these variables will be null. */
+var blocked_selector = null;
+var blocked_callargs = null;
+
+/* Prepare the VM to resume after a blocked function. The argument is
+   the argument to the original blocked call. Our job is to unload
+   that into the VM's memory map.
+
+   We cheat, here, and rely on knowing that only glk_select can block
+   and then come back. A "correct" implementation would be able to
+   handle the unload part of any Glk call. 
+*/
+function prepare_resume(glka0) {
+    if (blocked_selector == 192) {
+        if (blocked_callargs[0] != 0) {
+            VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
+            VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));
+            VM.WriteStructField(blocked_callargs[0], 2, glka0.get_field(2) >>> 0);
+            VM.WriteStructField(blocked_callargs[0], 3, glka0.get_field(3) >>> 0);
+        }
+    }
+    blocked_selector = null;
+    blocked_callargs = null;
 }
 
 /* This lists all the array arguments during a Glk call (but not between
@@ -787,6 +817,7 @@ init_module();
 return {
     set_vm: set_vm,
     get_function: get_function,
+    prepare_resume: prepare_resume,
     class_register: class_register,
     class_unregister: class_unregister,
     retain_array: retain_array,
