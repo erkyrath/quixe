@@ -1424,10 +1424,10 @@ var opcode_table = {
         case 2: /* glk */
             if (quot_isconstant(operands[0])) {
                 var val = Number(operands[0]) & 0xff;
-                context.code.push("Glk.glk_put_jstring(\""+QuoteCharToString(val)+"\");");
+                context.code.push("Glk.glk_put_char("+val+");");
             }
             else {
-                context.code.push("Glk.glk_put_jstring(CharToString(("+operands[0]+")&0xff));");
+                context.code.push("Glk.glk_put_char(("+operands[0]+")&0xff);");
             }
             break;
         case 1: /* filter */
@@ -1484,10 +1484,10 @@ var opcode_table = {
         case 2: /* glk */
             if (quot_isconstant(operands[0])) {
                 var val = Number(operands[0]);
-                context.code.push("Glk.glk_put_jstring(\""+QuoteCharToString(val)+"\");");
+                context.code.push("Glk.glk_put_char_uni("+val+");");
             }
             else {
-                context.code.push("Glk.glk_put_jstring(CharToString("+operands[0]+"));");
+                context.code.push("Glk.glk_put_char_uni("+operands[0]+");");
             }
             break;
         case 1: /* filter */
