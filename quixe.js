@@ -1401,13 +1401,18 @@ var opcode_table = {
         }
     },
 
-    //### 0x100: function(context, operands) { /* gestalt */
+    0x100: function(context, operands) { /* gestalt */
+        var expr = "do_gestalt(("+operands[0]+"),("+operands[1]+"))";
+        context.code.push(operands[2]+expr+");");
+    },
 
     0x101: function(context, operands) { /* debugtrap */
         context.code.push("fatal_error('User debugtrap encountered.', "+operands[0]+");");
     },
 
-    //### 0x102: function(context, operands) { /* getmemsize */
+    0x102: function(context, operands) { /* getmemsize */
+        context.code.push(operands[0]+"endmem);");
+    },
 
     //### 0x103: function(context, operands) { /* setmemsize */
 
@@ -1460,7 +1465,20 @@ var opcode_table = {
 
     //### accelfunc, accelparam
 
-    //### linearsearch, binarysearch, linkedsearch
+    0x150: function(context, operands) { /* linearsearch */
+        var expr = "linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
+        context.code.push(operands[7]+expr+");");
+    },
+
+    0x151: function(context, operands) { /* binarysearch */
+        var expr = "binary_search(("+operands[0]+"),("+operands[1]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
+        context.code.push(operands[7]+expr+");");
+    },
+
+    0x152: function(context, operands) { /* linkedsearch */
+        var expr = "linked_search(("+operands[0]+"),("+operands[1]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"))";
+        context.code.push(operands[6]+expr+");");
+    },
 
     0x70: function(context, operands) { /* streamchar */
         switch (context.curiosys) {
@@ -3195,6 +3213,32 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         return make_code(context.code.join("\n"), "nextcp,substring");
     }
 }
+
+function do_gestalt(val, val2) {
+    var ix;
+
+    switch (val) {
+    //### rest of the selectors;
+
+    case 4: /* IOSystem */
+        switch (val2) {
+        case 0:
+            return 1; /* The "null" system always works. */
+        case 1:
+            return 1; /* The "filter" system always works. */
+        case 2:
+            return 1; /* A Glk library is hooked up. */
+        default:
+            return 0;
+        }
+        break;
+
+    default:
+        return 0;
+    }
+}
+
+//#### searching
 
 /* The VM state variables */
 
