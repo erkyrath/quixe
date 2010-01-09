@@ -376,7 +376,7 @@ function StackFrame(vmfunc) {
 
     this.framelen = 8 + vmfunc.rawformat.length + vmfunc.locallen;
 
-    qlog("### frame for " + vmfunc.funcaddr.toString(16) + ": framelen " + this.framelen + ", locindex " + qobjdump(this.localsindex) + ", locals " + qobjdump(this.locals));
+    //qlog("### frame for " + vmfunc.funcaddr.toString(16) + ": framelen " + this.framelen + ", locindex " + qobjdump(this.localsindex) + ", locals " + qobjdump(this.locals));
 }
 
 /* Represents all the cached string-table information for when stringtable
@@ -1466,17 +1466,17 @@ var opcode_table = {
     //### accelfunc, accelparam
 
     0x150: function(context, operands) { /* linearsearch */
-        var expr = "linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
+        var expr = "linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
         context.code.push(operands[7]+expr+");");
     },
 
     0x151: function(context, operands) { /* binarysearch */
-        var expr = "binary_search(("+operands[0]+"),("+operands[1]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
+        var expr = "binary_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
         context.code.push(operands[7]+expr+");");
     },
 
     0x152: function(context, operands) { /* linkedsearch */
-        var expr = "linked_search(("+operands[0]+"),("+operands[1]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"))";
+        var expr = "linked_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"))";
         context.code.push(operands[6]+expr+");");
     },
 
@@ -2512,7 +2512,7 @@ function enter_function(addr, argcount) {
         }
     }
 
-    qlog("### framestart " + frame.framestart + ", filled-in locals " + qobjdump(frame.locals) + ", valstack " + qobjdump(frame.valstack));
+    //qlog("### framestart " + frame.framestart + ", filled-in locals " + qobjdump(frame.locals) + ", valstack " + qobjdump(frame.valstack));
 }
 
 /* Pop the current call frame off the stack. This is very simple. */
@@ -2554,7 +2554,7 @@ function pop_stack_to(val) {
 function pop_callstub(val) {
     var destaddr, desttype;
 
-    qlog("### return value " + val.toString(16));
+    //qlog("### return value " + val.toString(16));
     if (isNaN(val))
         fatal_error("Function returned undefined value.");
 
@@ -2857,7 +2857,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
     var addrkey, strop, res;
     var desttype, destaddr;
 
-    qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16)+" in iosys "+iosysmode);
+    //qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16)+" in iosys "+iosysmode);
 
     while (true) {
         strop = undefined;
@@ -2877,7 +2877,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             strop = compile_string(iosysmode, addr, inmiddle, bitnum);
         }
 
-        qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
+        //qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
     
         if (!(strop instanceof Function)) {
             Glk.glk_put_jstring(strop);
@@ -3240,6 +3240,96 @@ function do_gestalt(val, val2) {
 
 //#### searching
 
+/* This fetches a search key, and returns an array containing the key
+   (bytewise). Actually it always returns the same array.
+*/
+var tempsearchkey = [];
+function fetch_search_key(addr, len, options) {
+    var ix;
+    tempsearchkey.length = len;
+
+    if (options & 1) {
+        /* indirect key */
+        for (ix=0; ix<len; ix++)
+            tempsearchkey[ix] = Mem1(addr+ix);
+    }
+    else {
+        switch (len) {
+        case 4:
+            tempsearchkey[0] = (addr >> 24) & 0xFF;
+            tempsearchkey[1] = (addr >> 16) & 0xFF;
+            tempsearchkey[2] = (addr >> 8) & 0xFF;
+            tempsearchkey[3] = addr & 0xFF;
+            break;
+        case 2:
+            tempsearchkey[0] = (addr >> 8) & 0xFF;
+            tempsearchkey[1] = addr & 0xFF;
+            break;
+        case 1:
+            tempsearchkey[0] = addr & 0xFF;
+            break;
+        default:
+            throw('Direct search key must hold one, two, or four bytes.');
+        }
+    }
+
+    return tempsearchkey;
+}
+
+function linear_search(key, keysize, start, 
+    structsize, numstructs, keyoffset, options) {
+    //###
+}
+
+function binary_search(key, keysize, start, 
+    structsize, numstructs, keyoffset, options) {
+
+    var top, bot, addr, val, cmp, ix;
+    var byte, byte2;
+    var retindex = ((options & 4) != 0);
+    var keybuf = fetch_search_key(key, keysize, options);
+
+    bot = 0;
+    top = numstructs;
+    while (bot < top) {
+        cmp = 0;
+        val = (top+bot) >> 1;
+        addr = start + val * structsize;
+        for (ix=0; (!cmp) && ix<keysize; ix++) {
+            byte = Mem1(addr + keyoffset + ix);
+            byte2 = keybuf[ix];
+            if (byte < byte2)
+                cmp = -1;
+            else if (byte > byte2)
+                cmp = 1;
+        }
+
+        if (!cmp) {
+            if (retindex)
+                return val;
+            else
+                return addr;
+        }
+        
+        if (cmp < 0) {
+            bot = val+1;
+        }
+        else {
+            top = val;
+        }
+    }
+
+    if (retindex)
+        return 0xFFFFFFFF;
+    else
+        return 0;
+}
+
+function linked_search(key, keysize, start, 
+    keyoffset, nextoffset, options) {
+    //###
+}
+
 /* The VM state variables */
 
 var game_image = TEST_GAME_FILE;
@@ -3373,6 +3463,9 @@ function vm_restart() {
 */
 function execute_loop() {
     var vmfunc, pathtab, path;
+    var pathstart, pathend;
+
+    pathstart = new Date().getTime(); //###debug
 
     while (!done_executing) {
         //qlog("### pc now " + pc.toString(16));
@@ -3388,11 +3481,13 @@ function execute_loop() {
         path();
     }
 
+    pathend = new Date().getTime(); //###debug
+
     Glk.update();
 
     //### check whether Glk has exited?
 
-    qlog("### done executing.");
+    qlog("### done executing; path time = " + (pathend-pathstart) + " ms");
     /*
     for (var ix in vmtextenv_table) {
         qlog("### textenv("+ix+"):");
