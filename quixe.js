@@ -1459,7 +1459,23 @@ var opcode_table = {
 
     //### 0x122: function(context, operands) { /* restart */
 
-    //### save, restore, saveundo, restoreundo, protect
+    0x123: function(context, operands) { /* save */
+        context.code.push(operands[1]+"1);"); /*### failure */
+    },
+
+    0x124: function(context, operands) { /* restore */
+        context.code.push(operands[1]+"1);"); /*### failure */
+    },
+
+    0x125: function(context, operands) { /* saveundo */
+        context.code.push(operands[0]+"1);"); /*### failure */
+    },
+
+    0x126: function(context, operands) { /* restoreundo */
+        context.code.push(operands[0]+"1);"); /*### failure */
+    },
+
+    //### 0x127: function(context, operands) { /* protect */
 
     //### mzero, mcopy, malloc, mfree
 
@@ -3278,7 +3294,45 @@ function fetch_search_key(addr, len, options) {
 
 function linear_search(key, keysize, start, 
     structsize, numstructs, keyoffset, options) {
-    //###
+
+    var ix, count, match, byte;
+    var retindex = ((options & 4) != 0);
+    var zeroterm = ((options & 2) != 0);
+    var keybuf = fetch_search_key(key, keysize, options);
+
+    for (count=0; count<numstructs; count++, start+=structsize) {
+        match = true;
+        for (ix=0; match && ix<keysize; ix++) {
+            byte = Mem1(start + keyoffset + ix);
+            if (byte != keybuf[ix])
+                match = false;
+        }
+
+        if (match) {
+            if (retindex)
+                return count;
+            else
+                return start;
+        }
+        
+        if (zeroterm) {
+            match = true;
+            for (ix=0; match && ix<keysize; ix++) {
+                byte = Mem1(start + keyoffset + ix);
+                if (byte != 0)
+                    match = false;
+            }
+            
+            if (match) {
+                break;
+            }
+        }
+    }
+
+    if (retindex)
+        return 0xFFFFFFFF;
+    else
+        return 0;
 }
 
 function binary_search(key, keysize, start, 
