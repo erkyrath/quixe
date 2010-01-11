@@ -20,6 +20,8 @@ Quixe = function() {
    starts up. It executes until the first glk_select() or glk_exit().
 */
 function quixe_init() {
+    //### die on redundant init!
+
     setup_bytestring_table();
     setup_operandlist_table();
 
@@ -2467,7 +2469,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
             context.code[0] = "var " + ls.join(",") + ";";
     }
 
-    qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
+    //qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
     return make_code(context.code.join("\n"));
 }
 
@@ -2679,14 +2681,15 @@ function set_string_table(addr) {
         var tablelen = Mem4(stringtable);
         var rootaddr = Mem4(stringtable+8);
         var cache_stringtable = (stringtable+tablelen <= ramstart);
-        cache_stringtable = true;//### // for debugging
         if (cache_stringtable) {
             qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
             var tmparray = Array(1);
+            var pathstart = new Date().getTime(); //###debug
             build_decoding_tree(tmparray, rootaddr, 4 /*CACHEBITS*/, 0);
             dectab = tmparray[0];
             if (dectab === undefined)
                 fatal_error("Failed to create decoding tree.");
+            qlog("### done building; time = " + ((new Date().getTime())-pathstart) + " ms"); //###debug
         }
 
         textenv = new VMTextEnv(stringtable, dectab);
