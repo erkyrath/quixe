@@ -1092,14 +1092,12 @@ var opcode_table = {
 
     0x44: function(context, operands) { /* sexs */
         /* ### fold constant? */
-        //### check sign problem
-        context.code.push(operands[1]+"("+operands[0]+" & 0x8000) ? ("+operands[0]+" | 0xffff0000) : ("+operands[0]+" & 0xffff));");
+        context.code.push(operands[1]+"("+operands[0]+" & 0x8000) ? (("+operands[0]+" | 0xffff0000) >>> 0) : ("+operands[0]+" & 0xffff));");
     },
 
     0x45: function(context, operands) { /* sexb */
         /* ### fold constant? */
-        //### check sign problem
-        context.code.push(operands[1]+"("+operands[0]+" & 0x80) ? ("+operands[0]+" | 0xffffff00) : ("+operands[0]+" & 0xff));");
+        context.code.push(operands[1]+"("+operands[0]+" & 0x80) ? (("+operands[0]+" | 0xffffff00) >>> 0) : ("+operands[0]+" & 0xff));");
     },
 
     0x48: function(context, operands) { /* aload */
