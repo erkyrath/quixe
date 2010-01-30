@@ -3382,7 +3382,40 @@ function binary_search(key, keysize, start,
 
 function linked_search(key, keysize, start, 
     keyoffset, nextoffset, options) {
-    //###
+
+    var ix, byte, match;
+    var zeroterm = ((options & 2) != 0);
+    var keybuf = fetch_search_key(key, keysize, options);
+
+    while (start != 0) {
+        match = true;
+        for (ix=0; match && ix<keysize; ix++) {
+            byte = Mem1(start + keyoffset + ix);
+            if (byte != keybuf[ix])
+                match = false;
+        }
+
+        if (match) {
+            return start;
+        }
+        
+        if (zeroterm) {
+            match = true;
+            for (ix=0; match && ix<keysize; ix++) {
+                byte = Mem1(start + keyoffset + ix);
+                if (byte != 0)
+                    match = false;
+            }
+            
+            if (match) {
+                break;
+            }
+        }
+
+        start = Mem4(start + nextoffset);
+    }
+
+    return 0;
 }
 
 /* The VM state variables */
