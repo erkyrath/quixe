@@ -1477,7 +1477,36 @@ var opcode_table = {
 
     //### 0x127: function(context, operands) { /* protect */
 
-    //### mzero, mcopy, malloc, mfree
+    0x170: function(context, operands) { /* mzero */
+        context.varsused["maddr"] = true;
+        context.varsused["mlen"] = true;
+        context.varsused["ix"] = true;
+        context.code.push("mlen="+operands[0]+";");
+        context.code.push("maddr="+operands[1]+";");
+        context.code.push("for (ix=0; ix<mlen; ix++, maddr++) MemW1(maddr, 0);");
+    },
+
+    0x171: function(context, operands) { /* mcopy */
+        context.varsused["msrc"] = true;
+        context.varsused["mdest"] = true;
+        context.varsused["mlen"] = true;
+        context.varsused["ix"] = true;
+        context.code.push("mlen="+operands[0]+";");
+        context.code.push("msrc="+operands[1]+";");
+        context.code.push("mdest="+operands[2]+";");
+
+        /* This could be optimized for the case where mlen is constant.
+           But for a rarely-used opcode, it's not really worth it. 
+        */
+        context.code.push("if (mdest < msrc) {");
+        context.code.push("for (ix=0; ix<mlen; ix++, msrc++, mdest++) MemW1(mdest, Mem1(msrc));");
+        context.code.push("} else {");
+        context.code.push("msrc += (mlen-1); mdest += (mlen-1);");
+        context.code.push("for (ix=0; ix<mlen; ix++, msrc--, mdest--) MemW1(mdest, Mem1(msrc));");
+        context.code.push("}");
+    },
+
+    //### malloc, mfree
 
     //### accelfunc, accelparam
 
@@ -3250,12 +3279,19 @@ function do_gestalt(val, val2) {
         }
         break;
 
+    case 6: /* MemCopy */
+        return 1; /* We can do mcopy/mzero. */
+
+    case 7: /* MAlloc */
+        return 1; /* We can handle malloc/mfree. */
+
+    case 8: /* MAllocHeap */
+        return 0; //#### heap_get_start();
+
     default:
         return 0;
     }
 }
-
-//#### searching
 
 /* This fetches a search key, and returns an array containing the key
    (bytewise). Actually it always returns the same array.
