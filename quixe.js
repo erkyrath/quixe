@@ -381,6 +381,20 @@ function StackFrame(vmfunc) {
     //qlog("### frame for " + vmfunc.funcaddr.toString(16) + ": framelen " + this.framelen + ", locindex " + qobjdump(this.localsindex) + ", locals " + qobjdump(this.locals));
 }
 
+/* Make a deep copy of a stack frame. This is used in vm_saveundo().
+*/
+function clone_stackframe(frame) {
+    var other = new StackFrame(frame.vmfunc);
+    other.depth = frame.depth;
+    other.framestart = frame.framestart;
+    other.framelen = frame.framelen;
+    other.valstack = frame.valstack.slice(0);
+    other.localspos = frame.localspos;
+    other.locals = frame.locals.slice(0);
+    other.framelen = frame.framelen;
+    return other;
+}
+
 /* Represents all the cached string-table information for when stringtable
    is addr. This includes the decoding table, and the compiled strings
    for each address that's been printed.
@@ -440,6 +454,7 @@ function setup_operandlist_table() {
     var list_S = new OperandList("S");
     var list_SS = new OperandList("SS");
     var list_CL = new OperandList("CL");
+    var list_C = new OperandList("C");
     operandlist_table = { 
         0x00: list_none, /* nop */
         0x10: list_EES, /* add */
@@ -507,7 +522,7 @@ function setup_operandlist_table() {
         0x122: list_none, /* restart */
         0x123: list_LS, /* save */
         0x124: list_LS, /* restore */
-        0x125: list_S, /* saveundo */
+        0x125: list_C, /* saveundo */
         0x126: list_S, /* restoreundo */
         0x127: list_LL, /* protect */
         0x130: list_LLF, /* glk */
@@ -1468,11 +1483,27 @@ var opcode_table = {
     },
 
     0x125: function(context, operands) { /* saveundo */
-        context.code.push(operands[0]+"1);"); /*### failure */
+        oputil_unload_offstack(context);
+        oputil_push_callstub(context, operands[0]);
+        context.code.push("vm_saveundo();");
+        context.code.push("// Successful saveundo.");
+        context.code.push("pop_callstub(0);");
+        context.code.push("return;");
+        context.path_ends = true;
     },
 
     0x126: function(context, operands) { /* restoreundo */
-        context.code.push(operands[0]+"1);"); /*### failure */
+        oputil_unload_offstack(context);
+        context.code.push("if (vm_restoreundo()) {");
+        context.code.push("// Succeeded. Pop the call stub that saveundo pushed.");
+        context.code.push("pop_callstub((-1)>>>0);");
+        context.code.push("} else {");
+        context.code.push("// Failed to restore.")
+        context.code.push(operands[0]+"1);");
+        context.code.push("pc = "+context.cp+";");
+        context.code.push("}");
+        context.code.push("return;");
+        context.path_ends = true;
     },
 
     //### 0x127: function(context, operands) { /* protect */
@@ -3266,6 +3297,9 @@ function do_gestalt(val, val2) {
     switch (val) {
     //### rest of the selectors;
 
+    case 3: /* Undo */
+        return 1; /* Undo works. */
+
     case 4: /* IOSystem */
         switch (val2) {
         case 0:
@@ -3489,6 +3523,8 @@ var endmem;        // always memmap.length
 var protectstart, protectend;
 var iosysmode, iosysrock;
 
+var undostack;     // array of VM state snapshots.
+
 /* Set up all the initial VM state.
    ### where does game_image come from?
 */
@@ -3545,6 +3581,8 @@ function setup_vm() {
     endmem = origendmem;
     stringtable = 0;
 
+    undostack = [];
+
     vm_restart();
 }
 
@@ -3566,6 +3604,7 @@ function vm_restart() {
         for (ix=endgamefile; ix<origendmem; ix++)
             memmap[ix] = 0;
     }
+    endmem = memmap.length;
 
     stack = [];
     frame = null;
@@ -3580,6 +3619,41 @@ function vm_restart() {
     enter_function(startfuncaddr, 0);
     
     /* We're now ready to execute. */
+}
+
+/* Pushes a snapshot of the VM state onto the undo stack. If there are too
+   many on the stack, throw away the oldest.
+*/
+function vm_saveundo() {
+    var snapshot = {};
+    snapshot.ram = memmap.slice(ramstart);
+    snapshot.pc = pc;
+    snapshot.stack = [];
+    for (var i = 0; i < stack.length; i++) {
+        snapshot.stack[i] = clone_stackframe(stack[i]);
+    }
+
+    undostack.push(snapshot);
+    if (undostack.length > 10) {
+        undostack.shift();
+    }
+}
+
+/* Pops a VM state snapshot from the undo stack (if possible) and restores it.
+   Returns true on success.
+*/
+function vm_restoreundo() {
+    if (undostack.length == 0) {
+        return false;
+    }
+    var snapshot = undostack.pop();
+    //### apply protection range. Also make sure we're handling endpoints right.
+    memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
+    endmem = memmap.length;
+    stack = snapshot.stack;
+    frame = stack[stack.length - 1];
+    pc = snapshot.pc;
+    return true;
 }
 
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
