@@ -3605,15 +3605,19 @@ function vm_restart() {
     //### deactivate heap
     //### reset memory to original size
 
+    var protect = vm_copy_protected_range();
+
     /* Build main memory array. */
     memmap = null; // garbage-collect old memmap
-    memmap = game_image.slice(0, endgamefile); //### apply protection range!
+    memmap = game_image.slice(0, endgamefile);
     if (origendmem > endgamefile) {
         memmap.length = origendmem;
         for (ix=endgamefile; ix<origendmem; ix++)
             memmap[ix] = 0;
     }
     endmem = memmap.length;
+
+    vm_paste_protected_range(protect);
 
     stack = [];
     frame = null;
@@ -3656,15 +3660,67 @@ function vm_restoreundo() {
         return false;
     }
     var snapshot = undostack.pop();
-    //### apply protection range. Also make sure we're handling endpoints right.
+    var protect = vm_copy_protected_range();
+
+    //### make sure we're handling endpoints right.
     memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
     endmem = memmap.length;
     stack = snapshot.stack;
     frame = stack[stack.length - 1];
     pc = snapshot.pc;
+
+    vm_paste_protected_range(protect);
+
     return true;
 }
 
+/* Return an object which represents the protected-memory range and its
+   contents. This can later be pasted back into the VM. If there is no
+   protection range, this returns null.
+
+   The idea is that you call this before a restore/restart operation, and
+   then call vm_paste_protected_range() afterwards.
+*/
+function vm_copy_protected_range() {
+    if (protectstart >= protectend)
+        return null;
+
+    var len = protectend - protectstart;
+    var obj = {
+        start: protectstart,
+        end: protectend,
+        len: len,
+    };
+    var arr = memmap.slice(protectstart, protectend);
+
+    /* It is legal to protect a range that falls outside of memory; the
+       extra bits are presumed to be zero. */
+    while (arr.length < len)
+        arr.push(0);
+    obj.mem = arr;
+
+    return obj;
+}
+
+/* Paste a protected-memory range into the VM. 
+*/
+function vm_paste_protected_range(obj) {
+    if (!obj)
+        return;
+
+    var ix, addr;
+    var arr = obj.mem;
+    var start = obj.start;
+    var end = obj.end;
+    if (end > endmem)
+        end = endmem;
+
+    for (ix=0, addr=start; addr<end; ix++, addr++) {
+        memmap[addr] = arr[ix];
+    }
+}
+
+/* The checksum check. */
 function vm_perform_verify() {
     var imagelen = game_image.length;
     var ix, newsum, checksum;
