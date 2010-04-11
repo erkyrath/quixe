@@ -1470,7 +1470,9 @@ var opcode_table = {
         context.path_ends = true;
     },
 
-    //### 0x121: function(context, operands) { /* verify */
+    0x121: function(context, operands) { /* verify */
+        context.code.push(operands[0]+"vm_perform_verify());");
+    },
 
     //### 0x122: function(context, operands) { /* restart */
 
@@ -1486,7 +1488,7 @@ var opcode_table = {
         oputil_unload_offstack(context);
         oputil_push_callstub(context, operands[0]);
         context.code.push("vm_saveundo();");
-        context.code.push("// Successful saveundo.");
+        /* Any failure was a fatal error, so we return success. */
         context.code.push("pop_callstub(0);");
         context.code.push("return;");
         context.path_ends = true;
@@ -1495,10 +1497,11 @@ var opcode_table = {
     0x126: function(context, operands) { /* restoreundo */
         oputil_unload_offstack(context);
         context.code.push("if (vm_restoreundo()) {");
-        context.code.push("// Succeeded. Pop the call stub that saveundo pushed.");
+        /* Succeeded. Pop the call stub that saveundo pushed, using -1
+           to indicate success. */
         context.code.push("pop_callstub((-1)>>>0);");
         context.code.push("} else {");
-        context.code.push("// Failed to restore.")
+        /* Failed to restore. Put back the PC, in case it got overwritten. */
         context.code.push(operands[0]+"1);");
         context.code.push("pc = "+context.cp+";");
         context.code.push("}");
@@ -1506,7 +1509,13 @@ var opcode_table = {
         context.path_ends = true;
     },
 
-    //### 0x127: function(context, operands) { /* protect */
+    0x127: function(context, operands) { /* protect */
+        context.code.push("protectstart="+operands[0]+";");
+        context.code.push("protectend=protectstart+("+operands[1]+");");
+        context.code.push("if (protectstart==protectend) {")
+        context.code.push("  protectstart=0; protectend=0;");
+        context.code.push("}");
+    },
 
     0x170: function(context, operands) { /* mzero */
         context.varsused["maddr"] = true;
@@ -3654,6 +3663,30 @@ function vm_restoreundo() {
     frame = stack[stack.length - 1];
     pc = snapshot.pc;
     return true;
+}
+
+function vm_perform_verify() {
+    var imagelen = game_image.length;
+    var ix, newsum, checksum;
+
+    if (imagelen < 0x100 || (imagelen & 0xFF) != 0)
+        return 1;
+    if (imagelen != ByteRead4(game_image, 12))
+        return 1;
+
+    checksum = ByteRead4(game_image, 32);
+    /* Allow for the fact that the checksum is computed with the checksum
+       field zeroed. */
+    newsum = (-checksum) >>>0;
+
+    for (ix=0; ix<imagelen; ix+=4) {
+        newsum = (newsum + ByteRead4(game_image, ix)) >>>0;
+    }
+
+    if (newsum != checksum)
+        return 1;
+
+    return 0;
 }
 
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
