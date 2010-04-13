@@ -1429,7 +1429,12 @@ var opcode_table = {
         context.code.push(operands[0]+"endmem);");
     },
 
-    //### 0x103: function(context, operands) { /* setmemsize */
+    0x103: function(context, operands) { /* setmemsize */
+        context.code.push("change_memsize("+operands[0]+",false);");
+        /* An allocation failure is a fatal error, so we always return 
+           success. */
+        context.code.push(operands[1]+"0);");
+    },
 
     0x110: function(context, operands) { /* random */
         var expr;
@@ -1471,10 +1476,14 @@ var opcode_table = {
     },
 
     0x121: function(context, operands) { /* verify */
-        context.code.push(operands[0]+"vm_perform_verify());");
+        context.code.push(operands[0]+"perform_verify());");
     },
 
-    //### 0x122: function(context, operands) { /* restart */
+    0x122: function(context, operands) { /* restart */
+        context.code.push("vm_restart();");
+        context.code.push("return;");
+        context.path_ends = true;
+    },
 
     0x123: function(context, operands) { /* save */
         context.code.push(operands[1]+"1);"); /*### failure */
@@ -3306,6 +3315,9 @@ function do_gestalt(val, val2) {
     switch (val) {
     //### rest of the selectors;
 
+    case 2: /* ResizeMem */
+        return 1; /* Memory resizing works. */
+
     case 3: /* Undo */
         return 1; /* Undo works. */
 
@@ -3329,7 +3341,7 @@ function do_gestalt(val, val2) {
         return 1; /* We can handle malloc/mfree. */
 
     case 8: /* MAllocHeap */
-        return 0; //#### heap_get_start();
+        return heap_get_start();
 
     default:
         return 0;
@@ -3602,22 +3614,19 @@ function setup_vm() {
 function vm_restart() {
     var ix;
 
-    //### deactivate heap
-    //### reset memory to original size
+    /* Deactivate the heap (if it was active). */
+    heap_clear();
 
-    var protect = vm_copy_protected_range();
+    var protect = copy_protected_range();
 
-    /* Build main memory array. */
+    /* Build (or rebuild) main memory array. */
     memmap = null; // garbage-collect old memmap
     memmap = game_image.slice(0, endgamefile);
-    if (origendmem > endgamefile) {
-        memmap.length = origendmem;
-        for (ix=endgamefile; ix<origendmem; ix++)
-            memmap[ix] = 0;
-    }
     endmem = memmap.length;
+    change_memsize(origendmem, false);
+    /* endmem is now origendmem */
 
-    vm_paste_protected_range(protect);
+    paste_protected_range(protect);
 
     stack = [];
     frame = null;
@@ -3638,8 +3647,12 @@ function vm_restart() {
    many on the stack, throw away the oldest.
 */
 function vm_saveundo() {
+    if (memmap.length != endmem) 
+        fatal_error("Memory length was incorrect before saveundo."); //###assert
+
     var snapshot = {};
     snapshot.ram = memmap.slice(ramstart);
+    snapshot.endmem = endmem;
     snapshot.pc = pc;
     snapshot.stack = [];
     for (var i = 0; i < stack.length; i++) {
@@ -3660,18 +3673,46 @@ function vm_restoreundo() {
         return false;
     }
     var snapshot = undostack.pop();
-    var protect = vm_copy_protected_range();
+    var protect = copy_protected_range();
 
-    //### make sure we're handling endpoints right.
     memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
-    endmem = memmap.length;
+    endmem = snapshot.endmem;
     stack = snapshot.stack;
     frame = stack[stack.length - 1];
     pc = snapshot.pc;
 
-    vm_paste_protected_range(protect);
+    paste_protected_range(protect);
+
+    if (memmap.length != endmem) 
+        fatal_error("Memory length was incorrect after undo."); //###assert
 
     return true;
+}
+
+/* Change the size of the memory map. The internal flag should be true 
+   only when the heap-allocation system is calling.
+*/
+function change_memsize(newlen, internal) {
+    var lx;
+
+    if (newlen == endmem)
+        return;
+
+    if ((!internal) && heap_is_active())
+        fatal_error("Cannot resize Glulx memory space while heap is active.");
+    if (newlen < origendmem)
+        fatal_error("Cannot resize Glulx memory space smaller than it started.");
+    if (newlen & 0xFF)
+        fatal_error("Can only resize Glulx memory space to a 256-byte boundary.");
+
+    memmap.length = newlen;
+    if (newlen > endmem) {
+        for (lx=endmem; lx<newlen; lx++) {
+            memmap[lx] = 0;
+        }
+    }
+
+    endmem = newlen;    
 }
 
 /* Return an object which represents the protected-memory range and its
@@ -3679,9 +3720,9 @@ function vm_restoreundo() {
    protection range, this returns null.
 
    The idea is that you call this before a restore/restart operation, and
-   then call vm_paste_protected_range() afterwards.
+   then call paste_protected_range() afterwards.
 */
-function vm_copy_protected_range() {
+function copy_protected_range() {
     if (protectstart >= protectend)
         return null;
 
@@ -3704,7 +3745,7 @@ function vm_copy_protected_range() {
 
 /* Paste a protected-memory range into the VM. 
 */
-function vm_paste_protected_range(obj) {
+function paste_protected_range(obj) {
     if (!obj)
         return;
 
@@ -3721,7 +3762,7 @@ function vm_paste_protected_range(obj) {
 }
 
 /* The checksum check. */
-function vm_perform_verify() {
+function perform_verify() {
     var imagelen = game_image.length;
     var ix, newsum, checksum;
 
@@ -3742,6 +3783,20 @@ function vm_perform_verify() {
     if (newsum != checksum)
         return 1;
 
+    return 0;
+}
+
+function heap_clear() {
+    //###
+}
+
+function heap_is_active() {
+    //###
+    return false;
+}
+
+function heap_get_start() {
+    //###
     return 0;
 }
 
