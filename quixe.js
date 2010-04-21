@@ -1557,12 +1557,14 @@ var opcode_table = {
 
     //### malloc, mfree
     0x178: function(context, operands) { /* malloc */
-        var expr = "heap_malloc(("+operands[0]+"))";
+        var expr = "heap_malloc("+operands[0]+")";
         context.code.push(operands[1]+expr+");");
+        context.code.push("assert_heap_valid();"); //###assert
     },
     
     0x179: function(context, operands) { /* mfree */
-        context.code.push("heap_free(("+operands[0]+"));");
+        context.code.push("heap_free("+operands[0]+");");
+        context.code.push("assert_heap_valid();"); //###assert
     },
 
     //### accelfunc, accelparam
@@ -3683,11 +3685,11 @@ function vm_saveundo() {
     snapshot.heapcount = heapcount;
     snapshot.heapstart = heapstart;
     snapshot.usedheads = {};
-    for (uhead in usedheads) {
+    for (var uhead in usedheads) {
         snapshot.usedheads[uhead] = usedheads[uhead];
     }
     snapshot.freeheads = {};
-    for (fhead in freeheads) {
+    for (var fhead in freeheads) {
         snapshot.freeheads[fhead] = freeheads[fhead];
     }
 
@@ -3875,7 +3877,7 @@ function heap_malloc(size) {
 
     // No free block is big enough. Grow the heap.
     var addr = endmem;
-    var rounded_up_size = ((size + 255) >> 8) << 8;
+    var rounded_up_size = ((size + 0xFF) & 0xFFFFFF00);
     change_memsize(endmem + rounded_up_size, true);
     if (rounded_up_size > size) {
         var fsize = rounded_up_size - size;
@@ -3920,6 +3922,60 @@ function heap_free(addr) {
     
     freeheads[addr] = size;
     freetails[addr + size] = size;
+}
+
+/* Check that the heap state is consistent. This is slow.
+*/
+function assert_heap_valid() {
+    var addr, res, size, count;
+
+    if (heapcount == 0) {
+        if (heapstart != 0)
+            fatal_error("Heap inconsistency: heapstart nonzero");
+
+        res = false;
+        for (addr in usedheads) { res = true; }
+        if (res)
+            fatal_error("Heap inconsistency: usedheads nonempty");
+
+        res = false;
+        for (addr in freeheads) { res = true; }
+        if (res)
+            fatal_error("Heap inconsistency: freeheads nonempty");
+
+        res = false;
+        for (addr in freetails) { res = true; }
+        if (res)
+            fatal_error("Heap inconsistency: freetails nonempty");
+
+        return;
+    }
+
+    if (heapstart == 0)
+        fatal_error("Heap inconsistency: heapstart is zero");
+
+    for (addr in freeheads) {
+        addr = parseInt(addr);
+        if (usedheads[addr] != null)
+            fatal_error("Heap inconsistency: address in both freeheads and usedheads");
+        size = freeheads[addr];
+        if (freetails[addr+size] != size)
+            fatal_error("Heap inconsistency: freeheads does not match freetails");
+    }
+
+    for (addr in freetails) {
+        addr = parseInt(addr);
+        size = freetails[addr];
+        if (freeheads[addr-size] != size)
+            fatal_error("Heap inconsistency: freetails does not match freeheads");
+    }
+
+    count = 0;
+    for (addr in usedheads) {
+        count++;
+    }
+    if (count != heapcount)
+        fatal_error("Heap inconsistency: heapcount is wrong");
 }
 
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
