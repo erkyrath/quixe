@@ -1556,6 +1556,14 @@ var opcode_table = {
     },
 
     //### malloc, mfree
+    0x178: function(context, operands) { /* malloc */
+        var expr = "heap_malloc(("+operands[0]+"))";
+        context.code.push(operands[1]+expr+");");
+    },
+    
+    0x179: function(context, operands) { /* mfree */
+        context.code.push("heap_free(("+operands[0]+"));");
+    },
 
     //### accelfunc, accelparam
 
@@ -3546,6 +3554,13 @@ var iosysmode, iosysrock;
 
 var undostack;     // array of VM state snapshots.
 
+/* Memory allocation heap. */
+var heapcount;     // Number of blocks in the heap. If 0, heap is inactive.
+var heapstart;     // Start address of the heap.
+var usedheads;     // Hash of start -> size for allocated blocks.
+var freeheads;     // Hash of start -> size for free blocks.
+var freetails;     // Hash of end+1 -> size for free blocks.
+
 /* Set up all the initial VM state.
    ### where does game_image come from?
 */
@@ -3604,6 +3619,12 @@ function setup_vm() {
 
     undostack = [];
 
+    heapcount = 0;
+    heapstart = 0;
+    usedheads = {};
+    freeheads = {};
+    freetails = {};
+    
     vm_restart();
 }
 
@@ -3659,6 +3680,17 @@ function vm_saveundo() {
         snapshot.stack[i] = clone_stackframe(stack[i]);
     }
 
+    snapshot.heapcount = heapcount;
+    snapshot.heapstart = heapstart;
+    snapshot.usedheads = {};
+    for (uhead in usedheads) {
+        snapshot.usedheads[uhead] = usedheads[uhead];
+    }
+    snapshot.freeheads = {};
+    for (fhead in freeheads) {
+        snapshot.freeheads[fhead] = freeheads[fhead];
+    }
+
     undostack.push(snapshot);
     if (undostack.length > 10) {
         undostack.shift();
@@ -3681,6 +3713,20 @@ function vm_restoreundo() {
     frame = stack[stack.length - 1];
     pc = snapshot.pc;
 
+    heapcount = snapshot.heapcount;
+    heapstart = snapshot.heapstart;
+    usedheads = {};
+    for (var uhead in snapshot.usedheads) {
+        usedheads[uhead] = snapshot.usedheads[uhead];
+    }
+    freeheads = {};
+    freetails = {};
+    for (var fhead in snapshot.freeheads) {
+        fsize = snapshot.freeheads[fhead];
+        freeheads[fhead] = fsize;
+        freetails[parseInt(fhead) + fsize] = fsize;
+    }
+    
     paste_protected_range(protect);
 
     if (memmap.length != endmem) 
@@ -3787,17 +3833,93 @@ function perform_verify() {
 }
 
 function heap_clear() {
-    //###
+    heapcount = 0;
+    heapstart = 0;
+    usedheads = {};
+    freeheads = {};
+    freetails = {};
 }
 
 function heap_is_active() {
-    //###
-    return false;
+    return (heapcount > 0);
 }
 
 function heap_get_start() {
-    //###
-    return 0;
+    return heapstart;
+}
+
+function heap_malloc(size) {
+    if (!heap_is_active()) {
+        heapstart = endmem;
+    }
+    heapcount++;
+    
+    for (var fhead in freeheads) {
+        var fsize = freeheads[fhead];
+        if (fsize >= size) {
+            // Free block is big enough. Off with its head.
+            delete freeheads[fhead];
+            // fhead will be a string, because Javascript is annoying, but we need a number.
+            fhead = parseInt(fhead);
+            if (fsize > size) {
+                fsize -= size;
+                freeheads[fhead + size] = fsize;
+                freetails[fhead + size + fsize] = fsize;
+            } else {
+                delete freetails[fhead + fsize];
+            }
+            usedheads[fhead] = size;
+            return fhead;
+        }
+    }
+
+    // No free block is big enough. Grow the heap.
+    var addr = endmem;
+    var rounded_up_size = ((size + 255) >> 8) << 8;
+    change_memsize(endmem + rounded_up_size, true);
+    if (rounded_up_size > size) {
+        var fsize = rounded_up_size - size;
+        freeheads[addr + size] = fsize;
+        freetails[addr + size + fsize] = fsize;
+    }
+    usedheads[addr] = size;    
+    return addr;
+}
+
+function heap_free(addr) {
+    var size = usedheads[addr];
+    if (size == undefined) {
+        fatal_error("Tried to free non-existent block");
+    }
+    delete usedheads[addr];
+    
+    heapcount--;
+    if (heapcount == 0) {
+        // No allocated blocks left. Blow away the whole heap.
+        change_memsize(heapstart, true);
+        heap_clear();
+        return;
+    }
+
+    // If the next block is free, merge with it.
+    var nextsize = freeheads[addr + size];
+    if (nextsize != undefined) {
+        delete freeheads[addr + size];
+        delete freetails[addr + size + nextsize];
+        size += nextsize;
+    }
+    
+    // If the previous block is free, merge with it.
+    var prevsize = freetails[addr];
+    if (prevsize != undefined) {
+        delete freeheads[addr - prevsize];
+        delete freetails[addr];
+        size += prevsize;
+        addr -= prevsize;
+    }
+    
+    freeheads[addr] = size;
+    freetails[addr + size] = size;
 }
 
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
