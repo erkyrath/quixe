@@ -3976,6 +3976,25 @@ function assert_heap_valid() {
     }
     if (count != heapcount)
         fatal_error("Heap inconsistency: heapcount is wrong");
+
+    addr = heapstart;
+    while (addr < endmem) {
+        if (freeheads[addr]) {
+            size = freeheads[addr];
+            qlog(addr+" ("+size+" free)"); //####
+            addr += size;
+        }
+        else if (usedheads[addr]) {
+            size = usedheads[addr];
+            qlog(addr+" ("+size+" alloc)"); //####
+            addr += size;
+        }
+        else {
+            fatal_error("Heap inconsistency: gap in heap");
+        }
+    }
+    if (addr != endmem)
+        fatal_error("Heap inconsistency: overrun at end of heap");
 }
 
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
