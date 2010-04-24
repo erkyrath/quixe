@@ -2578,7 +2578,8 @@ function compile_path(vmfunc, startaddr, startiosys) {
 function enter_function(addr, argcount) {
     var ix;
 
-    //### acceleration
+    /* If we supported accelerated functions, we'd check and dispatch them
+       here. */
 
     var vmfunc = vmfunc_table[addr];
     if (vmfunc === undefined) {
