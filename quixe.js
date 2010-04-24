@@ -268,7 +268,8 @@ function fatal_error(msg) {
     if (arguments.length > 1) {
         msg += " (";
         for (ix = 1; ix < arguments.length; ix++) {
-            val = arguments[ix]; //### val.toString(16)
+            val = arguments[ix];
+            val = val.toString(16);
             if (ix != 1)
                 msg += " ";
             msg += val;
@@ -1555,7 +1556,6 @@ var opcode_table = {
         context.code.push("}");
     },
 
-    //### malloc, mfree
     0x178: function(context, operands) { /* malloc */
         var expr = "heap_malloc("+operands[0]+")";
         context.code.push(operands[1]+expr+");");
@@ -2736,10 +2736,55 @@ function store_operand(desttype, destaddr, val) {
 }
 
 function set_random(val) {
-    if (val == 0)
+    if (val == 0) {
         random_func = Math.random;
-    else
-        random_func = Math.random; //#### put something deterministic here
+    }
+    else {
+        srand_set_seed(val);
+        random_func = srand_get_random;
+    }
+}
+
+/* Here is a pretty standard random-number generator and seed function.
+   It is used for the deterministic mode of the Glulx RNG. (In the
+   normal, non-deterministic mode, we rely on Math.random() -- hopefully
+   that pulls some nice juicy entropy from the OS.)
+*/
+var srand_table = undefined; /* Array[0..54] */
+var srand_index1, srand_index2;
+
+function srand_set_seed(seed) {
+    var i, ii, k, val, loop;
+
+    if (srand_table === undefined)
+        srand_table = Array(55);
+
+    srand_table[54] = seed;
+    srand_index1 = 0;
+    srand_index2 = 31;
+    
+    k = 1;
+
+    for (i = 0; i < 55; i++) {
+        ii = (21 * i) % 55;
+        srand_table[ii] = k;
+        k = (seed - k) >>>0;
+        seed = srand_table[ii];
+    }
+    for (loop = 0; loop < 4; loop++) {
+        for (i = 0; i < 55; i++) {
+            val = srand_table[i] - srand_table[ (1 + i + 30) % 55];
+            srand_table[i] = val >>>0;
+        }
+    }
+    qlog("### srand_table = " + srand_table);
+}
+
+function srand_get_random() {
+    srand_index1 = (srand_index1 + 1) % 55;
+    srand_index2 = (srand_index2 + 1) % 55;
+    srand_table[srand_index1] = (srand_table[srand_index1] - srand_table[srand_index2]) >>>0;
+    return srand_table[srand_index1] / 0x100000000;
 }
 
 /* Set the current table address, and rebuild decoding tree. */
