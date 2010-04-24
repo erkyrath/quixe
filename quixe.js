@@ -2777,7 +2777,6 @@ function srand_set_seed(seed) {
             srand_table[i] = val >>>0;
         }
     }
-    qlog("### srand_table = " + srand_table);
 }
 
 function srand_get_random() {
