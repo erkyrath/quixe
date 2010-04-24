@@ -1567,7 +1567,14 @@ var opcode_table = {
         context.code.push("assert_heap_valid();"); //###assert
     },
 
-    //### accelfunc, accelparam
+    0x180: function(context, operands) { /* accelfunc */
+        /* No functions supported; do nothing. */
+    },
+    
+    0x181: function(context, operands) { /* accelparam */
+        /* No functions supported; do nothing. */
+    },
+    
 
     0x150: function(context, operands) { /* linearsearch */
         var expr = "linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
@@ -3367,7 +3374,11 @@ function do_gestalt(val, val2) {
     var ix;
 
     switch (val) {
-    //### rest of the selectors;
+    case 0: /* GlulxVersion */
+        return 0x00030101; /* Glulx spec version 3.1.1 */
+
+    case 1: /* TerpVersion */
+        return 0; /* Quixe version 0.0.0 ### */
 
     case 2: /* ResizeMem */
         return 1; /* Memory resizing works. */
@@ -3388,6 +3399,9 @@ function do_gestalt(val, val2) {
         }
         break;
 
+    case 5: /* Unicode */
+        break; /* ### */
+
     case 6: /* MemCopy */
         return 1; /* We can do mcopy/mzero. */
 
@@ -3396,6 +3410,13 @@ function do_gestalt(val, val2) {
 
     case 8: /* MAllocHeap */
         return heap_get_start();
+
+    case 9: /* Acceleration */
+        return 1; /* The acceleration opcodes work. */
+
+    case 10: /* AccelFunc */
+        return 0; /* Despite the above, no accelerated functions are 
+                     currently supported. */
 
     default:
         return 0;
