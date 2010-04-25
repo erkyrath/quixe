@@ -20,14 +20,21 @@ Quixe = function() {
    starts up. It executes until the first glk_select() or glk_exit().
 */
 function quixe_init() {
-    //#### die on redundant init!
+    if (begun_executing) {
+        Glk.fatal_error("Quixe was inited twice!");
+        return;
+    }
 
-    setup_bytestring_table();
-    setup_operandlist_table();
+    try {
+        setup_bytestring_table();
+        setup_operandlist_table();
 
-    //#### catch exceptions
-    setup_vm();
-    execute_loop();
+        setup_vm();
+        execute_loop();
+    }
+    catch (ex) {
+        Glk.fatal_error(ex);
+    }
 }
 
 /* This is called by the page after a "blocking" operation completes.
@@ -35,9 +42,13 @@ function quixe_init() {
    It executes until the next glk_select() or glk_exit().
 */
 function quixe_resume() {
-    //#### catch exceptions
-    done_executing = false;
-    execute_loop();
+    try {
+        done_executing = false;
+        execute_loop();
+    }
+    catch (ex) {
+        Glk.fatal_error(ex);
+    }
 }
 
 /* Log the message in the browser's error log, if it has one. (This shows
@@ -276,8 +287,8 @@ function fatal_error(msg) {
         }
         msg += ")";
     }
-    qlog(msg);
-    throw("#### fatal error");
+    qlog(msg);//###debug
+    throw(msg);
 }
 
 /* Turn a string containing JS statements into a function object that
@@ -1470,7 +1481,7 @@ var opcode_table = {
         /* Quash the offstack. No more execution. */
         context.code.push("// quashing offstack for quit: " + context.offstack.length); //###debug
         context.offstack.length = 0;
-        //#### Glk.glk.exit()?
+        //#### Glk.glk_exit()?
         context.code.push("done_executing = true;");
         context.code.push("return;");
         context.path_ends = true;
@@ -3381,7 +3392,7 @@ function do_gestalt(val, val2) {
         return 0x00030101; /* Glulx spec version 3.1.1 */
 
     case 1: /* TerpVersion */
-        return 0; /* Quixe version 0.0.0 #### */
+        return 0x00000100; /* Quixe version 0.1.0 */
 
     case 2: /* ResizeMem */
         return 1; /* Memory resizing works. */
@@ -3595,6 +3606,7 @@ var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
 var tempcallargs; /* only used momentarily, for enter_function() */
 var tempglkargs; /* only used momentarily, for the @glk opcode */
+var begun_executing = false;
 var done_executing; //#### split, please
 
 var vmfunc_table; /* maps addresses to VMFuncs */
@@ -3637,6 +3649,7 @@ var freetails;     // Hash of end+1 -> size for free blocks.
 function setup_vm() {
     var val, version;
 
+    begun_executing = true;
     memmap = null;
     stack = [];
     frame = null;
@@ -4107,7 +4120,7 @@ function execute_loop() {
 }
 
 return {
-    version: '0.0.0',
+    version: '0.1.0', /* Quixe version */
     init: quixe_init,
     resume: quixe_resume,
 
