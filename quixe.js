@@ -9,8 +9,6 @@
 // Probably don't want to cache string-functions in filter mode.
 // If a compiled path has no iosys dependencies, we could cache it in
 //   all three iosys caches for the function.
-// Can the "if (stack.length == 0)..." check at every "return" be turned
-//   into a JS exception? Would save a lot of compilation.
 // #### Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 
@@ -751,7 +749,6 @@ function oputil_perform_jump(context, operand, unconditional) {
                 context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //###debug
             }
             context.code.push("leave_function();");
-            context.code.push("if (stack.length == 0) { done_executing = true; vm_stopped = true; return; }");
             context.code.push("pop_callstub("+val+");");
         }
         else {
@@ -765,7 +762,6 @@ function oputil_perform_jump(context, operand, unconditional) {
         oputil_unload_offstack(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
         context.code.push("leave_function();");
-        context.code.push("if (stack.length == 0) { done_executing = true; vm_stopped = true; return; }");
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
@@ -1030,6 +1026,8 @@ var opcode_table = {
             oputil_unload_offstack(context);
             context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempcallargs[ix]=frame.valstack.pop(); }");
         }
+        /* Note that tailcall in the top-level function will not work.
+           But why would you do that? */
         context.code.push("leave_function();");
         context.code.push("enter_function("+operands[0]+", "+operands[1]+");");
         context.code.push("return;");
@@ -1080,7 +1078,6 @@ var opcode_table = {
         context.code.push("// quashing offstack for return: " + context.offstack.length); //###debug
         context.offstack.length = 0;
         context.code.push("leave_function();");
-        context.code.push("if (stack.length == 0) { done_executing = true; vm_stopped = true; return; }");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -2652,6 +2649,9 @@ function enter_function(addr, argcount) {
     //qlog("### framestart " + frame.framestart + ", filled-in locals " + qobjdump(frame.locals) + ", valstack " + qobjdump(frame.valstack));
 }
 
+/* Dummy value, thrown as an exception by leave_function(). */
+var ReturnedFromMain = { dummy: 'The top-level function has returned.' };
+
 /* Pop the current call frame off the stack. This is very simple. */
 function leave_function() {
     var olddepth = frame.depth;
@@ -2659,7 +2659,7 @@ function leave_function() {
     stack.pop();
     if (stack.length == 0) {
         frame = null;
-        return;
+        throw ReturnedFromMain;
     }
     frame = stack[stack.length-1];
 
@@ -4112,7 +4112,19 @@ function execute_loop() {
             if (pc < ramstart)
                 pathtab[pc] = path;
         }
-        path();
+        try {
+            path();
+        }
+        catch (ex) {
+            if (ex === ReturnedFromMain) {
+                done_executing = true;
+                vm_stopped = true;
+            }
+            else {
+                /* Some other exception. */
+                throw ex;
+            }
+        }
     }
 
     pathend = new Date().getTime(); //###debug
