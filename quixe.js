@@ -1118,13 +1118,27 @@ var opcode_table = {
     },
 
     0x44: function(context, operands) { /* sexs */
-        /* #### fold constant? */
-        context.code.push(operands[1]+"("+operands[0]+" & 0x8000) ? (("+operands[0]+" | 0xffff0000) >>> 0) : ("+operands[0]+" & 0xffff));");
+        var val;
+        if (quot_isconstant(operands[0])) {
+            val = Number(operands[0]);
+            val = (val & 0x8000) ? ((val | 0xffff0000) >>> 0) : (val & 0xffff);
+            context.code.push(operands[1]+val+");");
+        }
+        else {
+            context.code.push(operands[1]+"("+operands[0]+" & 0x8000) ? (("+operands[0]+" | 0xffff0000) >>> 0) : ("+operands[0]+" & 0xffff));");
+        }
     },
 
     0x45: function(context, operands) { /* sexb */
-        /* #### fold constant? */
-        context.code.push(operands[1]+"("+operands[0]+" & 0x80) ? (("+operands[0]+" | 0xffffff00) >>> 0) : ("+operands[0]+" & 0xff));");
+        var val;
+        if (quot_isconstant(operands[0])) {
+            val = Number(operands[0]);
+            val = (val & 0x80) ? ((val | 0xffffff00) >>> 0) : (val & 0xff);
+            context.code.push(operands[1]+val+");");
+        }
+        else {
+            context.code.push(operands[1]+"("+operands[0]+" & 0x80) ? (("+operands[0]+" | 0xffffff00) >>> 0) : ("+operands[0]+" & 0xff));");
+        }
     },
 
     0x48: function(context, operands) { /* aload */
