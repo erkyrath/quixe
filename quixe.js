@@ -11,7 +11,7 @@
 //   all three iosys caches for the function.
 // Can the "if (stack.length == 0)..." check at every "return" be turned
 //   into a JS exception? Would save a lot of compilation.
-// ### Also: put in debug asserts for valid stack values (at push/pop)
+// #### Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 
 Quixe = function() {
@@ -20,12 +20,12 @@ Quixe = function() {
    starts up. It executes until the first glk_select() or glk_exit().
 */
 function quixe_init() {
-    //### die on redundant init!
+    //#### die on redundant init!
 
     setup_bytestring_table();
     setup_operandlist_table();
 
-    //### catch exceptions
+    //#### catch exceptions
     setup_vm();
     execute_loop();
 }
@@ -35,7 +35,7 @@ function quixe_init() {
    It executes until the next glk_select() or glk_exit().
 */
 function quixe_resume() {
-    //### catch exceptions
+    //#### catch exceptions
     done_executing = false;
     execute_loop();
 }
@@ -277,7 +277,7 @@ function fatal_error(msg) {
         msg += ")";
     }
     qlog(msg);
-    throw("### fatal error");
+    throw("#### fatal error");
 }
 
 /* Turn a string containing JS statements into a function object that
@@ -1107,12 +1107,12 @@ var opcode_table = {
     },
 
     0x44: function(context, operands) { /* sexs */
-        /* ### fold constant? */
+        /* #### fold constant? */
         context.code.push(operands[1]+"("+operands[0]+" & 0x8000) ? (("+operands[0]+" | 0xffff0000) >>> 0) : ("+operands[0]+" & 0xffff));");
     },
 
     0x45: function(context, operands) { /* sexb */
-        /* ### fold constant? */
+        /* #### fold constant? */
         context.code.push(operands[1]+"("+operands[0]+" & 0x80) ? (("+operands[0]+" | 0xffffff00) >>> 0) : ("+operands[0]+" & 0xff));");
     },
 
@@ -1470,7 +1470,7 @@ var opcode_table = {
         /* Quash the offstack. No more execution. */
         context.code.push("// quashing offstack for quit: " + context.offstack.length); //###debug
         context.offstack.length = 0;
-        //### Glk.glk.exit()?
+        //#### Glk.glk.exit()?
         context.code.push("done_executing = true;");
         context.code.push("return;");
         context.path_ends = true;
@@ -1487,11 +1487,11 @@ var opcode_table = {
     },
 
     0x123: function(context, operands) { /* save */
-        context.code.push(operands[1]+"1);"); /*### failure */
+        context.code.push(operands[1]+"1);"); /*#### failure */
     },
 
     0x124: function(context, operands) { /* restore */
-        context.code.push(operands[1]+"1);"); /*### failure */
+        context.code.push(operands[1]+"1);"); /*#### failure */
     },
 
     0x125: function(context, operands) { /* saveundo */
@@ -1642,13 +1642,14 @@ var opcode_table = {
     },
 
     0x72: function(context, operands) { /* streamstr */
+        /* It would be nice to determine at compile-time whether the
+           value is a (cacheable) simple string value. In that case, we
+           could throw it into glk_put_jstring and continue -- no need
+           to unload the offstack or return. (Or, of the value is 
+           determined to be a function, we can unload and return.)
+        */
         oputil_unload_offstack(context);
-        //### can we avoid unloading in the simple case?
         context.code.push("if (stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
-        //### in the complex case, can we throw a termination point after
-        //    the opcode? Because there's no point compiling further if we're
-        //    in filter mode. (Complex strings are harder to detect, and
-        //    rarer.)
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -2446,7 +2447,8 @@ function compile_path(vmfunc, startaddr, startiosys) {
 
         cp: null, /* Will be filled in as we go */
 
-        /* The iosysmode, as of cp. ### can handle computed values? */
+        /* The iosysmode, as of cp. This is always a literal value;
+           if it becomes unknown-at-compile-time, we stop compiling. */
         curiosys: startiosys,
 
         /* List of code lines. */
@@ -2524,7 +2526,6 @@ function compile_path(vmfunc, startaddr, startiosys) {
         var ophandler = opcode_table[opcode];
         if (!ophandler)
             fatal_error("Encountered unhandled opcode.", opcode);
-        //### worth a "with (context)..." here?
         ophandler(context, operands);
 
         /* Any _hold variables which were used in this opcode (only)
@@ -2820,14 +2821,14 @@ function set_string_table(addr) {
         var rootaddr = Mem4(stringtable+8);
         var cache_stringtable = (stringtable+tablelen <= ramstart);
         if (cache_stringtable) {
-            qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
+            //qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
             var tmparray = Array(1);
             var pathstart = new Date().getTime(); //###debug
             build_decoding_tree(tmparray, rootaddr, 4 /*CACHEBITS*/, 0);
             dectab = tmparray[0];
             if (dectab === undefined)
                 fatal_error("Failed to create decoding tree.");
-            qlog("### done building; time = " + ((new Date().getTime())-pathstart) + " ms"); //###debug
+            //qlog("### done building; time = " + ((new Date().getTime())-pathstart) + " ms"); //###debug
         }
 
         textenv = new VMTextEnv(stringtable, dectab);
@@ -2921,7 +2922,8 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
         break;
     case 0x03: /* C-style string */
     case 0x05: /* C-style unicode string */
-        //### cache as string if in ROM
+        /* If the address is in ROM, we could read it, convert to a JS
+           string, and store it in the node. */
         cab.addr = nodeaddr;
         break;
     case 0x08: /* indirect ref */
@@ -2955,7 +2957,7 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
 function stream_num(nextcp, value, inmiddle, charnum) {
     var buf = (value & 0xffffffff).toString(10);
 
-    qlog("### stream_num(" + nextcp + ", " + buf + ", " + inmiddle + ", " + charnum + ") iosys " + iosysmode);
+    //qlog("### stream_num(" + nextcp + ", " + buf + ", " + inmiddle + ", " + charnum + ") iosys " + iosysmode);
 
     switch (iosysmode) {
     case 2: /* glk */
@@ -3049,7 +3051,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
                 addr = res[0];
                 inmiddle = res[1];
                 bitnum = res[2];
-                qlog("### push to addr="+addr+"/"+inmiddle+"/"+bitnum);
+                //qlog("### push to addr="+addr+"/"+inmiddle+"/"+bitnum);
                 continue;
             }
             if (res) {
@@ -3078,7 +3080,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             bitnum = destaddr;
             inmiddle = 0xE1;
             addr = pc;
-            qlog("### end; pop to addr="+addr+"/"+inmiddle+"/"+bitnum);
+            //qlog("### end; pop to addr="+addr+"/"+inmiddle+"/"+bitnum);
         }
         else {
             fatal_error("Function-terminator call stub at end of string.");
@@ -3131,8 +3133,8 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     }
 
     if (type == 0xE1) {
-        if (0) {
-            //### decoding_tree
+        if (0) { /*### if (decoding_tree) ###*/
+            //#### use decoding_tree!
         }
         else {
             var node, byte, nodetype;
@@ -3379,7 +3381,7 @@ function do_gestalt(val, val2) {
         return 0x00030101; /* Glulx spec version 3.1.1 */
 
     case 1: /* TerpVersion */
-        return 0; /* Quixe version 0.0.0 ### */
+        return 0; /* Quixe version 0.0.0 #### */
 
     case 2: /* ResizeMem */
         return 1; /* Memory resizing works. */
@@ -3401,7 +3403,7 @@ function do_gestalt(val, val2) {
         break;
 
     case 5: /* Unicode */
-        break; /* ### */
+        break; /* #### */
 
     case 6: /* MemCopy */
         return 1; /* We can do mcopy/mzero. */
@@ -3593,7 +3595,7 @@ var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
 var tempcallargs; /* only used momentarily, for enter_function() */
 var tempglkargs; /* only used momentarily, for the @glk opcode */
-var done_executing; //### split, please
+var done_executing; //#### split, please
 
 var vmfunc_table; /* maps addresses to VMFuncs */
 var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
@@ -3630,7 +3632,7 @@ var freeheads;     // Hash of start -> size for free blocks.
 var freetails;     // Hash of end+1 -> size for free blocks.
 
 /* Set up all the initial VM state.
-   ### where does game_image come from?
+   #### where does game_image come from?
 */
 function setup_vm() {
     var val, version;
@@ -4090,7 +4092,7 @@ function execute_loop() {
 
     Glk.update();
 
-    //### check whether Glk has exited?
+    //#### check whether Glk has exited?
 
     qlog("### done executing; path time = " + (pathend-pathstart) + " ms");
     /*
