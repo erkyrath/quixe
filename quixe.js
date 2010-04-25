@@ -2939,10 +2939,12 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     cab.depth = depth;
     switch (type) {
     case 0x02: /* 8-bit character */
-        cab.char = CharToString(Mem1(nodeaddr));
+        cab.value = Mem1(nodeaddr);
+        cab.char = CharToString(cab.value);
         break;
     case 0x04: /* Unicode character */
-        cab.char = CharToString(Mem4(nodeaddr));
+        cab.value = Mem4(nodeaddr);
+        cab.char = CharToString(cab.value);
         break;
     case 0x03: /* C-style string */
     case 0x05: /* C-style unicode string */
@@ -3157,8 +3159,173 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     }
 
     if (type == 0xE1) {
-        if (0) { /*### if (decoding_tree) ###*/
-            //#### use decoding_tree!
+        if (decoding_tree) {
+            var bits, numbits, readahead, tmpaddr;
+            var cablist, cab;
+            var done = 0;
+
+            /* bitnum is already set right */
+            bits = Mem1(addr); 
+            if (bitnum)
+                bits >>= bitnum;
+            numbits = (8 - bitnum);
+            readahead = false;
+            
+            if (!(decoding_tree instanceof Array)) {
+                /* This is a bit of a cheat. If the top-level block is not
+                   a branch, then it must be a string-terminator -- otherwise
+                   the string would be an infinite repetition of that block.
+                   We check for this case and bail immediately. */
+                done = 1;
+            }
+
+            cablist = decoding_tree;
+            while (!done) {
+                if (numbits < 4) { /* CACHEBITS */
+                    /* readahead is certainly false */
+                    var newbyte = Mem1(addr+1);
+                    bits |= (newbyte << numbits);
+                    numbits += 8;
+                    readahead = true;
+                }
+
+                cab = cablist[bits & 0x0F]; /* CACHEMASK */
+                numbits -= cab.depth;
+                bits >>= cab.depth;
+                bitnum += cab.depth;
+                if (bitnum >= 8) {
+                    addr += 1;
+                    bitnum -= 8;
+                    if (readahead) {
+                        readahead = false;
+                    }
+                    else {
+                        var newbyte = Mem1(addr);
+                        bits |= (newbyte << numbits);
+                        numbits += 8;
+                    }
+                }
+
+                if (cab instanceof Array) {
+                    /* non-leaf node */
+                    cablist = cab;
+                    continue;
+                }
+
+                switch (cab.type) {
+                case 0x01: /* string terminator */
+                    done = 1;
+                    break;
+                case 0x02: /* single character */
+                case 0x04: /* single Unicode character */
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        context.buffer.push(cab.char);
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
+                        context.code.push("tempcallargs[0]="+cab.value+";");
+                        context.code.push("enter_function(iosysrock, 1);");
+                        retval = true;
+                        done = true;
+                        break;
+                    }
+                    cablist = decoding_tree;
+                    break;
+                case 0x03: /* C string */
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        tmpaddr = cab.addr;
+                        while (true) {
+                            ch = Mem1(tmpaddr);
+                            if (ch == 0)
+                                break;
+                            context.buffer.push(CharToString(ch));
+                            tmpaddr++;
+                        }
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
+                        retval = "["+(cab.addr)+", 0xE0, 0]";
+                        done = true;
+                        break;
+                    }
+                    cablist = decoding_tree;
+                    break;
+                case 0x05: /* C Unicode string */
+                    switch (curiosys) {
+                    case 2: /* glk */
+                        tmpaddr = cab.addr;
+                        while (true) {
+                            ch = Mem4(tmpaddr);
+                            if (ch == 0)
+                                break;
+                            context.buffer.push(CharToString(ch));
+                            tmpaddr += 4;
+                        }
+                        break;
+                    case 1: /* filter */
+                        oputil_flush_string(context);
+                        oputil_push_substring_callstub(context);
+                        oputil_push_callstub(context, "0x10,"+bitnum, addr);
+                        retval = "["+(cab.addr)+", 0xE2, 0]";
+                        done = true;
+                        break;
+                    }
+                    cablist = decoding_tree;
+                    break;
+                case 0x08:
+                case 0x09:
+                case 0x0A:
+                case 0x0B: 
+                    oputil_flush_string(context);
+                    oputil_push_substring_callstub(context);
+                    /* It's not worth precomputing this type-test. We could
+                       do it for a single-indirect to a ROM address, and
+                       it'd be mostly okay if we weren't caching this
+                       JIT code. But those aren't the common cases, so
+                       let's not bother. */
+                    context.code.push("var otype, retval;");
+                    context.code.push("var oaddr = "+(cab.addr)+";");
+                    if (cab.type >= 0x09)
+                        context.code.push("oaddr = Mem4(oaddr);");
+                    if (cab.type == 0x0B)
+                        context.code.push("oaddr = Mem4(oaddr);");
+                    context.code.push("otype = Mem1(oaddr);");
+                    retval = "retval";
+                    done = true;
+
+                    oputil_push_callstub(context, "0x10,"+bitnum, addr);
+                    context.code.push("if (otype >= 0xE0 && otype <= 0xFF) {");
+                    context.code.push("retval = [oaddr, 0, 0];");
+                    context.code.push("}");
+                    context.code.push("else if (otype >= 0xC0 && otype <= 0xDF) {");
+                    var argc = 0;
+                    if (cab.type == 0x0A || cab.type == 0x0B) {
+                        argc = Mem4(cab.addr+4);
+                        for (var ix=0; ix<argc; ix++)
+                            context.code.push("tempcallargs["+ix+"]="+Mem4(cab.addr+8+4*ix)+";");
+                    }
+                    context.code.push("enter_function(oaddr, "+argc+");");
+                    context.code.push("retval = true;");
+                    context.code.push("}");
+                    context.code.push("else {");
+                    context.code.push("fatal_error('Unknown object while decoding string indirect reference.', otype);");
+                    context.code.push("}");
+                    break;
+                default:
+                    fatal_error("Unknown entity in string decoding (cached).");
+                    break;
+                }
+            }
+
+            if (done > 1) {
+                continue; /* restart the top-level loop */
+            }
         }
         else {
             var node, byte, nodetype;
