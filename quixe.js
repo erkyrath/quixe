@@ -20,7 +20,7 @@ Quixe = function() {
    starts up. It executes until the first glk_select() or glk_exit().
 */
 function quixe_init() {
-    if (begun_executing) {
+    if (vm_started) {
         Glk.fatal_error("Quixe was inited twice!");
         return;
     }
@@ -43,7 +43,7 @@ function quixe_init() {
 */
 function quixe_resume() {
     try {
-        done_executing = false;
+        done_executing = vm_stopped;
         execute_loop();
     }
     catch (ex) {
@@ -751,7 +751,7 @@ function oputil_perform_jump(context, operand, unconditional) {
                 context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //###debug
             }
             context.code.push("leave_function();");
-            context.code.push("if (stack.length == 0) { done_executing = true; return; }");
+            context.code.push("if (stack.length == 0) { done_executing = true; vm_stopped = true; return; }");
             context.code.push("pop_callstub("+val+");");
         }
         else {
@@ -765,7 +765,7 @@ function oputil_perform_jump(context, operand, unconditional) {
         oputil_unload_offstack(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
         context.code.push("leave_function();");
-        context.code.push("if (stack.length == 0) { done_executing = true; return; }");
+        context.code.push("if (stack.length == 0) { done_executing = true; vm_stopped = true; return; }");
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
@@ -1080,7 +1080,7 @@ var opcode_table = {
         context.code.push("// quashing offstack for return: " + context.offstack.length); //###debug
         context.offstack.length = 0;
         context.code.push("leave_function();");
-        context.code.push("if (stack.length == 0) { done_executing = true; return; }");
+        context.code.push("if (stack.length == 0) { done_executing = true; vm_stopped = true; return; }");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -1495,8 +1495,7 @@ var opcode_table = {
         /* Quash the offstack. No more execution. */
         context.code.push("// quashing offstack for quit: " + context.offstack.length); //###debug
         context.offstack.length = 0;
-        //#### Glk.glk_exit()?
-        context.code.push("done_executing = true;");
+        context.code.push("done_executing = true; vm_stopped = true;");
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -3618,10 +3617,11 @@ var game_image = TEST_GAME_FILE;
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
+var vm_started = false; /* Quixe is initialized */
+var vm_stopped = false; /* Quixe has shut down */
 var tempcallargs; /* only used momentarily, for enter_function() */
 var tempglkargs; /* only used momentarily, for the @glk opcode */
-var begun_executing = false;
-var done_executing; //#### split, please
+var done_executing; /* signals that we've quit *or* paused for interaction */
 
 var vmfunc_table; /* maps addresses to VMFuncs */
 var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
@@ -3663,7 +3663,7 @@ var freetails;     // Hash of end+1 -> size for free blocks.
 function setup_vm() {
     var val, version;
 
-    begun_executing = true;
+    vm_started = true;
     memmap = null;
     stack = [];
     frame = null;
@@ -4117,9 +4117,13 @@ function execute_loop() {
 
     pathend = new Date().getTime(); //###debug
 
-    Glk.update();
+    if (vm_stopped) {
+        /* If the library resumes us after exiting, we'll call glk_exit()
+           again. That's the library's problem. */
+        Glk.glk_exit();
+    }
 
-    //#### check whether Glk has exited?
+    Glk.update();
 
     qlog("### done executing; path time = " + (pathend-pathstart) + " ms");
     /*
