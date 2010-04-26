@@ -2,14 +2,12 @@
 // Change memory to an array of 4-byte values. Inline Mem4 and Mem4W when
 //   address is known to be aligned.
 // Inline Mem1 wherever possible.
-// Put a "with" on the JIT code, to keep the Quixe context at the top of
-//   the scope chain.
 // Is "x instanceof Function" efficient? Should compile_string return a 
 //   tiny tagged object instead?
 // Probably don't want to cache string-functions in filter mode.
 // If a compiled path has no iosys dependencies, we could cache it in
 //   all three iosys caches for the function.
-// #### Also: put in debug asserts for valid stack values (at push/pop)
+// Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 
 Quixe = function() {
@@ -3594,7 +3592,7 @@ function do_gestalt(val, val2) {
         break;
 
     case 5: /* Unicode */
-        break; /* #### */
+        return 1; /* We can handle Unicode. */
 
     case 6: /* MemCopy */
         return 1; /* We can do mcopy/mzero. */
