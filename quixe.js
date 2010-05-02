@@ -4205,11 +4205,11 @@ function assert_heap_valid() {
         var u = usedlist[upos];
         var f = freelist[fpos];
         if (u && u.addr == addr) {
-            qlog(u.addr+" ("+u.size+" alloc)"); //####
+            //qlog("###"+u.addr+" ("+u.size+" alloc)");
             addr += u.size;
             upos++;
         } else if (f && f.addr == addr) {
-            qlog(f.addr+" ("+f.size+" free)"); //####
+            //qlog("###"+f.addr+" ("+f.size+" free)");
             addr += f.size;
             fpos++;
         } else {
