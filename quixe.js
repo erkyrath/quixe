@@ -3815,12 +3815,10 @@ var iosysmode, iosysrock;
 
 var undostack;     // array of VM state snapshots.
 
-/* Memory allocation heap. */
-var heapcount;     // Number of blocks in the heap. If 0, heap is inactive.
+/* Memory allocation heap. Blocks have "addr" and "size" properties. */
 var heapstart;     // Start address of the heap.
-var usedheads;     // Hash of start -> size for allocated blocks.
-var freeheads;     // Hash of start -> size for free blocks.
-var freetails;     // Hash of end+1 -> size for free blocks.
+var usedlist;      // Sorted array of used blocks.
+var freelist;      // Sorted array of free blocks.
 
 /* Set up all the initial VM state.
    #### where does game_image come from?
@@ -3881,11 +3879,9 @@ function setup_vm() {
 
     undostack = [];
 
-    heapcount = 0;
     heapstart = 0;
-    usedheads = {};
-    freeheads = {};
-    freetails = {};
+    usedlist = [];
+    freelist = [];
     
     vm_restart();
 }
@@ -3942,16 +3938,9 @@ function vm_saveundo() {
         snapshot.stack[i] = clone_stackframe(stack[i]);
     }
 
-    snapshot.heapcount = heapcount;
     snapshot.heapstart = heapstart;
-    snapshot.usedheads = {};
-    for (var uhead in usedheads) {
-        snapshot.usedheads[uhead] = usedheads[uhead];
-    }
-    snapshot.freeheads = {};
-    for (var fhead in freeheads) {
-        snapshot.freeheads[fhead] = freeheads[fhead];
-    }
+    snapshot.usedlist = usedlist.slice(0);
+    snapshot.freelist = freelist.slice(0);
 
     undostack.push(snapshot);
     if (undostack.length > 10) {
@@ -3975,19 +3964,9 @@ function vm_restoreundo() {
     frame = stack[stack.length - 1];
     pc = snapshot.pc;
 
-    heapcount = snapshot.heapcount;
     heapstart = snapshot.heapstart;
-    usedheads = {};
-    for (var uhead in snapshot.usedheads) {
-        usedheads[uhead] = snapshot.usedheads[uhead];
-    }
-    freeheads = {};
-    freetails = {};
-    for (var fhead in snapshot.freeheads) {
-        fsize = snapshot.freeheads[fhead];
-        freeheads[fhead] = fsize;
-        freetails[parseInt(fhead) + fsize] = fsize;
-    }
+    usedlist = snapshot.usedlist;
+    freelist = snapshot.freelist;
     
     paste_protected_range(protect);
 
@@ -4095,43 +4074,62 @@ function perform_verify() {
 }
 
 function heap_clear() {
-    heapcount = 0;
     heapstart = 0;
-    usedheads = {};
-    freeheads = {};
-    freetails = {};
+    usedlist = [];
+    freelist = [];
 }
 
 function heap_is_active() {
-    return (heapcount > 0);
+    return (usedlist.length > 0);
 }
 
 function heap_get_start() {
     return heapstart;
 }
 
+/* Constructor. We never modify heap blocks, to ensure they can be reused
+   safely across saveundo() and restore().
+*/
+function HeapBlock(addr, size) {
+    this.addr = addr;
+    this.size = size;
+    this.end = addr + size;
+}
+
+/* Search list of HeapBlock objects for the given address.
+   If the exact address isn't found, return index of next highest address.
+*/
+function heap_binary_search(list, addr) {
+    var low = 0;
+    var high = list.length;
+    while (low < high) {
+        var mid = (low + high) >> 1;
+        if (list[mid].addr < addr) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
 function heap_malloc(size) {
     if (!heap_is_active()) {
         heapstart = endmem;
     }
-    heapcount++;
     
-    for (var fhead in freeheads) {
-        var fsize = freeheads[fhead];
-        if (fsize >= size) {
+    for (var i = 0, max = freelist.length; i < max; i++) {
+        var freeblock = freelist[i];
+        if (freeblock.size >= size) {
             // Free block is big enough. Off with its head.
-            delete freeheads[fhead];
-            // fhead will be a string, because Javascript is annoying, but we need a number.
-            fhead = parseInt(fhead);
-            if (fsize > size) {
-                fsize -= size;
-                freeheads[fhead + size] = fsize;
-                freetails[fhead + size + fsize] = fsize;
+            if (freeblock.size > size) {
+                freelist[i] = new HeapBlock(freeblock.addr + size, freeblock.size - size);
             } else {
-                delete freetails[fhead + fsize];
+                freelist.splice(i, 1);
             }
-            usedheads[fhead] = size;
-            return fhead;
+            var pos = heap_binary_search(usedlist, freeblock.addr);
+            usedlist.splice(pos, 0, new HeapBlock(freeblock.addr, size));
+            return freeblock.addr;
         }
     }
 
@@ -4140,73 +4138,60 @@ function heap_malloc(size) {
     var rounded_up_size = ((size + 0xFF) & 0xFFFFFF00);
     change_memsize(endmem + rounded_up_size, true);
     if (rounded_up_size > size) {
-        var fsize = rounded_up_size - size;
-        freeheads[addr + size] = fsize;
-        freetails[addr + size + fsize] = fsize;
+        freelist.push(new HeapBlock(addr + size, rounded_up_size - size));
     }
-    usedheads[addr] = size;    
+    usedlist.push(new HeapBlock(addr, size));
     return addr;
 }
 
 function heap_free(addr) {
-    var size = usedheads[addr];
-    if (size == undefined) {
+    var pos = heap_binary_search(usedlist, addr);
+    var block = usedlist[pos];
+    if (!block || block.addr != addr) {
         fatal_error("Tried to free non-existent block");
     }
-    delete usedheads[addr];
+    usedlist.splice(pos, 1);
     
-    heapcount--;
-    if (heapcount == 0) {
+    if (usedlist.length == 0) {
         // No allocated blocks left. Blow away the whole heap.
         change_memsize(heapstart, true);
         heap_clear();
         return;
     }
 
+    // Find the correct position to insert this block into the freelist.
+    pos = heap_binary_search(freelist, addr);
+
     // If the next block is free, merge with it.
-    var nextsize = freeheads[addr + size];
-    if (nextsize != undefined) {
-        delete freeheads[addr + size];
-        delete freetails[addr + size + nextsize];
-        size += nextsize;
+    var next = freelist[pos];
+    if (next && next.addr == block.end) {
+        block = new HeapBlock(addr, block.size + next.size);
+        freelist.splice(pos, 1);
     }
     
     // If the previous block is free, merge with it.
-    var prevsize = freetails[addr];
-    if (prevsize != undefined) {
-        delete freeheads[addr - prevsize];
-        delete freetails[addr];
-        size += prevsize;
-        addr -= prevsize;
+    var prev = freelist[pos - 1];
+    if (prev && prev.end == block.addr) {
+        block = new HeapBlock(prev.addr, prev.size + block.size);
+        freelist.splice(pos - 1, 1);
+        pos -= 1;
     }
     
-    freeheads[addr] = size;
-    freetails[addr + size] = size;
+    freelist.splice(pos, 0, block);
 }
 
 /* Check that the heap state is consistent. This is slow.
 */
 function assert_heap_valid() {
-    var addr, res, size, count;
-
-    if (heapcount == 0) {
+    if (!heap_is_active()) {        
         if (heapstart != 0)
             fatal_error("Heap inconsistency: heapstart nonzero");
 
-        res = false;
-        for (addr in usedheads) { res = true; }
-        if (res)
-            fatal_error("Heap inconsistency: usedheads nonempty");
+        if (usedlist.length > 0)
+            fatal_error("Heap inconsistency: usedlist nonempty");
 
-        res = false;
-        for (addr in freeheads) { res = true; }
-        if (res)
-            fatal_error("Heap inconsistency: freeheads nonempty");
-
-        res = false;
-        for (addr in freetails) { res = true; }
-        if (res)
-            fatal_error("Heap inconsistency: freetails nonempty");
+        if (freelist.length > 0)
+            fatal_error("Heap inconsistency: usedlist nonempty");
 
         return;
     }
@@ -4214,45 +4199,24 @@ function assert_heap_valid() {
     if (heapstart == 0)
         fatal_error("Heap inconsistency: heapstart is zero");
 
-    for (addr in freeheads) {
-        addr = parseInt(addr);
-        if (usedheads[addr] != null)
-            fatal_error("Heap inconsistency: address in both freeheads and usedheads");
-        size = freeheads[addr];
-        if (freetails[addr+size] != size)
-            fatal_error("Heap inconsistency: freeheads does not match freetails");
-    }
-
-    for (addr in freetails) {
-        addr = parseInt(addr);
-        size = freetails[addr];
-        if (freeheads[addr-size] != size)
-            fatal_error("Heap inconsistency: freetails does not match freeheads");
-    }
-
-    count = 0;
-    for (addr in usedheads) {
-        count++;
-    }
-    if (count != heapcount)
-        fatal_error("Heap inconsistency: heapcount is wrong");
-
-    addr = heapstart;
-    while (addr < endmem) {
-        if (freeheads[addr]) {
-            size = freeheads[addr];
-            qlog(addr+" ("+size+" free)"); //####
-            addr += size;
-        }
-        else if (usedheads[addr]) {
-            size = usedheads[addr];
-            qlog(addr+" ("+size+" alloc)"); //####
-            addr += size;
-        }
-        else {
-            fatal_error("Heap inconsistency: gap in heap");
+    var addr = heapstart;
+    var upos = 0, fpos = 0;
+    while (upos < usedlist.length || fpos < freelist.length) {
+        var u = usedlist[upos];
+        var f = freelist[fpos];
+        if (u && u.addr == addr) {
+            qlog(u.addr+" ("+u.size+" alloc)"); //####
+            addr += u.size;
+            upos++;
+        } else if (f && f.addr == addr) {
+            qlog(f.addr+" ("+f.size+" free)"); //####
+            addr += f.size;
+            fpos++;
+        } else {
+            fatal_error("Heap inconsistency: no block at address " + addr);
         }
     }
+    
     if (addr != endmem)
         fatal_error("Heap inconsistency: overrun at end of heap");
 }
