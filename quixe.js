@@ -3160,7 +3160,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         if (decoding_tree) {
             var bits, numbits, readahead, tmpaddr;
             var cablist, cab;
-            var done = 0;
+            var done = false;
 
             /* bitnum is already set right */
             bits = Mem1(addr); 
@@ -3174,7 +3174,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                    a branch, then it must be a string-terminator -- otherwise
                    the string would be an infinite repetition of that block.
                    We check for this case and bail immediately. */
-                done = 1;
+                done = true;
             }
 
             cablist = decoding_tree;
@@ -3212,7 +3212,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
 
                 switch (cab.type) {
                 case 0x01: /* string terminator */
-                    done = 1;
+                    done = true;
                     break;
                 case 0x02: /* single character */
                 case 0x04: /* single Unicode character */
@@ -3320,16 +3320,11 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     break;
                 }
             }
-
-            if (done > 1) {
-                continue; /* restart the top-level loop */
-            }
         }
-        else {
+        else {  /* No decoding_tree available. */
             var node, byte, nodetype;
             var done = false;
-
-            /* No decoding_tree available. */
+            
             if (!stringtable)
                 fatal_error("Attempted to print a compressed string with no table set.");
             /* bitnum is already set right */
