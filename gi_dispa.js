@@ -499,13 +499,32 @@ function build_function(func) {
             out.push('}');
             argpos += 2;
         }
-        else if ((arg instanceof ArgString) || (arg instanceof ArgUnicode)) {
+        else if (arg instanceof ArgString) {
+            locals['ix'] = true;
+            locals['jx'] = true;
             out.push(tmpvar+' = Array();');
-            out.push('for (jx=callargs['+argpos+']; true; jx+='+arg.refsize+') {');
-            out.push('  ix = VM.Read'+arg.macro+'(jx);');
+            out.push('jx = callargs['+argpos+'];');
+            out.push('if (VM.ReadByte(jx) != 0xE0) throw("glk '+func.name+': string argument must be unencoded");');
+            out.push('for (jx+=1; true; jx+=1) {');
+            out.push('  ix = VM.ReadByte(jx);');
             out.push('  if (ix == 0) break;');
             out.push('  '+tmpvar+'.push(ix);');
             out.push('}');
+            out.push(tmpvar+' = Glk.byte_array_to_string('+tmpvar+');');
+            argpos += 1;
+        }
+        else if (arg instanceof ArgUnicode) {
+            locals['ix'] = true;
+            locals['jx'] = true;
+            out.push(tmpvar+' = Array();');
+            out.push('jx = callargs['+argpos+'];');
+            out.push('if (VM.ReadByte(jx) != 0xE2) throw("glk '+func.name+': unistring argument must be unencoded");');
+            out.push('for (jx+=4; true; jx+=4) {');
+            out.push('  ix = VM.ReadWord(jx);');
+            out.push('  if (ix == 0) break;');
+            out.push('  '+tmpvar+'.push(ix);');
+            out.push('}');
+            out.push(tmpvar+' = Glk.uni_array_to_string('+tmpvar+');');
             argpos += 1;
         }
         else {

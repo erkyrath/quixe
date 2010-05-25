@@ -1641,10 +1641,10 @@ var opcode_table = {
             var sign0 = oputil_signify_operand(context, operands[0]);
             if (quot_isconstant(operands[0])) {
                 var val = Number(sign0).toString(10);
-                context.code.push("Glk.glk_put_jstring("+QuoteEscapeString(val)+");");
+                context.code.push("Glk.glk_put_jstring("+QuoteEscapeString(val)+", true);");
             }
             else {
-                context.code.push("Glk.glk_put_jstring(("+sign0+").toString(10));");
+                context.code.push("Glk.glk_put_jstring(("+sign0+").toString(10), true);");
             }
             break;
         case 1: /* filter */
@@ -2987,7 +2987,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
     case 2: /* glk */
         if (charnum)
             buf = buf.slice(charnum);
-        Glk.glk_put_jstring(buf);
+        Glk.glk_put_jstring(buf, true);
         break;
 
     case 1: /* filter */
