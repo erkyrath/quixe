@@ -672,11 +672,12 @@ var blocked_callargs = null;
    that into the VM's memory map.
 
    We cheat, here, and rely on knowing that only glk_select can block
-   and then come back. A "correct" implementation would be able to
+   and then come back.### A "correct" implementation would be able to
    handle the unload part of any Glk call. 
 */
 function prepare_resume(glka0) {
-    if (blocked_selector == 192) {
+    if (blocked_selector == 0x0C0) {
+        // glk_select
         if (blocked_callargs[0] != 0) {
             VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
             VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));

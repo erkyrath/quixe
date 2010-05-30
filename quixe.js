@@ -572,6 +572,40 @@ function setup_operandlist_table() {
 
 /* Some utility functions for opcode handlers. */
 
+var funcop_cache = {};
+
+/* Return a Javascript literal representing a funcop. The funcop can be used
+   later with store_operand_by_funcop(). For efficiency, this represents a
+   "discard" funcop as "null".
+
+   For more efficiency (to avoid creating objects in commonly-called
+   functions), the literal we return looks like "funcop_cache.mXsYaZ".
+   We fill in the cache as necessary.
+
+   (We can't just store the passed-in funcop, because it's a scratch object
+   that will be overwritten.)
+*/
+function oputil_record_funcop(funcop) {
+    if (funcop.mode == 0) {
+        /* discard value */
+        return "null";
+    }
+
+    var key = "m" + funcop.mode;
+    if (funcop.argsize != null)
+        key = key + "s" + funcop.argsize;
+    if (funcop.addr != null)
+        key = key + "a" + funcop.addr;
+
+    if (funcop_cache.key)
+        return "funcop_cache."+key;
+
+    var obj = { mode: funcop.mode, argsize: funcop.argsize, addr: funcop.addr };
+    funcop_cache[key] = obj;
+    qlog("### record_funcop: key " + key + " = " + obj); //####
+    return "funcop_cache."+key;
+}
+
 /* Store the result of an opcode, using the information specified in
    funcop. The operand may be a quoted constant, a holdvar, or an
    expression. (As usual, constants are identified by starting with a
@@ -1751,20 +1785,15 @@ var opcode_table = {
             oputil_unload_offstack(context);
             context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempglkargs[ix]=frame.valstack.pop(); }");
         }
-        /* We treat the offstack a little cavalierly, here. We need to store
-           the glk return value in two places -- the blocking case (always
-           zero) and the normal case. This means calling oputil_store twice,
-           which could leave two values on the offstack. Fortunately, we
-           want to unload in between the two lines -- and we just unloaded
-           anyhow, so we know the offstack is empty right now. */
+        /* In the blocking case, we don't perform a normal store; we write a
+           literal form of operands[2] into a global and get out. Fortunately
+           we just unloaded the offstack. The non-blocking case is a normal
+           store. */
         context.varsused["glkret"] = true;
         context.code.push("glkret = GiDispa.get_function("+operands[0]+")(tempglkargs);");
         if (mayblock) {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
-            /* This assumes that a delayed-return Glk function always returns
-               zero (or nothing). Currently this is true. */
-            oputil_store(context, operands[2], "0");
-            oputil_unload_offstack(context);
+            context.code.push("  resumefuncop = "+oputil_record_funcop(operands[2])+";");
             context.code.push("  pc = "+context.cp+";");
             context.code.push("  done_executing = true;");
             context.code.push("  return;");
@@ -2763,6 +2792,52 @@ function store_operand(desttype, destaddr, val) {
         return;
     default:
         fatal_error("Unrecognized desttype in callstub.", desttype);
+    }
+}
+
+/* Do the value-storing work for a funcop. A null funcop is equivalent
+   to mode 0 "discard".
+*/
+function store_operand_by_funcop(funcop, val) {
+    if (!funcop)
+        return;
+
+    switch (funcop.mode) {
+
+    case 8: /* push on stack */
+        frame.valstack.push(val);
+        return;
+
+    case 0: /* discard value */
+        return;
+
+    case 11: /* The local-variable cases. */
+        if (funcop.argsize == 4) {
+            frame.locals[funcop.addr] = (val);
+        }
+        else if (funcop.argsize == 2) {
+            frame.locals[funcop.addr] = (0xffff & val);
+        }
+        else {
+            frame.locals[funcop.addr] = (0xff & val);
+        }
+        return;
+
+    case 15: /* The main-memory cases. */
+        if (funcop.argsize == 4) {
+            MemW4(funcop.addr, val);
+        }
+        else if (funcop.argsize == 2) {
+            MemW2(funcop.addr, val);
+        }
+        else {
+            MemW1(funcop.addr, val);
+        }
+        return;
+
+    default:
+        fatal_error("Unknown addressing mode in store func operand.");
+
     }
 }
 
@@ -3796,7 +3871,7 @@ var random_func; /* Math.random or deterministic equivalent */
 var ramstart;
 var endgamefile;   // always game_image.length
 var origendmem;
-var stacksize;     // not used
+var stacksize;     // not used -- we allow the stack to grow as needed
 var startfuncaddr;
 var origstringtable;
 var checksum;
@@ -3809,6 +3884,7 @@ var protectstart, protectend;
 var iosysmode, iosysrock;
 
 var undostack;     // array of VM state snapshots.
+var resumefuncop;
 
 /* Memory allocation heap. Blocks have "addr" and "size" properties. */
 var heapstart;     // Start address of the heap.
@@ -4277,6 +4353,7 @@ return {
     version: '0.1.0', /* Quixe version */
     init: quixe_init,
     resume: quixe_resume,
+    funcop_cache: funcop_cache, //####debug
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
