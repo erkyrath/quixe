@@ -607,7 +607,6 @@ function oputil_record_funcop(funcop) {
     var obj = { key: key, 
         mode: funcop.mode, argsize: funcop.argsize, addr: funcop.addr };
     funcop_cache[key] = obj;
-    qlog("### record_funcop: key " + key + " = " + obj.key); //####
     return "funcop_cache."+key;
 }
 
@@ -4368,7 +4367,6 @@ return {
     version: '0.1.0', /* Quixe version */
     init: quixe_init,
     resume: quixe_resume,
-    funcop_cache: funcop_cache, //####debug
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
