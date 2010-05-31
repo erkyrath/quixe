@@ -532,7 +532,7 @@ function setup_operandlist_table() {
         0x120: list_none, /* quit */
         0x121: list_S, /* verify */
         0x122: list_none, /* restart */
-        0x123: list_LS, /* save */
+        0x123: list_LC, /* save */
         0x124: list_LS, /* restore */
         0x125: list_C, /* saveundo */
         0x126: list_S, /* restoreundo */
@@ -1544,11 +1544,28 @@ var opcode_table = {
     },
 
     0x123: function(context, operands) { /* save */
-        context.code.push(operands[1]+"1);"); /*#### failure */
+        oputil_unload_offstack(context);
+        context.varsused["ix"] = true;
+        oputil_push_callstub(context, operands[1]);
+        context.code.push("ix = vm_save("+operands[0]+");");
+        context.code.push("pop_callstub(ix ? 0 : 1);");
+        context.code.push("return;");
+        context.path_ends = true;
     },
 
     0x124: function(context, operands) { /* restore */
-        context.code.push(operands[1]+"1);"); /*#### failure */
+        oputil_unload_offstack(context);
+        context.code.push("if (vm_restore("+operands[0]+")) {");
+        /* Succeeded. Pop the call stub that save pushed, using -1
+           to indicate success. */
+        context.code.push("pop_callstub((-1)>>>0);");
+        context.code.push("} else {");
+        /* Failed to restore. Put back the PC, in case it got overwritten. */
+        context.code.push(operands[1]+"1);");
+        context.code.push("pc = "+context.cp+";");
+        context.code.push("}");
+        context.code.push("return;");
+        context.path_ends = true;
     },
 
     0x125: function(context, operands) { /* saveundo */
@@ -4000,6 +4017,39 @@ function vm_restart() {
     /* We're now ready to execute. */
 }
 
+/* Writes a snapshot of the VM state to the given Glk stream. Returns true
+   on success. 
+*/
+function vm_save(streamid) {
+    if (memmap.length != endmem) 
+        fatal_error("Memory length was incorrect before save."); //###assert
+
+    if (iosysmode != 2)
+        fatal_error("Streams are only available in Glk I/O system.");
+
+    var str = GiDispa.class_obj_from_id('stream', streamid);
+    if (!str)
+        return false;
+
+    Glk.glk_put_jstring_stream(str, "Fake save data."); //####
+
+    return false; //#### failure
+}
+
+/* Reads a VM state snapshot from the given Glk stream and restores it.
+   Returns true on success.
+*/
+function vm_restore(streamid) {
+    if (iosysmode != 2)
+        fatal_error("Streams are only available in Glk I/O system.");
+
+    var str = GiDispa.class_obj_from_id('stream', streamid);
+    if (!str)
+        return false;
+
+    return false; //#### failure
+}
+
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
    many on the stack, throw away the oldest.
 */
@@ -4307,7 +4357,7 @@ function execute_loop() {
     var pathstart, pathend;
 
     if (resumefuncop) {
-        qlog("### at resume time, storing value " + resumevalue + " at funcop " + resumefuncop.key);
+        //qlog("### at resume time, storing value " + resumevalue + " at funcop " + resumefuncop.key);
         store_operand_by_funcop(resumefuncop, resumevalue);
         resumefuncop = null;
         resumevalue = 0;

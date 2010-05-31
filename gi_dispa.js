@@ -842,6 +842,8 @@ return {
     prepare_resume: prepare_resume,
     class_register: class_register,
     class_unregister: class_unregister,
+    class_obj_to_id: class_obj_to_id,
+    class_obj_from_id: class_obj_from_id,
     retain_array: retain_array,
     unretain_array: unretain_array,
 };
