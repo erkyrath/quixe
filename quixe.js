@@ -224,6 +224,10 @@ function WriteStructField(addr, fieldnum, val) {
         MemW4(addr + 4*fieldnum, val);
 }
 
+function SetResumeStore(val) {
+    resumevalue = val;
+}
+
 /* Convert a 32-bit Unicode value to a JS string. */
 function CharToString(val) {
     if (val < 0x10000) {
@@ -600,9 +604,10 @@ function oputil_record_funcop(funcop) {
     if (funcop_cache.key)
         return "funcop_cache."+key;
 
-    var obj = { mode: funcop.mode, argsize: funcop.argsize, addr: funcop.addr };
+    var obj = { key: key, 
+        mode: funcop.mode, argsize: funcop.argsize, addr: funcop.addr };
     funcop_cache[key] = obj;
-    qlog("### record_funcop: key " + key + " = " + obj); //####
+    qlog("### record_funcop: key " + key + " = " + obj.key); //####
     return "funcop_cache."+key;
 }
 
@@ -1794,6 +1799,7 @@ var opcode_table = {
         if (mayblock) {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
             context.code.push("  resumefuncop = "+oputil_record_funcop(operands[2])+";");
+            context.code.push("  resumevalue = 0;");
             context.code.push("  pc = "+context.cp+";");
             context.code.push("  done_executing = true;");
             context.code.push("  return;");
@@ -2836,7 +2842,7 @@ function store_operand_by_funcop(funcop, val) {
         return;
 
     default:
-        fatal_error("Unknown addressing mode in store func operand.");
+        fatal_error("Unknown addressing mode in store func by operand.");
 
     }
 }
@@ -3884,7 +3890,7 @@ var protectstart, protectend;
 var iosysmode, iosysrock;
 
 var undostack;     // array of VM state snapshots.
-var resumefuncop;
+var resumefuncop, resumevalue;
 
 /* Memory allocation heap. Blocks have "addr" and "size" properties. */
 var heapstart;     // Start address of the heap.
@@ -3898,6 +3904,8 @@ function setup_vm() {
     var val, version;
 
     vm_started = true;
+    resumefuncop = null;
+    resumevalue = 0;
     memmap = null;
     stack = [];
     frame = null;
@@ -4299,6 +4307,13 @@ function execute_loop() {
     var vmfunc, pathtab, path;
     var pathstart, pathend;
 
+    if (resumefuncop) {
+        qlog("### at resume time, storing value " + resumevalue + " at funcop " + resumefuncop.key);
+        store_operand_by_funcop(resumefuncop, resumevalue);
+        resumefuncop = null;
+        resumevalue = 0;
+    }
+
     pathstart = new Date().getTime(); //###debug
 
     while (!done_executing) {
@@ -4361,6 +4376,7 @@ return {
     WriteWord: WriteArgWord,
     ReadStructField: ReadStructField,
     WriteStructField: WriteStructField,
+    SetResumeStore: SetResumeStore,
 };
 
 }();

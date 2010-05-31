@@ -685,6 +685,10 @@ function prepare_resume(glka0) {
             VM.WriteStructField(blocked_callargs[0], 3, glka0.get_field(3) >>> 0);
         }
     }
+    else if (blocked_selector == 0x062) {
+        // glk_fileref_create_by_prompt
+        VM.SetResumeStore(class_obj_to_id("fileref", glka0));
+    }
     blocked_selector = null;
     blocked_callargs = null;
 }
