@@ -1,10 +1,29 @@
+/* GiDispa -- a GlkAPI dispatch layer for Quixe
+ * Designed by Andrew Plotkin <erkyrath@eblong.com>
+ * <http://eblong.com/zarf/glulx/quixe/>
+ * 
+ * This Javascript library is copyright 2010 by Andrew Plotkin. You may
+ * copy and distribute it freely, by any means and under any conditions,
+ * as long as the code and documentation is not changed. You may also
+ * incorporate this code into your own program and distribute that, or
+ * modify this code and use and distribute the modified version, as long
+ * as you retain a notice in your program or documentation which mentions
+ * my name and the URL shown above.
+ *
+ * This is the code layer that sits in between Quixe and GlkAPI. It provides
+ * Glk entry points for every Glk call; Quixe's @glk opcode invokes these. It
+ * also translates between Glk opaque objects (windows, streams, filerefs, etc)
+ * to Quixe 32-bit numeric IDs.
+ */
+
 GiDispa = function() {
 
 //### Should split WriteWord into a WriteRefWord and WriteArrayWord,
 //### with different handling of -1. Etc.
 
 /* The VM interface object. GiDispa needs this to load and store reference
-   arguments, from and to VM memory. */
+   arguments, from and to VM memory. When this layer is used with Quixe,
+   VM is just an alias for the Quixe interface object. */
 var VM = null;
 
 /* Set the VM interface object. This is called by the Glk library, before
@@ -298,16 +317,6 @@ var proto_map = {
 
 
 
-/* Log the message in the browser's error log, if it has one. (This shows
-   up in Safari, in Opera, and in Firefox if you have Firebug installed.)
-*/
-function qlog(msg) {
-    if (window.console && console.log)
-        console.log(msg);
-    else if (window.opera && opera.postError)
-        opera.postError(msg);
-}
-
 /* Convert one simple value (int, char, string, class) from a Glulx
    value (32-bit unsigned integer) into a Glk library value.
 */
@@ -383,16 +392,20 @@ function uncast_signed_char(val) {
     return val;
 }
 
-function class_obj_from_id(clas, val) {
-    if (val == 0)
-        return null;
-    return class_map[clas][val];
-}
-
+/* Convert an opaque object (a window, stream, or whatever) to a Glulx value
+   (an unsigned 32-bit number).
+*/
 function class_obj_to_id(clas, val) {
     if (!val)
         return 0;
     return val.disprock;
+}
+
+/* The converse. */
+function class_obj_from_id(clas, val) {
+    if (val == 0)
+        return null;
+    return class_map[clas][val];
 }
 
 /* Convert a FuncSpec object into a Javascript function. The function,
@@ -671,9 +684,8 @@ var blocked_callargs = null;
    the argument to the original blocked call. Our job is to unload
    that into the VM's memory map.
 
-   We cheat, here, and rely on knowing that only glk_select can block
-   and then come back.### A "correct" implementation would be able to
-   handle the unload part of any Glk call. 
+   We cheat, here, and rely on knowing that only a couple of Glk calls can
+   block. (glk_exit can block too, but of course it doesn't resume.)
 */
 function prepare_resume(glka0) {
     if (blocked_selector == 0x0C0) {
