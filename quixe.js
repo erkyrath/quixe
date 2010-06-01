@@ -23,6 +23,107 @@
 // Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 
+/* The following function is not namespaced. I'm not sure how I want to handle
+   story-loading yet. This is scaffolding.
+*/
+
+function GetQueryParams() {
+    /* Adapted from querystring.js by Adam Vandenberg */
+    var map = {};
+
+    var qs = location.search.substring(1, location.search.length);
+    if (qs.length) {
+        var args = qs.split('&');
+
+        qs = qs.replace(/\+/g, ' ');
+        for (var ix = 0; ix < args.length; ix++) {
+            var pair = args[ix].split('=');
+            var name = decodeURIComponent(pair[0]);
+            
+            var value = (pair.length==2)
+                ? decodeURIComponent(pair[1])
+                : name;
+            
+            map[name] = value;
+        }
+    }
+
+    return map;
+}
+
+function TriggerLoadGameFile() {
+    var gamefile = null;
+
+    var qparams = GetQueryParams();
+    gamefile = qparams['story'];
+
+    if (!gamefile)
+        if (window.game_options && game_options.default_story)
+            gamefile = game_options.default_story;
+
+    if (!gamefile) {
+        Glk.fatal_error("No story file specified!");
+        return;
+    }
+
+    var headls = $$('head');
+    if (!headls || headls.length == 0) {
+        Glk.fatal_error("Quixe document has no <head> element!");
+        return;
+    }
+    var head = headls[0];
+    var script = new Element('script', 
+        { src:gamefile, 'type':"text/javascript" });
+    head.insert(script);
+}
+
+function ParseAsBlorb(image) {
+    var len = image.length;
+    var pos = 12;
+
+    while (pos < len) {
+        var chunktype = String.fromCharCode(image[pos+0], image[pos+1], image[pos+2], image[pos+3]);
+        pos += 4;
+        var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
+        pos += 4;
+
+        if (chunktype == "GLUL") {
+            return image.slice(pos, pos+chunklen);
+        }
+
+        pos += chunklen;
+        if (pos & 1)
+            pos++;
+    }
+
+    return null;
+}
+
+function DecodeGameFile(base64data) {
+    var data = atob(base64data);
+    base64data = null;
+    var image = Array(data.length);
+    var ix;
+
+    for (ix=0; ix<data.length; ix++)
+        image[ix] = data.charCodeAt(ix);
+    data = null;
+
+    if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
+        image = ParseAsBlorb(image);
+        if (!image) {
+            Glk.fatal_error("Blorb file contains no Glulx game!");
+            return;
+        }
+    }
+
+    Quixe.set_game_image(image);
+
+    Glk.init(Quixe);
+}
+/* This is backwards compatibility for the Parchment zcode2js tool. */
+processBase64Zcode = DecodeGameFile;
+
 Quixe = function() {
 
 /* This is called by the page (or the page's display library) when it
@@ -3883,7 +3984,7 @@ function linked_search(key, keysize, start,
 
 /* The VM state variables */
 
-var game_image = TEST_GAME_FILE;
+var game_image = null;
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
@@ -3931,6 +4032,9 @@ var freelist;      // Sorted array of free blocks.
 */
 function setup_vm() {
     var val, version;
+
+    if (!game_image)
+        fatal_error("There is no Glulx game file loaded.");
 
     vm_started = true;
     resumefuncop = null;
@@ -4428,6 +4532,7 @@ function execute_loop() {
 
 return {
     version: '0.1.0', /* Quixe version */
+    set_game_image: function(arr) { game_image = arr; }, //### correct?
     init: quixe_init,
     resume: quixe_resume,
 
