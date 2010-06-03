@@ -2763,6 +2763,8 @@ function compile_path(vmfunc, startaddr, startiosys) {
 function enter_function(addr, argcount) {
     var ix;
 
+    total_function_calls++; //###stats
+
     /* If we supported accelerated functions, we'd check and dispatch them
        here. */
 
@@ -3265,10 +3267,13 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             if (strop === undefined) {
                 strop = compile_string(iosysmode, addr, inmiddle, bitnum);
                 vmstring_table[addrkey] = strop;
+                strings_compiled++; //###stats
+                strings_cached++; //###stats
             }
         }
         else {
             strop = compile_string(iosysmode, addr, inmiddle, bitnum);
+            strings_compiled++; //###stats
         }
 
         //qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
@@ -4027,6 +4032,15 @@ var heapstart;     // Start address of the heap.
 var usedlist;      // Sorted array of used blocks.
 var freelist;      // Sorted array of free blocks.
 
+/* Statistics -- may only be meaningful in a debug release. */
+var total_execution_time = 0;
+var total_function_calls = 0;
+var total_path_calls = 0;
+var paths_cached = 0;
+var paths_compiled = 0;
+var strings_cached = 0;
+var strings_compiled = 0;
+
 /* Set up all the initial VM state.
    #### where does game_image come from?
 */
@@ -4318,6 +4332,25 @@ function perform_verify() {
     return 0;
 }
 
+/* Return whatever information seems useful about execution so far.
+   This is not meant to be super-efficient; it does some counting
+   every time you call it.
+*/
+function get_statistics() {
+    var stat = {
+        game_image_length: game_image.length,
+        total_execution_time: total_execution_time,
+        total_function_calls: total_function_calls,
+        total_path_calls: total_path_calls,
+        paths_cached: paths_cached,
+        paths_compiled: paths_compiled,
+        strings_cached: strings_cached,
+        strings_compiled: strings_compiled,
+    };
+
+    return stat;
+}
+
 function heap_clear() {
     heapstart = 0;
     usedlist = [];
@@ -4480,7 +4513,7 @@ function execute_loop() {
         resumevalue = 0;
     }
 
-    pathstart = new Date().getTime(); //###debug
+    pathstart = new Date().getTime(); //###stats
 
     while (!done_executing) {
         //qlog("### pc now " + pc.toString(16));
@@ -4490,9 +4523,13 @@ function execute_loop() {
         if (path === undefined) {
             vmfunc.pathaddrs[pc] = true;
             path = compile_path(vmfunc, pc, iosysmode);
-            if (pc < ramstart)
+            paths_compiled++; //###stats
+            if (pc < ramstart) {
                 pathtab[pc] = path;
+                paths_cached++; //###stats
+            }
         }
+        total_path_calls++; //###stats
         try {
             path();
         }
@@ -4508,7 +4545,8 @@ function execute_loop() {
         }
     }
 
-    pathend = new Date().getTime(); //###debug
+    pathend = new Date().getTime(); //###stats
+    total_execution_time += (pathend-pathstart) / 1000.0; //###stats
 
     if (vm_stopped) {
         /* If the library resumes us after exiting, we'll call glk_exit()
@@ -4535,6 +4573,7 @@ return {
     set_game_image: function(arr) { game_image = arr; }, //### correct?
     init: quixe_init,
     resume: quixe_resume,
+    get_statistics: get_statistics,
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
