@@ -125,8 +125,8 @@ else {
         
     Base64ToArray = function(base64data) {
         var out = [];
-        var c1, c2, c3, e1, e2, e3, e4,
-	var i = 0, len = base64data.length;
+        var c1, c2, c3, e1, e2, e3, e4;
+        var i = 0, len = base64data.length;
         while (i < len) {
             e1 = b64decoder[base64data.charAt(i++)];
             e2 = b64decoder[base64data.charAt(i++)];
@@ -3191,11 +3191,11 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
     switch (type) {
     case 0x02: /* 8-bit character */
         cab.value = Mem1(nodeaddr);
-        cab.char = CharToString(cab.value);
+        cab.Char = CharToString(cab.value);
         break;
     case 0x04: /* Unicode character */
         cab.value = Mem4(nodeaddr);
-        cab.char = CharToString(cab.value);
+        cab.Char = CharToString(cab.value);
         break;
     case 0x03: /* C-style string */
     case 0x05: /* C-style unicode string */
@@ -3474,7 +3474,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                 case 0x04: /* single Unicode character */
                     switch (curiosys) {
                     case 2: /* glk */
-                        context.buffer.push(cab.char);
+                        context.buffer.push(cab.Char);
                         break;
                     case 1: /* filter */
                         oputil_flush_string(context);
@@ -3578,15 +3578,15 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             }
         }
         else {  /* No decoding_tree available. */
-            var node, byte, nodetype;
+            var node, Byte, nodetype;
             var done = false;
             
             if (!stringtable)
                 fatal_error("Attempted to print a compressed string with no table set.");
             /* bitnum is already set right */
-            byte = Mem1(addr);
+            Byte = Mem1(addr);
             if (bitnum)
-                byte >>= bitnum;
+                Byte >>= bitnum;
             node = Mem4(stringtable+8);
 
             while (!done) {
@@ -3594,18 +3594,18 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                 node++;
                 switch (nodetype) {
                 case 0x00: /* non-leaf node */
-                    if (byte & 1) 
+                    if (Byte & 1) 
                         node = Mem4(node+4);
                     else
                         node = Mem4(node+0);
                     if (bitnum == 7) {
                         bitnum = 0;
                         addr++;
-                        byte = Mem1(addr);
+                        Byte = Mem1(addr);
                     }
                     else {
                         bitnum++;
-                        byte >>= 1;
+                        Byte >>= 1;
                     }
                     break;
                 case 0x01: /* string terminator */
@@ -3905,7 +3905,7 @@ function fetch_search_key(addr, len, options) {
 function linear_search(key, keysize, start, 
     structsize, numstructs, keyoffset, options) {
 
-    var ix, count, match, byte;
+    var ix, count, match, Byte;
     var retindex = ((options & 4) != 0);
     var zeroterm = ((options & 2) != 0);
     var keybuf = fetch_search_key(key, keysize, options);
@@ -3913,8 +3913,8 @@ function linear_search(key, keysize, start,
     for (count=0; count<numstructs; count++, start+=structsize) {
         match = true;
         for (ix=0; match && ix<keysize; ix++) {
-            byte = Mem1(start + keyoffset + ix);
-            if (byte != keybuf[ix])
+            Byte = Mem1(start + keyoffset + ix);
+            if (Byte != keybuf[ix])
                 match = false;
         }
 
@@ -3928,8 +3928,8 @@ function linear_search(key, keysize, start,
         if (zeroterm) {
             match = true;
             for (ix=0; match && ix<keysize; ix++) {
-                byte = Mem1(start + keyoffset + ix);
-                if (byte != 0)
+                Byte = Mem1(start + keyoffset + ix);
+                if (Byte != 0)
                     match = false;
             }
             
@@ -3949,7 +3949,7 @@ function binary_search(key, keysize, start,
     structsize, numstructs, keyoffset, options) {
 
     var top, bot, addr, val, cmp, ix;
-    var byte, byte2;
+    var Byte, Byte2;
     var retindex = ((options & 4) != 0);
     var keybuf = fetch_search_key(key, keysize, options);
 
@@ -3960,11 +3960,11 @@ function binary_search(key, keysize, start,
         val = (top+bot) >> 1;
         addr = start + val * structsize;
         for (ix=0; (!cmp) && ix<keysize; ix++) {
-            byte = Mem1(addr + keyoffset + ix);
-            byte2 = keybuf[ix];
-            if (byte < byte2)
+            Byte = Mem1(addr + keyoffset + ix);
+            Byte2 = keybuf[ix];
+            if (Byte < Byte2)
                 cmp = -1;
-            else if (byte > byte2)
+            else if (Byte > Byte2)
                 cmp = 1;
         }
 
@@ -3992,15 +3992,15 @@ function binary_search(key, keysize, start,
 function linked_search(key, keysize, start, 
     keyoffset, nextoffset, options) {
 
-    var ix, byte, match;
+    var ix, Byte, match;
     var zeroterm = ((options & 2) != 0);
     var keybuf = fetch_search_key(key, keysize, options);
 
     while (start != 0) {
         match = true;
         for (ix=0; match && ix<keysize; ix++) {
-            byte = Mem1(start + keyoffset + ix);
-            if (byte != keybuf[ix])
+            Byte = Mem1(start + keyoffset + ix);
+            if (Byte != keybuf[ix])
                 match = false;
         }
 
@@ -4011,8 +4011,8 @@ function linked_search(key, keysize, start,
         if (zeroterm) {
             match = true;
             for (ix=0; match && ix<keysize; ix++) {
-                byte = Mem1(start + keyoffset + ix);
-                if (byte != 0)
+                Byte = Mem1(start + keyoffset + ix);
+                if (Byte != 0)
                     match = false;
             }
             
