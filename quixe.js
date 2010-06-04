@@ -121,7 +121,7 @@ else {
             for (ix=0; ix<b64encoder.length; ix++)
                 out[b64encoder.charAt(ix)] = ix;
             return out;
-	})();
+        })();
         
     Base64ToArray = function(base64data) {
         var out = [];
