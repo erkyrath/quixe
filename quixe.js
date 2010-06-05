@@ -22,6 +22,9 @@
 //   all three iosys caches for the function.
 // Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
+// Should we be caching arrays instead of strings?
+
+//#### possibly we hate eval(). Test speed.
 
 /* The following function is not namespaced. I'm not sure how I want to handle
    story-loading yet. This is scaffolding.
