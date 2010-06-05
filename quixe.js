@@ -27,7 +27,8 @@
    story-loading yet. This is scaffolding.
 */
 
-/* Start with the defaults. */
+/* Start with the defaults. These can be modified later by the game_options
+   defined in the HTML file. */
 var all_options = {
     spacing: 4,      // default spacing between windows
 };
