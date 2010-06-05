@@ -27,6 +27,11 @@
    story-loading yet. This is scaffolding.
 */
 
+/* Start with the defaults. */
+var all_options = {
+    spacing: 4,      // default spacing between windows
+};
+
 function GetQueryParams() {
     /* Adapted from querystring.js by Adam Vandenberg */
     var map = {};
@@ -52,14 +57,18 @@ function GetQueryParams() {
 }
 
 function TriggerLoadGameFile() {
+    /* ### Do this first */
+    if (window.game_options) {
+        Object.extend(all_options, window.game_options); //### prototype-ism
+    }
+
     var gamefile = null;
 
     var qparams = GetQueryParams();
     gamefile = qparams['story'];
 
     if (!gamefile)
-        if (window.game_options && game_options.default_story)
-            gamefile = game_options.default_story;
+        gamefile = all_options.default_story;
 
     if (!gamefile) {
         Glk.fatal_error("No story file specified!");
@@ -159,7 +168,7 @@ function DecodeGameFile(base64data) {
 
     Quixe.set_game_image(image);
 
-    Glk.init(Quixe);
+    Glk.init(Quixe, all_options);
 }
 /* This is backwards compatibility for the Parchment zcode2js tool. */
 processBase64Zcode = DecodeGameFile;
