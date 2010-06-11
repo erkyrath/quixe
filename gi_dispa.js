@@ -557,8 +557,7 @@ function build_function(func) {
         /* If the call blocks, we need to stash away the arguments and
            then return early. */
         out.push('if (glkret === Glk.DidNotReturn) {');
-        out.push('  blocked_selector = ' + func.id + ';');
-        out.push('  blocked_callargs = callargs.slice(0);');
+        out.push('  set_blocked_selector(' + func.id + ', callargs);');
         out.push('  return glkret;');
         out.push('}');
     }
@@ -682,6 +681,14 @@ function get_function(id) {
    on a Glk call, these variables will be null. */
 var blocked_selector = null;
 var blocked_callargs = null;
+
+/* Stash the above arguments. We make a copy of the args list, because
+   we don't trust the argument to be immutable.
+*/
+function set_blocked_selector(sel, args) {
+    blocked_selector = sel;
+    blocked_callargs = args.slice(0);
+}
 
 /* Prepare the VM to resume after a blocked function. The argument is
    the argument to the original blocked call. Our job is to unload
