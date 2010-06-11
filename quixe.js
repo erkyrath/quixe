@@ -23,8 +23,7 @@
 // Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 // Should we be caching arrays instead of strings?
-
-//#### possibly we hate eval(). Test speed.
+// Replace eval() with Function(), providing external APIs to make it work.
 
 /* The following function is not namespaced. I'm not sure how I want to handle
    story-loading yet. This is scaffolding.
@@ -461,7 +460,12 @@ function fatal_error(msg) {
 /* Turn a string containing JS statements into a function object that
    executes those statements. If an arg is provided, it becomes the
    function argument. (It can also be a comma-separated list of
-   arguments, if you want more than one.) */
+   arguments, if you want more than one.) 
+
+   This uses eval(), rather than Function(), because it needs to
+   return a closure inside the Quixe environment. (All the generated
+   code assumes that it has the VM's internal variables in scope.)
+*/
 function make_code(val, arg) {
     if (arg === undefined)
         eval("function _func() {\n" + val + "\n}");
@@ -4095,7 +4099,6 @@ var strings_cached = 0;
 var strings_compiled = 0;
 
 /* Set up all the initial VM state.
-   #### where does game_image come from?
 */
 function setup_vm() {
     var val, version;

@@ -646,7 +646,10 @@ function build_function(func) {
     val = out.join('\n');
 
     /* Compile the function and return it. */
-
+    /* This uses eval(), rather than Function(), because it needs to
+       return a closure inside the GiDispa environment. (All the generated
+       code assumes that it has the internal variables in scope.)
+    */
     eval('function _func(callargs) {\n' + val + '\n}');
     return _func;
 }
