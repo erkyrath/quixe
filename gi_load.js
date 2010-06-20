@@ -22,6 +22,7 @@ var all_options = {
     vm: Quixe,       // default game engine
     io: Glk,         // default display layer
     use_query_story: true, // use the ?story= URL parameter (if provided)
+    proxy_url: 'http://zcode.appspot.com/proxy/',
 };
 
 /* ### Do this first */
@@ -105,6 +106,26 @@ function load_run(optobj) {
         return;
     }
 
+    if (true) {
+        GlkOte.log('### trying proxy load...');
+        new Ajax.Request(all_options.proxy_url, {
+                method: 'get',
+                    //evalJS: 'force',
+                parameters: { encode: 'base64', url: gameurl },
+                onFailure: function(resp) {
+                    /* I would like to display the responseText here, but
+                       most servers return a whole HTML page, and that doesn't
+                       fit into fatal_error. */
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
+                },
+                onSuccess: function(resp) {
+                    GlkOte.log('### success: ' + resp.responseText.slice(0, 20) + ' (' + resp.responseText.length + ') ...');
+                    start_game(decode_base64(resp.responseText));
+                },
+        });
+        return;
+    }
+
     all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): I don't know how to load this data.");
 }
 
@@ -135,7 +156,8 @@ function get_query_params() {
     return map;
 }
 
-function ParseAsBlorb(image) {
+//### rename. Also, get biblio data for document.title?
+function unpack_blorb(image) {
     var len = image.length;
     var pos = 12;
 
@@ -214,7 +236,7 @@ else {
 
 function start_game(image) {
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
-        image = ParseAsBlorb(image);
+        image = unpack_blorb(image);
         if (!image) {
             all_options.io.fatal_error("Blorb file contains no Glulx game!");
             return;
