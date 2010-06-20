@@ -21,41 +21,98 @@ var all_options = {
     spacing: 4,      // default spacing between windows
     vm: Quixe,       // default game engine
     io: Glk,         // default display layer
+    use_query_story: true, // use the ?story= URL parameter (if provided)
 };
 
 /* ### Do this first */
-function begin_loading(optobj) {
+function load_run(optobj) {
     if (!optobj)
         optobj = window.game_options;
     if (optobj)
-        Object.extend(all_options, optobj); //### prototype-ism
+        Object.extend(all_options, optobj); /* Prototype-ism */
 
-    var gamefile = null;
+    var gameurl = null;
 
-    var qparams = GetQueryParams();
-    gamefile = qparams['story'];
+    if (all_options.use_query_story) {
+        var qparams = get_query_params();
+        gameurl = qparams['story'];
+    }
 
-    if (!gamefile)
-        gamefile = all_options.default_story;
+    if (!gameurl)
+        gameurl = all_options.default_story;
 
-    if (!gamefile) {
+    if (!gameurl) {
         all_options.io.fatal_error("No story file specified!");
         return;
     }
 
-    var headls = $$('head');
-    if (!headls || headls.length == 0) {
-        all_options.io.fatal_error("Quixe document has no <head> element!");
+    GlkOte.log('### gameurl: ' + gameurl); //###
+
+    /* The logic of the following code is adapted from Parchment's
+       file.js. */
+
+    var xhr = Ajax.getTransport();
+    var binary_supported = (xhr.overrideMimeType !== undefined && !Prototype.Browser.Opera);
+    /* I'm told that Opera's overrideMimeType() doesn't work. */
+    xhr = null;
+
+    var regex_urldomain = /^(file:|(\w+:)?\/\/[^\/?#]+)/;
+    var page_domain = regex_urldomain.exec(location)[0];
+    var data_exec = regex_urldomain.exec(gameurl);
+    var data_domain = data_exec ? data_exec[0] : page_domain;
+
+    var same_origin = (page_domain == data_domain);
+
+    GlkOte.log('### same_origin=' + same_origin + ', binary_supported=' + binary_supported);
+
+    if (gameurl.toLowerCase().endsWith('.js')) {
+        /* Old-fashioned Javascript file -- the output of Parchment's
+           zcode2js tool. When loaded and eval'ed, this will call
+           a global function processBase64Zcode() with base64 data
+           as the argument. */
+        GlkOte.log('### trying old-fashioned load...');
+        window.processBase64Zcode = function(val) { 
+            GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
+            start_game(decode_base64(val));
+        };
+        new Ajax.Request(gameurl, {
+                method: 'get',
+                evalJS: 'force',
+                onFailure: function(resp) {
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
+                },
+        });
         return;
     }
-    var head = headls[0];
-    var script = new Element('script', 
-        { src:gamefile, 'type':"text/javascript" });
-    head.insert(script);
+
+    if (binary_supported && same_origin) {
+        GlkOte.log('### trying binary load...');
+        new Ajax.Request(gameurl, {
+                method: 'get',
+                onCreate: function(resp) {
+                    /* This ensures that the data doesn't get decoded or
+                       munged in any way. */
+                    resp.transport.overrideMimeType('text/plain; charset=x-user-defined');
+                },
+                onSuccess: function(resp) {
+                    GlkOte.log('### success: ' + resp.responseText.slice(0, 20) + ' (' + resp.responseText.length + ') ...');
+                    start_game(decode_raw_text(resp.responseText));
+                },
+                onFailure: function(resp) {
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
+                },
+        });
+        return;
+    }
+
+    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): I don't know how to load this data.");
 }
 
-function GetQueryParams() {
-    /* Adapted from querystring.js by Adam Vandenberg */
+/* Take apart the query string of the current URL, and turn it into
+   an object map.
+   (Adapted from querystring.js by Adam Vandenberg.)
+*/
+function get_query_params() {
     var map = {};
 
     var qs = location.search.substring(1, location.search.length);
@@ -100,8 +157,17 @@ function ParseAsBlorb(image) {
     return null;
 }
 
+function decode_raw_text(str) {
+    var arr = Array(str.length);
+    var ix;
+    for (ix=0; ix<str.length; ix++) {
+        arr[ix] = str.charCodeAt(ix) & 0xFF;
+    }
+    return arr;
+}
+
 if (window.atob) {
-    Base64ToArray = function(base64data) {
+    decode_base64 = function(base64data) {
         var data = atob(base64data);
         var image = Array(data.length);
         var ix;
@@ -124,7 +190,7 @@ else {
             return out;
         })();
         
-    Base64ToArray = function(base64data) {
+    decode_base64 = function(base64data) {
         var out = [];
         var c1, c2, c3, e1, e2, e3, e4;
         var i = 0, len = base64data.length;
@@ -146,10 +212,7 @@ else {
     }
 }
 
-function DecodeGameFile(base64data) {
-    var image = Base64ToArray(base64data);
-    base64data = null;
-
+function start_game(image) {
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
         image = ParseAsBlorb(image);
         if (!image) {
@@ -165,11 +228,9 @@ function DecodeGameFile(base64data) {
        the VM engine, once the window is properly set up. */
     all_options.io.init(all_options);
 }
-/* This is backwards compatibility for the Parchment zcode2js tool. */
-processBase64Zcode = DecodeGameFile;
 
 
 /*### namespace this */
 GiLoad = {
-    begin_loading: begin_loading,
+    load_run: load_run,
 };
