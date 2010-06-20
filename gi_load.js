@@ -20,6 +20,7 @@
 var all_options = {
     spacing: 4,      // default spacing between windows
     vm: Quixe,       // default game engine
+    io: Glk,         // default display layer
 };
 
 /* ### Do this first */
@@ -38,13 +39,13 @@ function begin_loading(optobj) {
         gamefile = all_options.default_story;
 
     if (!gamefile) {
-        Glk.fatal_error("No story file specified!");
+        all_options.io.fatal_error("No story file specified!");
         return;
     }
 
     var headls = $$('head');
     if (!headls || headls.length == 0) {
-        Glk.fatal_error("Quixe document has no <head> element!");
+        all_options.io.fatal_error("Quixe document has no <head> element!");
         return;
     }
     var head = headls[0];
@@ -152,14 +153,17 @@ function DecodeGameFile(base64data) {
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
         image = ParseAsBlorb(image);
         if (!image) {
-            Glk.fatal_error("Blorb file contains no Glulx game!");
+            all_options.io.fatal_error("Blorb file contains no Glulx game!");
             return;
         }
     }
 
-    all_options.vm.set_game_image(image);
+    /* Pass the game image file along to the VM engine. */
+    all_options.vm.prepare(image);
 
-    Glk.init(all_options);
+    /* Now fire up the display library. This will take care of starting
+       the VM engine, once the window is properly set up. */
+    all_options.io.init(all_options);
 }
 /* This is backwards compatibility for the Parchment zcode2js tool. */
 processBase64Zcode = DecodeGameFile;

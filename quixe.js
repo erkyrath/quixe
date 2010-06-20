@@ -27,8 +27,21 @@
 
 Quixe = function() {
 
+/* This is called by the page (or the page's loader library) when it
+   starts up. It must be called before quixe_init().
+
+   The argument is the game file image, encoded as an array of byte
+   values (integers between 0 and 255).
+*/
+function quixe_prepare(image) {
+    game_image = image;
+}
+
 /* This is called by the page (or the page's display library) when it
    starts up. It executes until the first glk_select() or glk_exit().
+
+   (It's inelegant to call this "init" when the "prepare" function must
+   be called first. Sorry about that.)
 */
 function quixe_init() {
     if (vm_started) {
@@ -4475,7 +4488,7 @@ function execute_loop() {
 
 return {
     version: '0.1.0', /* Quixe version */
-    set_game_image: function(arr) { game_image = arr; }, //#### correct?
+    prepare: quixe_prepare,
     init: quixe_init,
     resume: quixe_resume,
     get_statistics: get_statistics,
