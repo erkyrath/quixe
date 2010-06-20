@@ -10,10 +10,13 @@
  * as you retain a notice in your program or documentation which mentions
  * my name and the URL shown above.
  *
-####
+ * This library loads a game image (by one of several possible methods)
+ * and then starts up the display layer and game engine. It also extracts
+ * data from a Blorb image, if that's what's provided.
  */
 
-/*### namespace this */
+/* Put everything inside the GiLoad namespace. */
+GiLoad = function() {
 
 /* Start with the defaults. These can be modified later by the game_options
    defined in the HTML file. */
@@ -25,7 +28,10 @@ var all_options = {
     proxy_url: 'http://zcode.appspot.com/proxy/',
 };
 
-/* ### Do this first */
+/* Begin the loading process. This is what you call to start a game;
+   it takes care of starting the Glk and Quixe modules, when the game
+   file is available.
+*/
 function load_run(optobj) {
     if (!optobj)
         optobj = window.game_options;
@@ -110,7 +116,6 @@ function load_run(optobj) {
         GlkOte.log('### trying proxy load...');
         new Ajax.Request(all_options.proxy_url, {
                 method: 'get',
-                    //evalJS: 'force',
                 parameters: { encode: 'base64', url: gameurl },
                 onFailure: function(resp) {
                     /* I would like to display the responseText here, but
@@ -156,7 +161,10 @@ function get_query_params() {
     return map;
 }
 
-//### rename. Also, get biblio data for document.title?
+/* Look through a Blorb file (provided as a byte array) and return the
+   Glulx game file chunk (ditto). If no such chunk is found, returns 
+   null.
+*/
 function unpack_blorb(image) {
     var len = image.length;
     var pos = 12;
@@ -179,6 +187,7 @@ function unpack_blorb(image) {
     return null;
 }
 
+/* Convert a byte string into an array of numeric byte values. */
 function decode_raw_text(str) {
     var arr = Array(str.length);
     var ix;
@@ -188,6 +197,10 @@ function decode_raw_text(str) {
     return arr;
 }
 
+/* Convert a base64 string into an array of numeric byte values. Some
+   browsers supply an atob() function that does this; on others, we
+   have to implement decode_base64() ourselves. 
+*/
 if (window.atob) {
     decode_base64 = function(base64data) {
         var data = atob(base64data);
@@ -234,7 +247,15 @@ else {
     }
 }
 
+/* Start the game (after de-blorbing, if necessary).
+   This is invoked by whatever callback received the loaded game file.
+*/
 function start_game(image) {
+    if (image.length == 0) {
+        all_options.io.fatal_error("No game file was loaded. (Zero-length response.)");
+        return;
+    }
+
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
         image = unpack_blorb(image);
         if (!image) {
@@ -251,8 +272,12 @@ function start_game(image) {
     all_options.io.init(all_options);
 }
 
-
-/*### namespace this */
-GiLoad = {
+/* End of GiLoad namespace function. Return the object which will
+   become the GiLoad global. */
+return {
     load_run: load_run,
 };
+
+}();
+
+/* End of GiLoad library. */

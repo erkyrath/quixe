@@ -25,6 +25,8 @@
 // Should we be caching arrays instead of strings?
 // Replace eval() with Function(), providing external APIs to make it work.
 
+/* Put everything inside the Quixe namespace. */
+
 Quixe = function() {
 
 /* This is called by the page (or the page's loader library) when it
@@ -4486,6 +4488,8 @@ function execute_loop() {
     */
 }
 
+/* End of Quixe namespace function. Return the object which will
+   become the Quixe global. */
 return {
     version: '0.1.0', /* Quixe version */
     prepare: quixe_prepare,
@@ -4503,3 +4507,5 @@ return {
 };
 
 }();
+
+/* End of Quixe library. */

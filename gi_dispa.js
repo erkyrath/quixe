@@ -16,6 +16,8 @@
  * to Quixe 32-bit numeric IDs.
  */
 
+/* Put everything inside the GiDispa namespace. */
+
 GiDispa = function() {
 
 //### Should split WriteWord into a WriteRefWord and WriteArrayWord,
@@ -858,6 +860,9 @@ function init_module() {
 };
 
 init_module();
+
+/* End of GiDispa namespace function. Return the object which will
+   become the GiDispa global. */
 return {
     set_vm: set_vm,
     get_function: get_function,
@@ -871,3 +876,5 @@ return {
 };
 
 }();
+
+/* End of GiDispa library. */
