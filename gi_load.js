@@ -25,8 +25,12 @@ var all_options = {
     vm: Quixe,       // default game engine
     io: Glk,         // default display layer
     use_query_story: true, // use the ?story= URL parameter (if provided)
+    set_page_title: true,  // set the window title to the game name
     proxy_url: 'http://zcode.appspot.com/proxy/',
 };
+
+var gameurl = null;  /* The URL we are loading. */
+var metadata = null; /* Title, author, etc -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -37,8 +41,6 @@ function load_run(optobj) {
         optobj = window.game_options;
     if (optobj)
         Object.extend(all_options, optobj); /* Prototype-ism */
-
-    var gameurl = null;
 
     if (all_options.use_query_story) {
         var qparams = get_query_params();
@@ -53,6 +55,7 @@ function load_run(optobj) {
         return;
     }
 
+    /* The gameurl is now known. (It should not change after this point.) */
     GlkOte.log('### gameurl: ' + gameurl); //###
 
     /* The logic of the following code is adapted from Parchment's
@@ -164,6 +167,8 @@ function get_query_params() {
 /* Look through a Blorb file (provided as a byte array) and return the
    Glulx game file chunk (ditto). If no such chunk is found, returns 
    null.
+
+   ### This should load the IFID metadata into the metadata object.
 */
 function unpack_blorb(image) {
     var len = image.length;
@@ -262,6 +267,15 @@ function start_game(image) {
             all_options.io.fatal_error("Blorb file contains no Glulx game!");
             return;
         }
+    }
+
+    if (all_options.set_page_title) {
+        var title = null;
+        if (metadata)
+            title = metadata.title;
+        if (!title) 
+            title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
+        document.title = title + " - Quixe";
     }
 
     /* Pass the game image file along to the VM engine. */
