@@ -159,7 +159,7 @@ function DecodeGameFile(base64data) {
 
     all_options.vm.set_game_image(image);
 
-    Glk.init(all_options.vm, all_options);
+    Glk.init(all_options);
 }
 /* This is backwards compatibility for the Parchment zcode2js tool. */
 processBase64Zcode = DecodeGameFile;
