@@ -98,7 +98,7 @@ function load_run(optobj) {
     }
 
     if (old_js_url) {
-        all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): This browser does not support cross-origin requests. Try using an unencoded (not a .js) URL.");
+        all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Try using an unencoded (not a .js) URL.");
         return;
     }
 
