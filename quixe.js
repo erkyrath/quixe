@@ -1532,10 +1532,13 @@ var opcode_table = {
 
     0x110: function(context, operands) { /* random */
         var expr;
+        /* Note that we don't trust Math.random() to be absolutely random.
+           On Chrome, the last few bits aren't. That's why random(0) is
+           done in two chunks. */
         if (quot_isconstant(operands[0])) {
             var val = Number(operands[0]) & 0xffffffff; /* signed */
             if (val == 0)
-                expr = "Math.floor(random_func() * 0x100000000)";
+                expr = "(Math.floor(random_func() * 0x10000) | (Math.floor(random_func() * 0x10000) << 16)) >>>0";
             else if (val > 0)
                 expr = "Math.floor(random_func() * "+val+")";
             else
@@ -1550,7 +1553,7 @@ var opcode_table = {
             context.code.push("else if ("+sign0+" < 0)");
             context.code.push(holdvar+" = -Math.floor(random_func() * -"+sign0+");");
             context.code.push("else");
-            context.code.push(holdvar+" = Math.floor(random_func() * 0x100000000);");
+            context.code.push(holdvar+" = (Math.floor(random_func() * 0x10000) | (Math.floor(random_func() * 0x10000) << 16)) >>>0;");
         }
         context.code.push(operands[1]+expr+");");
     },

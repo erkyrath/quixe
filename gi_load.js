@@ -116,7 +116,7 @@ function load_run(optobj) {
     }
 
     if (true) {
-        GlkOte.log('### trying proxy load...');
+        GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
         new Ajax.Request(all_options.proxy_url, {
                 method: 'get',
                 parameters: { encode: 'base64', url: gameurl },
