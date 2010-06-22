@@ -64,6 +64,7 @@ function load_run(optobj) {
     var xhr = Ajax.getTransport();
     var binary_supported = (xhr.overrideMimeType !== undefined && !Prototype.Browser.Opera);
     /* I'm told that Opera's overrideMimeType() doesn't work. */
+    var crossorigin_supported = (xhr.withCredentials !== undefined);
     xhr = null;
 
     var regex_urldomain = /^(file:|(\w+:)?\/\/[^\/?#]+)/;
@@ -72,10 +73,11 @@ function load_run(optobj) {
     var data_domain = data_exec ? data_exec[0] : page_domain;
 
     var same_origin = (page_domain == data_domain);
+    var old_js_url = gameurl.toLowerCase().endsWith('.js');
 
-    GlkOte.log('### same_origin=' + same_origin + ', binary_supported=' + binary_supported);
+    GlkOte.log('### same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
 
-    if (gameurl.toLowerCase().endsWith('.js')) {
+    if (old_js_url && same_origin) {
         /* Old-fashioned Javascript file -- the output of Parchment's
            zcode2js tool. When loaded and eval'ed, this will call
            a global function processBase64Zcode() with base64 data
@@ -92,6 +94,11 @@ function load_run(optobj) {
                     all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
                 },
         });
+        return;
+    }
+
+    if (old_js_url) {
+        all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): This browser does not support cross-origin requests. Try using an unencoded (not a .js) URL.");
         return;
     }
 
@@ -115,7 +122,7 @@ function load_run(optobj) {
         return;
     }
 
-    if (true) {
+    if (crossorigin_supported) {
         GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
         new Ajax.Request(all_options.proxy_url, {
                 method: 'get',
@@ -129,6 +136,26 @@ function load_run(optobj) {
                 onSuccess: function(resp) {
                     GlkOte.log('### success: ' + resp.responseText.slice(0, 20) + ' (' + resp.responseText.length + ') ...');
                     start_game(decode_base64(resp.responseText));
+                },
+        });
+        return;
+    }
+
+    if (true) {
+        GlkOte.log('### trying proxy-jsonp load... (' + all_options.proxy_url + ')');
+        window.processBase64Zcode = function(val) { 
+            GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
+            start_game(decode_base64(val));
+        };
+        new Ajax.Request(all_options.proxy_url, {
+                method: 'get',
+                evalJS: 'force',
+                parameters: { encode: 'base64', url: gameurl, callback: 'processBase64Zcode' },
+                onFailure: function(resp) {
+                    /* I would like to display the responseText here, but
+                       most servers return a whole HTML page, and that doesn't
+                       fit into fatal_error. */
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
                 },
         });
         return;
