@@ -98,11 +98,27 @@ function load_run(optobj) {
     }
 
     if (old_js_url) {
-        all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Try using an unencoded (not a .js) URL.");
+        /* Javascript file in a different domain. We'll insert it as a <script>
+           tag; that will force it to load, and invoke a processBase64Zcode()
+           function as above. */
+        GlkOte.log('### trying script load...');
+        window.processBase64Zcode = function(val) { 
+            GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
+            start_game(decode_base64(val));
+        };
+        var headls = $$('head');
+        if (!headls || headls.length == 0) {
+            all_options.io.fatal_error("This page has no <head> element!");
+            return;
+        }
+        var script = new Element('script', 
+            { src:gameurl, 'type':"text/javascript" });
+        headls[0].insert(script);
         return;
     }
 
     if (binary_supported && same_origin) {
+        /* We can do an Ajax GET of the binary data. */
         GlkOte.log('### trying binary load...');
         new Ajax.Request(gameurl, {
                 method: 'get',
@@ -123,6 +139,10 @@ function load_run(optobj) {
     }
 
     if (crossorigin_supported) {
+        /* Either we can't load binary data, or the data is on a different
+           domain. Either way, we'll go through the proxy, which will
+           convert it to base64 for us. The proxy gives the right headers
+           to make cross-origin Ajax work. */
         GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
         new Ajax.Request(all_options.proxy_url, {
                 method: 'get',
@@ -142,22 +162,22 @@ function load_run(optobj) {
     }
 
     if (true) {
-        GlkOte.log('### trying proxy-jsonp load... (' + all_options.proxy_url + ')');
+        /* Cross-origin Ajax isn't available. We can still use the proxy,
+           but we'll have to insert a <script> tag to do it. */
+        var fullurl = all_options.proxy_url + '?encode=base64&callback=processBase64Zcode&url=' + gameurl;
+        GlkOte.log('### trying proxy-script load... (' + fullurl + ')');
         window.processBase64Zcode = function(val) { 
             GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
             start_game(decode_base64(val));
         };
-        new Ajax.Request(all_options.proxy_url, {
-                method: 'get',
-                evalJS: 'force',
-                parameters: { encode: 'base64', url: gameurl, callback: 'processBase64Zcode' },
-                onFailure: function(resp) {
-                    /* I would like to display the responseText here, but
-                       most servers return a whole HTML page, and that doesn't
-                       fit into fatal_error. */
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
-                },
-        });
+        var headls = $$('head');
+        if (!headls || headls.length == 0) {
+            all_options.io.fatal_error("This page has no <head> element!");
+            return;
+        }
+        var script = new Element('script', 
+            { src:fullurl, 'type':"text/javascript" });
+        headls[0].insert(script);
         return;
     }
 
