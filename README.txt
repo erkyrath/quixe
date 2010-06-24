@@ -14,3 +14,18 @@ changed. You may also incorporate this code into your own program and
 distribute that, or modify this code and use and distribute the
 modified version, as long as you retain a notice in your program or
 documentation which mentions my name and the URL shown above.
+
+This package includes the Prototype JavaScript framework, version 1.6.1
+(c) 2005-2009 Sam Stephenson
+Prototype is freely distributable under the terms of an MIT-style license.
+For details, see the Prototype web site: <http://www.prototypejs.org/>
+
+The build script uses the YUI Compressor, version 2.4.2 (which is included
+as a build tool). The YUI Compressor was written and is maintained by:
+Julien Lecomte <jlecomte@yahoo-inc.com>
+Copyright (c) 2007-2009, Yahoo! Inc. All rights reserved.
+All code specific to YUI Compressor is issued under a BSD license.
+YUI Compressor extends and implements code from Mozilla's Rhino project.
+Rhino is issued under the Mozilla Public License (MPL), and MPL applies
+to the Rhino source and binaries that are distributed with YUI Compressor.
+For source and other details: <http://developer.yahoo.com/yui/compressor/>
