@@ -1441,7 +1441,7 @@ return {
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
-  interface: glkote_get_interface,
+  getinterface: glkote_get_interface,
   log:      glkote_log,
   error:    glkote_error
 };

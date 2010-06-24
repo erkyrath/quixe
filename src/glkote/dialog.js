@@ -123,7 +123,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     var root_el_id = 'windowport';
     var iface = window.Game;
     if (window.GlkOte) 
-        iface = window.GlkOte.interface();
+        iface = window.GlkOte.getinterface();
     if (iface && iface.windowport)
         root_el_id = iface.windowport;
 
