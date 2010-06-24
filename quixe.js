@@ -33,10 +33,18 @@ Quixe = function() {
    starts up. It must be called before quixe_init().
 
    The argument is the game file image, encoded as an array of byte
-   values (integers between 0 and 255).
+   values (integers between 0 and 255). It is stashed away for when
+   the game is started up.
+
+   This also computes the game signature, which is a 64-character string
+   unique to the game. (In fact it is just the first 64 bytes of the
+   game file, encoded as characters.)
 */
 function quixe_prepare(image) {
     game_image = image;
+
+    var ls = game_image.slice(0, 64);
+    game_signature = String.fromCharCode.apply(this, ls);
 }
 
 /* This is called by the page (or the page's display library) when it
@@ -3913,7 +3921,8 @@ function linked_search(key, keysize, start,
 
 /* The VM state variables */
 
-var game_image = null;
+var game_image = null; /* the original game image, as an array of bytes */
+var game_signature = null; /* string, containing the first 64 bytes of image */
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
@@ -4255,11 +4264,19 @@ function perform_verify() {
     return 0;
 }
 
+/* Return the game image signature. This is used as a fingerprint on save
+   files, to ensure that you can't save in one game and restore in a 
+   different one.
+*/
+function quixe_get_signature() {
+    return game_signature;
+}
+
 /* Return whatever information seems useful about execution so far.
    This is not meant to be super-efficient; it does some counting
    every time you call it.
 */
-function get_statistics() {
+function quixe_get_statistics() {
     var stat = {
         game_image_length: game_image.length,
         total_execution_time: total_execution_time,
@@ -4498,7 +4515,8 @@ return {
     prepare: quixe_prepare,
     init: quixe_init,
     resume: quixe_resume,
-    get_statistics: get_statistics,
+    get_signature: quixe_get_signature,
+    get_statistics: quixe_get_statistics,
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
