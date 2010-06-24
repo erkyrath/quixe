@@ -1,0 +1,57 @@
+/* Dialog toolkit default stylesheet
+ * Designed by Andrew Plotkin <erkyrath@eblong.com>
+ * <http://eblong.com/zarf/glk/glkote.html>
+ * 
+ * This CSS stylesheet is in the public domain. Do whatever you want
+ * with it.
+ */
+
+#dialog_screen {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #808080;
+  opacity: 0.5;
+}
+
+#dialog {
+  position: absolute;
+  width: 360px;
+  background: white;
+  border: 4px solid #AAA;
+  -webkit-box-shadow: 1px 1px 15px #222;
+  -moz-box-shadow: 1px 1px 15px #222;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+}
+
+#dialog .DiaCaption {
+  margin: 16px;
+}
+
+#dialog .DiaInput {
+  margin: 16px;
+}
+
+#dialog input {
+  width: 100%;
+}
+
+#dialog .DiaBody {
+  margin: 16px;
+}
+
+#dialog select {
+  width: 100%;
+}
+
+#dialog button {
+  margin-left: 8px;
+}
+
+#dialog .DiaButtons {
+  margin: 16px;
+  text-align: right;
+}
+
+/* End of Dialog default stylesheet. */
