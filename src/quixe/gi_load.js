@@ -25,12 +25,13 @@ var all_options = {
     vm: Quixe,       // default game engine
     io: Glk,         // default display layer
     use_query_story: true, // use the ?story= URL parameter (if provided)
+    default_story: null,   // story URL to use if not otherwise set
     set_page_title: true,  // set the window title to the game name
     proxy_url: 'http://zcode.appspot.com/proxy/',
 };
 
 var gameurl = null;  /* The URL we are loading. */
-var metadata = null; /* Title, author, etc -- loaded from Blorb */
+var metadata = {}; /* Title, author, etc -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -215,11 +216,12 @@ function get_query_params() {
    Glulx game file chunk (ditto). If no such chunk is found, returns 
    null.
 
-   ### This should load the IFID metadata into the metadata object.
+   This also loads the IFID metadata into the metadata object.
 */
 function unpack_blorb(image) {
     var len = image.length;
     var pos = 12;
+    var result = null;
 
     while (pos < len) {
         var chunktype = String.fromCharCode(image[pos+0], image[pos+1], image[pos+2], image[pos+3]);
@@ -228,7 +230,27 @@ function unpack_blorb(image) {
         pos += 4;
 
         if (chunktype == "GLUL") {
-            return image.slice(pos, pos+chunklen);
+            result = image.slice(pos, pos+chunklen);
+        }
+        if (chunktype == "IFmd") {
+            var arr = image.slice(pos, pos+chunklen);
+            var dat = String.fromCharCode.apply(this, arr);
+            /* This works around Prototype's annoying habit of doing
+               something, I'm not sure what, with the <title> tag. */
+            dat = dat.replace(/<title>/gi, '<xtitle>');
+            dat = dat.replace(/<\/title>/gi, '</xtitle>');
+            var met = new Element('metadata').update(dat);
+            if (met.down('bibliographic')) {
+                var els = met.down('bibliographic').childElements();
+                var el, ix;
+                for (ix=0; ix<els.length; ix++) {
+                    el = els[ix];
+                    if (el.tagName.toLowerCase() == 'xtitle')
+                        metadata.title = el.textContent;
+                    else
+                        metadata[el.tagName.toLowerCase()] = el.textContent;
+                }
+            }
         }
 
         pos += chunklen;
@@ -236,7 +258,7 @@ function unpack_blorb(image) {
             pos++;
     }
 
-    return null;
+    return result;
 }
 
 /* Convert a byte string into an array of numeric byte values. */
@@ -309,7 +331,13 @@ function start_game(image) {
     }
 
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
-        image = unpack_blorb(image);
+        try {
+            image = unpack_blorb(image);
+        }
+        catch (ex) {
+            all_options.io.fatal_error("Blorb file could not be parsed: " + ex);
+            return;
+        }
         if (!image) {
             all_options.io.fatal_error("Blorb file contains no Glulx game!");
             return;
