@@ -13,6 +13,48 @@
  * This library loads a game image (by one of several possible methods)
  * and then starts up the display layer and game engine. It also extracts
  * data from a Blorb image, if that's what's provided.
+ *
+ * When you are putting together a Quixe installation page, you call
+ * GiLoad.load_run() to get the game started. You should do this in the
+ * document's "onload" handler, or later. (If you call it before "onload" 
+ * time, it may not work.)
+ *
+ * You can do this in a couple of different ways:
+ *
+ * GiLoad.load_run(OPTIONS) -- load and run the game using the options
+ *   passed as the argument. If OPTIONS is null or not provided, the
+ *   global "game_options" object is considered. (The various options are
+ *   described below.)
+ *
+ * GiLoad.load_run(OPTIONS, IMAGE, IMAGE_FORMAT) -- run the game with the
+ *   given options. The IMAGE argument should be the game file itself
+ *   (a glulx or blorb file). IMAGE_FORMAT describes how the game file
+ *   is encoded:
+ *     "base64": a base64-encoded binary file
+ *     "raw": a binary file stored in a string
+ *     "array": an array of (numeric) byte values
+ *   Again, if OPTIONS is null, the global "game_options" object is
+ *   considered.
+ *
+ * These are the game options. Most have default values, so you only have
+ * to declare the ones you want to change.
+ *
+ *   use_query_story: If this is true, you (or the player) can use a
+ *     "?story=..." URL parameter to load any game file. If it is false,
+ *     this parameter is ignored. (default: true)
+ *   set_page_title: If true, the loader will change the document title
+ *     to describe the game being loaded. If false, the document title
+ *     will be left alone. (default: true)
+ *   default_story: The URL of the game file to load, if not otherwise
+ *     provided.
+ *   proxy_url: The URL of the web-app service which is used to convert
+ *     binary data to Javascript, if the browser needs that. (default:
+ *     http://zcode.appspot.com/proxy/)
+ *   vm: The game engine interface object. (default: Quixe)
+ *   io: The display layer interface object. (default: Glk)
+ *
+ *   You can also include any of the display options used by the GlkOte
+ *   library, such as gameport, windowport, spacing, ...
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -147,7 +189,6 @@ function load_run(optobj, image, image_format) {
            function as above. */
         GlkOte.log('### trying script load...');
         window.processBase64Zcode = function(val) { 
-            GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
             start_game(decode_base64(val));
         };
         var headls = $$('head');
@@ -172,7 +213,6 @@ function load_run(optobj, image, image_format) {
                     resp.transport.overrideMimeType('text/plain; charset=x-user-defined');
                 },
                 onSuccess: function(resp) {
-                    GlkOte.log('### success: ' + resp.responseText.slice(0, 20) + ' (' + resp.responseText.length + ') ...');
                     start_game(decode_raw_text(resp.responseText));
                 },
                 onFailure: function(resp) {
@@ -207,7 +247,6 @@ function load_run(optobj, image, image_format) {
                     all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
                 },
                 onSuccess: function(resp) {
-                    GlkOte.log('### success: ' + resp.responseText.slice(0, 20) + ' (' + resp.responseText.length + ') ...');
                     start_game(decode_base64(resp.responseText));
                 },
         });
@@ -220,7 +259,6 @@ function load_run(optobj, image, image_format) {
         var fullurl = all_options.proxy_url + '?encode=base64&callback=processBase64Zcode&url=' + gameurl;
         GlkOte.log('### trying proxy-script load... (' + fullurl + ')');
         window.processBase64Zcode = function(val) { 
-            GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
             start_game(decode_base64(val));
         };
         var headls = $$('head');
