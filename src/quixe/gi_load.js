@@ -37,27 +37,63 @@ var metadata = {}; /* Title, author, etc -- loaded from Blorb */
    it takes care of starting the Glk and Quixe modules, when the game
    file is available.
 */
-function load_run(optobj) {
+function load_run(optobj, image, image_format) {
     if (!optobj)
         optobj = window.game_options;
     if (optobj)
         Object.extend(all_options, optobj); /* Prototype-ism */
 
+    /* The first question is, what's the game file URL? */
+
+    gameurl = null;
+
     if (all_options.use_query_story) {
+        /* Use ?story= URL parameter, if present and accepted. */
         var qparams = get_query_params();
         gameurl = qparams['story'];
     }
 
-    if (!gameurl)
+    if (!gameurl && image) {
+        /* The story data is already loaded -- it's not an a URL at all. 
+           Decode it, and then fire it off. */
+        GlkOte.log('### trying pre-loaded load (' + image_format + ')...');
+        switch (image_format) {
+        case 'base64':
+            image = decode_base64(image);
+            break;
+        case 'raw':
+            image = decode_text(image);
+            break;
+        case 'array':
+            /* Leave image alone */
+            break;
+        default:
+            all_options.io.fatal_error("Could not decode story file data: " + image_format);
+            return;
+        }
+
+        start_game(image);
+        return;
+    }
+
+    if (!gameurl) {
+        /* Go with the "default_story" option parameter, if present. */
         gameurl = all_options.default_story;
+    }
 
     if (!gameurl) {
         all_options.io.fatal_error("No story file specified!");
         return;
     }
 
-    /* The gameurl is now known. (It should not change after this point.) */
     GlkOte.log('### gameurl: ' + gameurl); //###
+    /* The gameurl is now known. (It should not change after this point.)
+       The next question is, how do we load it in? */
+
+    /* If an image file was passed in, we didn't use it. So we might as
+       well free its memory at this point. */
+    image = null;
+    image_format = null;
 
     /* The logic of the following code is adapted from Parchment's
        file.js. */
@@ -364,8 +400,10 @@ function start_game(image) {
         var title = null;
         if (metadata)
             title = metadata.title;
-        if (!title) 
+        if (!title && gameurl) 
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
+        if (!title)
+            title = 'Game'
         document.title = title + " - Quixe";
     }
 
