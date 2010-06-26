@@ -74,6 +74,13 @@ function load_run(optobj) {
     var data_domain = data_exec ? data_exec[0] : page_domain;
 
     var same_origin = (page_domain == data_domain);
+    if (navigator.userAgent.match(/chrome/i) && data_domain == 'file:') {
+        /* Chrome enforces a stricter same-origin policy for file: URLs --
+           it doesn't want to trawl your hard drive for random files.
+           Other browsers may pick this up someday, but for now, it's
+           only Chrome. */
+        same_origin = false;
+    }
     var old_js_url = gameurl.toLowerCase().endsWith('.js');
 
     GlkOte.log('### same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
@@ -136,6 +143,15 @@ function load_run(optobj) {
                     all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
                 },
         });
+        return;
+    }
+
+    if (data_domain == 'file:') {
+        /* All the remaining options go through the proxy. But the proxy
+           can't get at the local hard drive, so it's hopeless.
+           (This case occurs only on Chrome, with its restrictive
+           same-origin-file: policy.) */
+        all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): A local file cannot be sent to the proxy.");
         return;
     }
 
