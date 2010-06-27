@@ -5,6 +5,38 @@ Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
 
+* Contents
+
+- README.txt     -- this file
+- play.html      -- HTML template for a Quixe page
+- play-full.html -- same thing, but using non-compressed Javascript source
+- build.py       -- generates the files in lib
+
+- src -- Javascript source code
+  - quixe/quixe.js    -- the VM engine core
+  - quixe/gi_dispa.js -- Glk layer dispatcher
+  - quixe/gi_load.js  -- game file loader (and blorb code)
+  - glkote/...        -- copied from the GlkOte project
+
+- lib -- compressed Javascript source code
+  (each file contains several files from the src directory, run through
+  yuicompressor)
+  - glkote.min.js -- prototype and glkote files
+  - quixe.min.js  -- quixe files
+
+- media -- images, CSS, and layout for play.html
+  - glkote.css      -- default stylesheet (copied from GlkOte project)
+  - dialog.css      -- dialog-box stylesheet (copied from GlkOte project)
+  - waiting.gif     -- timer animation (copied from GlkOte project)
+  - i7-manifest.txt -- I7 template file; becomes (manifest).txt
+
+- stories -- game files
+  - glulxercise.ulx.js -- Glulxercise VM unit test
+
+- tools -- random associated scripts and tools
+  - yuicompressor-2.4.2.jar -- Javascript compressor
+  - zcode2js.py -- convert game files to base64 for easier loading
+
 * Permissions
 
 The Quixe and GiDispa Javascript libraries are copyright 2010 by
