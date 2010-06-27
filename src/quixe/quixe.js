@@ -205,8 +205,8 @@ function MemW4(addr, val) {
 }
 
 function BytePushString(arr, str) {
-    for(var i = 0; i < str.length; i++) {
-        arr.push(str.charCodeAt(i));
+    for (var ix = 0; ix < str.length; ix++) {
+        arr.push(str.charCodeAt(ix));
     }
 }
 function BytePush4(arr, val) {
@@ -229,11 +229,7 @@ function ByteWrite4(arr, addr, val) {
     arr[addr+3] = val & 0xFF;
 }
 function ByteReadString(arr, addr, len) {
-    result = new Array(0);
-    for(var i = 0; i < len; i++) {
-        result.push(String.fromCharCode(arr[addr + i]));
-    }
-    return result.join("");
+    return String.fromCharCode.apply(this, arr.slice(addr, addr+len));
 }
 
 function QuoteMem1(addr) {
@@ -4266,8 +4262,8 @@ function pack_iff_chunks(chunks) {
     keys.sort(); // Ensures consistent behaviour across browsers.
     
     bytes = [];
-    for (var i = 0; i < keys.length; i++) {
-        var key = keys[i];
+    for (var ix = 0; ix < keys.length; ix++) {
+        var key = keys[ix];
         var chunk = chunks[key];
         qlog("Writing " + key + " (" + chunk.length + " bytes)");
         BytePushString(bytes, key);
@@ -4356,13 +4352,8 @@ function vm_save(streamid) {
     payload_bytes = payload_bytes.concat(pack_iff_chunks(chunks));
     
     var quetzal = pack_iff_chunks({"FORM": payload_bytes})
-    for (var i = 0; i < quetzal.length; i++) {
-        quetzal[i] = String.fromCharCode(quetzal[i]);
-    }
-    quetzal = quetzal.join("");
-    qlog("vm_save: writing " + quetzal.length + " bytes");
-    
-    Glk.glk_put_jstring_stream(str, quetzal);
+    qlog("vm_save: writing " + quetzal.length + " bytes");    
+    Glk.glk_put_buffer_stream(str, quetzal);
     return true;
 }
 
@@ -4380,13 +4371,18 @@ function vm_restore(streamid) {
     var quetzal = new Array(0);
     var buffer = new Array(1024);
     var count = 1;
-    while(count > 0) {
+    while (count > 0) {
         count = Glk.glk_get_buffer_stream(str, buffer);
         quetzal = quetzal.concat(buffer.slice(0, count));
     }
     qlog("vm_restore: reading " + quetzal.length + " bytes");
     
-    quetzal = unpack_iff_chunks(quetzal)["FORM"];
+    quetzal = unpack_iff_chunks(quetzal);
+    if (!quetzal) {
+        qlog("vm_restore failed: file is not Quetzal");
+        return false;
+    }
+    quetzal = quetzal["FORM"];
     if (!quetzal || ByteReadString(quetzal, 0, 4) != "IFZS") {
         qlog("vm_restore failed: file doesn't start with FORM/IFZS header");
         return false;
