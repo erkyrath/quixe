@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 
 """
-    zcode2js.py
+    game2js.py
 
-    This utility converts a z-code (or glulx) story file into a Javascript 
-    file for use by Parchment or Quixe.
+    This utility converts a Z-code or Glulx story file into a Javascript 
+    file for use by Parchment or Quixe. (It also works on Blorb files
+    containing Z-code or Glulx data.)
 
     Usage is as follows:
 
-        python zcode2js.py <game-file>
+        python game2js.py <game-file>
 
     The result is printed to stdout, so you'll probably want to pipe
     the output to a file, e.g.:
 
-        python zcode2js.py mystory.z5 > mystory.z5.js
+        python game2js.py mystory.ulx > mystory.ulx.js
 
     By default, this generates base64 data wrapped in the legacy
     processBase64Zcode() function call. This is suitable for use in
@@ -21,7 +22,7 @@
 
     If you use the --giload option:
 
-        python zcode2js.py --giload mystory.z5 > mystory.z5.js
+        python game2js.py --giload mystory.ulx > mystory.ulx.js
 
     ...then this will generate base64 data wrapped in a GiLoad.load_run()
     function call, set as an onload handler. This is suitable for
