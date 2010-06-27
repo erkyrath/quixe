@@ -5,6 +5,43 @@ Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
 
+Quixe is a pure-Javascript interpreter for the Glulx IF virtual machine.
+When used with the GlkOte display library, it can play any Glulx game file
+(.ulx or .gblorb) in a web browser. It does not require a server component;
+it runs entirely in the browser.
+
+Quixe currently supports text buffer and grid windows, character and line
+input, timers, and hyperlinks. It does not (yet) support graphics, sound,
+or style hints.
+
+You can save and restore games, as long as your browser supports the HTML5
+local-storage feature.
+
+
+* Using Quixe
+
+The easiest way to use Quixe is to have Inform 7 build you a game-playing
+page. Download the "Quixe.zip" template package (at the URL above), unpack
+it, and install it into Inform's template directory. (On a Mac this is
+~/Library/Inform/Templates; place the unzipped Quixe folder there.) You
+can then add this line to your Inform source code:
+
+  Release along with the "Quixe" interpreter.
+
+You can also copy the files right out of this project. The play.html file
+is set up to run Glulxercise, which is not actually an IF game, but uses
+the same format. (Glulxercise is a set of unit tests for Quixe.) 
+
+You can copy play.html and all the files it uses. However, play.html
+as provided cannot load Glulx files directly. You must convert your
+game file using the game2js.py script in the tools directory:
+
+  python tools/game2js.py --giload mystory.ulx > mystory.ulx.js
+
+Then, in play.html, replace the reference to "glulxercise.ulx.js" with
+your "mystory.ulx.js" file.
+
+
 * Contents
 
 - README.txt     -- this file
@@ -35,17 +72,21 @@ Designed by Andrew Plotkin <erkyrath@eblong.com>.
 
 - tools -- random associated scripts and tools
   - yuicompressor-2.4.2.jar -- Javascript compressor
-  - zcode2js.py -- convert game files to base64 for easier loading
+  - game2js.py -- convert game files to base64 for easier loading
+
 
 * Permissions
 
-The Quixe and GiDispa Javascript libraries are copyright 2010 by
+The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010 by
 Andrew Plotkin. You may copy and distribute them freely, by any means
 and under any conditions, as long as the code and documentation is not
 changed. You may also incorporate this code into your own program and
 distribute that, or modify this code and use and distribute the
 modified version, as long as you retain a notice in your program or
 documentation which mentions my name and the URL shown above.
+
+This package includes the GlkOte, GlkAPI, and Dialog libraries, also
+copyright by Andrew Plotkin under the same terms.
 
 This package includes the Prototype JavaScript framework, version 1.6.1
 (c) 2005-2009 Sam Stephenson
