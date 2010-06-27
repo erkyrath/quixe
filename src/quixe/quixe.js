@@ -4424,7 +4424,13 @@ function vm_restore(streamid) {
     var vmfuncs = [];
     for (var pos = 0; pos < chunks["QFun"].length; pos += 4) {
         var addr = ByteRead4(chunks["QFun"], pos);
-        vmfuncs.push(compile_func(addr));
+        var vmfunc = vmfunc_table[addr];
+        if (vmfunc === undefined) {
+            vmfunc = compile_func(addr);
+            if (addr < ramstart)
+                vmfunc_table[addr] = vmfunc;
+        }
+        vmfuncs.push(vmfunc);
     }
     
     stack = [];
