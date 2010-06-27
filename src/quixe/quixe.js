@@ -171,6 +171,12 @@ function ByteRead4(arr, addr) {
     return (arr[addr] * 0x1000000) + (arr[addr+1] * 0x10000) 
         + (arr[addr+2] * 0x100) + (arr[addr+3]);
 }
+function ByteRead2(arr, addr) {
+    return (arr[addr] * 0x100) + (arr[addr+1]);
+}
+function ByteRead1(arr, addr) {
+    return arr[addr];
+}
 
 function Mem1(addr) {
     return memmap[addr];
@@ -196,6 +202,38 @@ function MemW4(addr, val) {
     memmap[addr+1] = (val >> 16) & 0xFF;
     memmap[addr+2] = (val >> 8) & 0xFF;
     memmap[addr+3] = val & 0xFF;
+}
+
+function BytePushString(arr, str) {
+    for(var i = 0; i < str.length; i++) {
+        arr.push(str.charCodeAt(i));
+    }
+}
+function BytePush4(arr, val) {
+    arr.push((val >> 24) & 0xFF);
+    arr.push((val >> 16) & 0xFF);
+    arr.push((val >> 8) & 0xFF);
+    arr.push(val & 0xFF);
+}
+function BytePush2(arr, val) {
+    arr.push((val >> 8) & 0xFF);
+    arr.push(val & 0xFF);
+}
+function BytePush1(arr, val) {
+    arr.push(val & 0xFF);
+}
+function ByteWrite4(arr, addr, val) {
+    arr[addr]   = (val >> 24) & 0xFF;
+    arr[addr+1] = (val >> 16) & 0xFF;
+    arr[addr+2] = (val >> 8) & 0xFF;
+    arr[addr+3] = val & 0xFF;
+}
+function ByteReadString(arr, addr, len) {
+    result = new Array(0);
+    for(var i = 0; i < len; i++) {
+        result.push(String.fromCharCode(arr[addr + i]));
+    }
+    return result.join("");
 }
 
 function QuoteMem1(addr) {
@@ -448,6 +486,98 @@ function clone_stackframe(frame) {
     other.locals = frame.locals.slice(0);
     other.framelen = frame.framelen;
     return other;
+}
+
+/* Serialize a stack frame and push it onto the end of a byte array.
+   The frame must end in a call stub (or we won't be able to read it back in).
+   See the spec at http://www.eblong.com/zarf/glulx/glulx-spec_1.html#s.3.1
+*/
+function push_serialized_stackframe(frame, arr) {
+    // Frame length and format of locals.
+    BytePush4(arr, frame.framelen);
+    var rawformat = frame.vmfunc.rawformat;
+    BytePush4(arr, 8 + rawformat.length);
+    for (var i = 0; i < rawformat.length; i++) {
+        arr.push(rawformat[i]);
+    }
+    
+    // Local variables, plus any necessary padding.
+    for (var i = 0; i < frame.vmfunc.localsindex.length; i++) {
+        var form = frame.vmfunc.localsindex[i];
+        if (form.size == 4) {
+            while (arr.length & 3)
+                arr.push(0);
+            BytePush4(arr, frame.locals[form.pos]);
+        }
+        else if (form.size == 2) {
+            while (arr.length & 1)
+                arr.push(0);
+            BytePush2(arr, frame.locals[form.pos]);
+        }
+        else {
+            BytePush1(arr, frame.locals[form.pos]);
+        }
+    }
+    while (arr.length & 3)
+        arr.push(0);
+    
+    // Value stack.
+    for (var i = 0; i < frame.valstack.length; i++) {
+        BytePush4(arr, frame.valstack[i]);
+    }
+}
+    
+/* Pop a stack frame from the end of the given byte array.
+   Returns a deserialized StackFrame object, or undefined on failure.
+ */
+function pop_deserialized_stackframe(arr, vmfunc) {
+    // The last 4 bytes should be the frame pointer.
+    var frameptr = ByteRead4(arr, arr.length - 4);
+    if (frameptr < 0 || frameptr >= arr.length) {
+        qlog("Bad frameptr in serialized stack frame");
+        return undefined;
+    }
+    arr = arr.splice(frameptr, arr.length);
+    
+    // Frame length and locals format, which we don't actually need.
+    // But as a sanity check, compare them against the compiled func.
+    var framelen = ByteRead4(arr, 0);
+    var localspos = ByteRead4(arr, 4);
+    if (localspos != (8 + vmfunc.rawformat.length)) {
+        qlog("LocalsPos in save file (" + localspos + ")" +
+            " doesn't match game image (" + (8 + vmfunc.rawformat.length) + ")");
+        return undefined;
+    }
+    if (framelen != (localspos + vmfunc.locallen)) {
+        qlog("FrameLen in save file (" + framelen + ")" +
+            " doesn't match game image (" + (localspos + vmfunc.locallen) + ")");
+        return undefined;
+    }
+    
+    // Build an empty frame.
+    var frame = new StackFrame(vmfunc);
+    frame.framestart = frameptr;
+    
+    // Load the local variables.
+    for (var i = 0; i < frame.vmfunc.localsindex.length; i++) {
+        var form = frame.vmfunc.localsindex[i];
+        if (form.size == 4) {
+            frame.locals[form.pos] = ByteRead4(arr, 4 + localspos + form.pos);
+        }
+        else if (form.size == 2) {
+            frame.locals[form.pos] = ByteRead2(arr, 4 + localspos + form.pos);
+        }
+        else {
+            frame.locals[form.pos] = ByteRead1(arr, 4 + localspos + form.pos);
+        }
+    }
+    
+    // Load the stack variables.
+    for (var pos = framelen; pos < arr.length; pos += 4) {
+        frame.valstack.push(ByteRead4(arr, pos));
+    }
+    
+    return frame;
 }
 
 /* Represents all the cached string-table information for when stringtable
@@ -2792,8 +2922,10 @@ function pop_callstub(val) {
     if (isNaN(val))
         fatal_error("Function returned undefined value.");
 
-    if (frame.valstack.pop() != frame.framestart)
-        fatal_error("Call stub frameptr does not match frame.");
+    var framestart = frame.valstack.pop();
+    if (framestart != frame.framestart)
+        fatal_error("Call stub frameptr (" + framestart + ") " +
+            "does not match frame (" + frame.framestart + ")");
     pc = frame.valstack.pop();
     destaddr = frame.valstack.pop();
     desttype = frame.valstack.pop();
@@ -4080,6 +4212,97 @@ function vm_restart() {
     /* We're now ready to execute. */
 }
 
+function compress_bytes(arr) {
+    result = [];
+    var i = 0;
+    while (i < arr.length) {
+        var zeroes = 0;
+        while (i < arr.length && arr[i] == 0 && zeroes <= 255) {
+            zeroes++;
+            i++;
+        }
+        if (zeroes > 0) {
+            result.push(0);
+            result.push(zeroes - 1);
+        }
+        while (i < arr.length && arr[i] != 0) {
+            result.push(arr[i]);
+            i++;
+        }
+    }
+    qlog("Compressed " + arr.length + " bytes to " + result.length);
+    return result;
+}
+
+function decompress_bytes(arr) {
+    result = [];
+    var i = 0;
+    while (i < arr.length) {
+        var b = arr[i++];
+        if (b == 0) {
+            var count = arr[i++] + 1;
+            for (var j = 0; j < count; j++) {
+                result.push(0);
+            }
+        } else {
+            result.push(b);
+        }
+    }
+    qlog("Decompressed " + arr.length + " bytes to " + result.length);
+    return result;
+}
+
+/* Pack a map of { ID -> bytes } into a single byte array.
+   The ID should be a 4-character string.
+ */
+function pack_iff_chunks(chunks) {
+    keys = [];
+    for (var key in chunks) {
+        if (key.length != 4) {
+            fatal_error("Bad chunk ID (must be exactly 4 chars): " + key);
+        }
+        keys.push(key);    
+    }
+    keys.sort(); // Ensures consistent behaviour across browsers.
+    
+    bytes = [];
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var chunk = chunks[key];
+        qlog("Writing " + key + " (" + chunk.length + " bytes)");
+        BytePushString(bytes, key);
+        BytePush4(bytes, chunk.length);
+        bytes = bytes.concat(chunk);
+    }
+    return bytes;
+}
+
+/* Unpack a byte array into an { ID -> bytes } map, or undefined on error.
+ */
+function unpack_iff_chunks(bytes) {
+    chunks = {};
+    var pos = 0;
+    while (pos < bytes.length) {
+        if ((pos + 8) > bytes.length) {
+          qlog("IFF chunk header is truncated");
+          return undefined;
+        }
+        var key = ByteReadString(bytes, pos, 4);
+        var size = ByteRead4(bytes, pos + 4);
+        pos += 8;
+
+        if ((pos + size) > bytes.length) {
+          qlog(key + " chunk is truncated " +
+                "(" + size + " bytes needed, " + (bytes.length - pos) + " available");
+          return undefined;
+        }
+        chunks[key] = bytes.slice(pos, pos + size);
+        pos += size;
+        qlog("Reading " + key + " (" + size + " bytes)");
+    }
+    return chunks;
+}
+
 /* Writes a snapshot of the VM state to the given Glk stream. Returns true
    on success. 
 */
@@ -4093,10 +4316,54 @@ function vm_save(streamid) {
     var str = GiDispa.class_obj_from_id('stream', streamid);
     if (!str)
         return false;
+    
+    chunks = {};
+    
+    chunks["IFhd"] = game_image.slice(0, 128);
+    
+    chunks["CMem"] = memmap.slice(ramstart);
+    for (var i = ramstart; i < game_image.length; i++) {
+        chunks["CMem"][i - ramstart] ^= game_image[i];
+    }
+    chunks["CMem"] = compress_bytes(chunks["CMem"]);
+    
+    // Non-standard extension to Quetzal: we need the function address for each
+    // stack frame in order to rebuild the corresponding VMFunc objects when
+    // restoring. This shouldn't prevent anyone else from reading our files
+    // (not that we can easily export them right now anyway).
+    chunks["QFun"] = [];
+    for (var i = 0; i < stack.length; i++) {
+        BytePush4(chunks["QFun"], stack[i].vmfunc.funcaddr);        
+    }
+    
+    chunks["Stks"] = [];
+    for (var i = 0; i < stack.length; i++) {
+        push_serialized_stackframe(stack[i], chunks["Stks"]);
+    }
 
-    Glk.glk_put_jstring_stream(str, "Fake save data."); //####
+    if (heap_is_active()) {
+        chunks["MAll"] = [];
+        BytePush4(chunks["MAll"], heapstart);
+        BytePush4(chunks["MAll"], usedlist.length);
+        for (var i = 0; i < usedlist.length; i++) {
+            BytePush4(chunks["MAll"], usedlist[i].addr);
+            BytePush4(chunks["MAll"], usedlist[i].size);
+        }
+    }
 
-    return false; //#### failure
+    var payload_bytes = []
+    BytePushString(payload_bytes, "IFZS");
+    payload_bytes = payload_bytes.concat(pack_iff_chunks(chunks));
+    
+    var quetzal = pack_iff_chunks({"FORM": payload_bytes})
+    for (var i = 0; i < quetzal.length; i++) {
+        quetzal[i] = String.fromCharCode(quetzal[i]);
+    }
+    quetzal = quetzal.join("");
+    qlog("vm_save: writing " + quetzal.length + " bytes");
+    
+    Glk.glk_put_jstring_stream(str, quetzal);
+    return true;
 }
 
 /* Reads a VM state snapshot from the given Glk stream and restores it.
@@ -4109,8 +4376,97 @@ function vm_restore(streamid) {
     var str = GiDispa.class_obj_from_id('stream', streamid);
     if (!str)
         return false;
-
-    return false; //#### failure
+    
+    var quetzal = new Array(0);
+    var buffer = new Array(1024);
+    var count = 1;
+    while(count > 0) {
+        count = Glk.glk_get_buffer_stream(str, buffer);
+        quetzal = quetzal.concat(buffer.slice(0, count));
+    }
+    qlog("vm_restore: reading " + quetzal.length + " bytes");
+    
+    quetzal = unpack_iff_chunks(quetzal)["FORM"];
+    if (!quetzal || ByteReadString(quetzal, 0, 4) != "IFZS") {
+        qlog("vm_restore failed: file doesn't start with FORM/IFZS header");
+        return false;
+    }
+    var chunks = unpack_iff_chunks(quetzal.slice(4));
+    
+    if (!chunks["IFhd"]) {
+        qlog("vm_restore failed: missing required IFhd chunk");
+        return false;
+    }
+    for (var i = 0; i < 128; i++) {
+        if (chunks["IFhd"][i] != game_image[i]) {
+            qlog("vm_restore failed: this save image is for a different game");
+            return false;
+        }
+    }    
+    if (!chunks["CMem"]) {
+        qlog("vm_restore failed: missing required CMem chunk");
+        return false;
+    }
+    if (!chunks["QFun"]) {
+        qlog("vm_restore failed: missing required QFun chunk");
+    }
+    if (!chunks["Stks"]) {
+        qlog("vm_restore failed: missing required Stks chunk");
+    }
+    
+    // The point of no return.    
+    var protect = copy_protected_range();
+    heap_clear();
+    
+    var ram_xor = decompress_bytes(chunks["CMem"]);
+    change_memsize(ramstart + ram_xor.length, false);
+    memmap = game_image.slice(0, ramstart).concat(ram_xor);
+    for (var i = ramstart; i < game_image.length; i++) {
+        memmap[i] ^= game_image[i];
+    }
+    
+    var vmfuncs = [];
+    for (var pos = 0; pos < chunks["QFun"].length; pos += 4) {
+        var addr = ByteRead4(chunks["QFun"], pos);
+        vmfuncs.push(compile_func(addr));
+    }
+    
+    stack = [];
+    for (var i = vmfuncs.length - 1; i >= 0; i--) {
+        frame = pop_deserialized_stackframe(chunks["Stks"], vmfuncs[i]);
+        if (!frame) {
+            fatal_error("vm_restore failed: bad stack frame");
+        }
+        stack.unshift(frame);
+    }
+    for (var i = 0; i < stack.length; i++) {
+        stack[i].depth = i;
+    }
+    frame = stack[stack.length - 1];
+    
+    if (chunks["MAll"]) {
+        heapstart = ByteRead4(chunks["MAll"], 0);
+        var numblocks = ByteRead4(chunks["MAll"], 4);
+        var heapend = heapstart;
+        for (var i = 0; i < numblocks; i++) {
+            var addr = ByteRead4(chunks["MAll"], 8 + 4*i);
+            var size = ByteRead4(chunks["MAll"], 12 + 4*i);
+            if (addr < heapend || (addr + size) > endmem) {
+                fatal_error("vm_restore failed: corrupt dynamic heap");
+            }
+            usedlist.push(new HeapBlock(addr, size));
+            if (addr > heapend) {
+                freelist.push(new HeapBlock(heapend, addr - heapend));
+            }
+            heapend = addr + size;
+        }
+        if (heapend < endmem) {
+            freelist.push(new HeapBlock(heapend, endmem - heapend));
+        }
+    }
+    
+    paste_protected_range(protect);
+    return true;
 }
 
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
