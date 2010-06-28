@@ -41,13 +41,16 @@ game file using the game2js.py script in the tools directory:
 Then, in play.html, replace the reference to "glulxercise.ulx.js" with
 your "mystory.ulx.js" file.
 
+To set up a page that can play any game file on the Internet (as
+on the web site), copy play-remote.html.
 
 * Contents
 
-- README.txt     -- this file
-- play.html      -- HTML template for a Quixe page
-- play-full.html -- same thing, but using non-compressed Javascript source
-- build.py       -- generates the files in lib
+- README.txt       -- this file
+- play.html        -- HTML template for a Quixe page
+- play-full.html   -- same thing, but using non-compressed Javascript source
+- play-remote.html -- Quixe page that plays any story via "?story=..."
+- build.py         -- generates the files in lib
 
 - src -- Javascript source code
   - quixe/quixe.js    -- the VM engine core
@@ -61,7 +64,7 @@ your "mystory.ulx.js" file.
   - glkote.min.js -- prototype and glkote files
   - quixe.min.js  -- quixe files
 
-- media -- images, CSS, and layout for play.html
+- media -- images, CSS, and layout for play.html et al
   - glkote.css      -- default stylesheet (copied from GlkOte project)
   - dialog.css      -- dialog-box stylesheet (copied from GlkOte project)
   - waiting.gif     -- timer animation (copied from GlkOte project)
