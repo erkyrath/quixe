@@ -792,7 +792,7 @@ function oputil_store(context, funcop, operand) {
             /* If this is an untruncated constant, we can move it 
                directly to the offstack. */
             context.offstack.push(operand);
-            context.code.push("// push to offstack: "+operand); //###debug
+            ;;;context.code.push("// push to offstack: "+operand); //debug
         }
         else {
             holdvar = alloc_holdvar(context, true);
@@ -878,7 +878,7 @@ function oputil_push_substring_callstub(context) {
    "return" which does not end compilation.
 */
 function oputil_unload_offstack(context, keepstack) {
-    context.code.push("// unload offstack: " + context.offstack.length + " items" + (keepstack ? " (conditional)" : "")); //###debug
+    ;;;context.code.push("// unload offstack: " + context.offstack.length + " items" + (keepstack ? " (conditional)" : "")); //debug
     if (context.offstack.length) {
         context.code.push("frame.valstack.push("+context.offstack.join(",")+");");
         if (!keepstack) {
@@ -947,11 +947,11 @@ function oputil_perform_jump(context, operand, unconditional) {
         var val = Number(operand);
         if (val == 0 || val == 1) {
             if (unconditional) {
-                context.code.push("// quashing offstack for unconditional return: " + context.offstack.length); //###debug
+                ;;;context.code.push("// quashing offstack for unconditional return: " + context.offstack.length); //debug
                 context.offstack.length = 0;
             }
             else {
-                context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //###debug
+                ;;;context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //debug
             }
             context.code.push("leave_function();");
             context.code.push("pop_callstub("+val+");");
@@ -1280,7 +1280,7 @@ var opcode_table = {
     0x31: function(context, operands) { /* return */
         /* Quash the offstack; we're about to blow away the whole stack
            frame, so nothing of the stack will survive. */
-        context.code.push("// quashing offstack for return: " + context.offstack.length); //###debug
+        ;;;context.code.push("// quashing offstack for return: " + context.offstack.length); //debug
         context.offstack.length = 0;
         context.code.push("leave_function();");
         context.code.push("pop_callstub("+operands[0]+");");
@@ -1299,7 +1299,7 @@ var opcode_table = {
     0x33: function(context, operands) { /* throw */
         /* Quash the offstack; we're about to blow away the stack frame, or
            at minimum reset it. A valid call stub cannot be on the offstack. */
-        context.code.push("// quashing offstack for throw: " + context.offstack.length); //###debug
+        ;;;context.code.push("// quashing offstack for throw: " + context.offstack.length); //debug
         context.offstack.length = 0;
         context.code.push("pop_stack_to("+operands[1]+");");
         context.code.push("pop_callstub("+operands[0]+");");
@@ -1698,7 +1698,7 @@ var opcode_table = {
 
     0x120: function(context, operands) { /* quit */
         /* Quash the offstack. No more execution. */
-        context.code.push("// quashing offstack for quit: " + context.offstack.length); //###debug
+        ;;;context.code.push("// quashing offstack for quit: " + context.offstack.length); //debug
         context.offstack.length = 0;
         context.code.push("done_executing = true; vm_stopped = true;");
         context.code.push("return;");
@@ -1805,12 +1805,12 @@ var opcode_table = {
     0x178: function(context, operands) { /* malloc */
         var expr = "heap_malloc("+operands[0]+")";
         context.code.push(operands[1]+expr+");");
-        context.code.push("assert_heap_valid();"); //###assert
+        ;;;context.code.push("assert_heap_valid();"); //assert
     },
     
     0x179: function(context, operands) { /* mfree */
         context.code.push("heap_free("+operands[0]+");");
-        context.code.push("assert_heap_valid();"); //###assert
+        ;;;context.code.push("assert_heap_valid();"); //assert
     },
 
     0x180: function(context, operands) { /* accelfunc */
@@ -1857,7 +1857,7 @@ var opcode_table = {
             context.path_ends = true;
             break;
         case 0: /* null */
-            context.code.push("// null streamchar " + operands[0]); //###debug
+            ;;;context.code.push("// null streamchar " + operands[0]); //debug
             break;
         }
     },
@@ -1882,7 +1882,7 @@ var opcode_table = {
             context.path_ends = true;
             break;
         case 0: /* null */
-            context.code.push("// null streamnum " + operands[0]); //###debug
+            ;;;context.code.push("// null streamnum " + operands[0]); //debug
             break;
         }
     },
@@ -1918,7 +1918,7 @@ var opcode_table = {
             context.path_ends = true;
             break;
         case 0: /* null */
-            context.code.push("// null streamchar " + operands[0]); //###debug
+            ;;;context.code.push("// null streamchar " + operands[0]); //debug
             break;
         }
     },
@@ -2025,8 +2025,9 @@ function pop_offstack_holdvar(context) {
     }
 
     var use = context.holduse[holdvar];
-    if (isNaN(use))
-        fatal_error("Offstack variable not marked as stack.", holdvar); //###assert
+    ;;;if (isNaN(use)) {
+    ;;;    fatal_error("Offstack variable not marked as stack.", holdvar); //assert
+    ;;;}
     use--;
     if (use == 0)
         use = true; // Not on the stack any more
@@ -2752,7 +2753,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         }
 
         /* Now we have an opcode number. */
-        context.code.push("// " + opcodecp.toString(16) + ": opcode " + opcode.toString(16)); //###debug
+        ;;;context.code.push("// " + opcodecp.toString(16) + ": opcode " + opcode.toString(16)); //debug
 
         /* Fetch the structure that describes how the operands for this
            opcode are arranged. This is a pointer to an immutable, 
@@ -2778,12 +2779,12 @@ function compile_path(vmfunc, startaddr, startiosys) {
                 context.holduse[key] = false;
         }
 
-        if (context.offstack.length) context.code.push("// offstack: " + context.offstack.join(",")); //###debug
+        ;;;if (context.offstack.length) context.code.push("// offstack: " + context.offstack.join(",")); //debug
 
         /* Check if any other compilation starts, or will start, at this
            address. If so, no need to compile further. */
         if (vmfunc.pathaddrs[cp] && !context.path_ends) {
-            context.code.push("// reached jump-in point"); //###debug
+            ;;;context.code.push("// reached jump-in point"); //debug
             context.code.push("pc="+cp+";");
             oputil_unload_offstack(context);
             context.code.push("return;");
@@ -3116,14 +3117,14 @@ function set_string_table(addr) {
         var rootaddr = Mem4(stringtable+8);
         var cache_stringtable = (stringtable+tablelen <= ramstart);
         if (cache_stringtable) {
-            //qlog("### building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
+            //qlog("building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
             var tmparray = Array(1);
-            var pathstart = new Date().getTime(); //###debug
+            //var pathstart = new Date().getTime(); //debug
             build_decoding_tree(tmparray, rootaddr, 4 /*CACHEBITS*/, 0);
             dectab = tmparray[0];
             if (dectab === undefined)
                 fatal_error("Failed to create decoding tree.");
-            //qlog("### done building; time = " + ((new Date().getTime())-pathstart) + " ms"); //###debug
+            //qlog("done building; time = " + ((new Date().getTime())-pathstart) + " ms"); //debug
         }
 
         textenv = new VMTextEnv(stringtable, dectab);
@@ -3822,8 +3823,9 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     if (!retval) {
         /* The simple case; retval is false or undefined. Equivalent to a
            function that prints text and returns false. */
-        if (context.code.length)
-            fatal_error("Simple-case string generated code."); //###assert
+        ;;;if (context.code.length) {
+        ;;;    fatal_error("Simple-case string generated code."); //assert
+        ;;;}
         return context.buffer.join("");
     }
     else {
@@ -4303,8 +4305,9 @@ function unpack_iff_chunks(bytes) {
    on success. 
 */
 function vm_save(streamid) {
-    if (memmap.length != endmem) 
-        fatal_error("Memory length was incorrect before save."); //###assert
+    ;;;if (memmap.length != endmem) {
+    ;;;    fatal_error("Memory length was incorrect before save."); //assert
+    ;;;}
 
     if (iosysmode != 2)
         fatal_error("Streams are only available in Glk I/O system.");
@@ -4475,8 +4478,9 @@ function vm_restore(streamid) {
    many on the stack, throw away the oldest.
 */
 function vm_saveundo() {
-    if (memmap.length != endmem) 
-        fatal_error("Memory length was incorrect before saveundo."); //###assert
+    ;;;if (memmap.length != endmem) {
+    ;;;    fatal_error("Memory length was incorrect before saveundo."); //assert
+    ;;;}
 
     var snapshot = {};
     snapshot.ram = memmap.slice(ramstart);
@@ -4519,8 +4523,9 @@ function vm_restoreundo() {
     
     paste_protected_range(protect);
 
-    if (memmap.length != endmem) 
-        fatal_error("Memory length was incorrect after undo."); //###assert
+    ;;;if (memmap.length != endmem) {
+    ;;;    fatal_error("Memory length was incorrect after undo."); //assert
+    ;;;}
 
     return true;
 }
@@ -4855,15 +4860,6 @@ function execute_loop() {
     Glk.update();
 
     qlog("### done executing; path time = " + (pathend-pathstart) + " ms");
-    /*
-    for (var ix in vmtextenv_table) {
-        qlog("### textenv("+ix+"):");
-        var env = vmtextenv_table[ix];
-        qlog("###...table null: " + qstrcachedump(env.vmstring_tables[0]));
-        qlog("###...table filt: " + qstrcachedump(env.vmstring_tables[1]));
-        qlog("###...table glk : " + qstrcachedump(env.vmstring_tables[2]));
-    }
-    */
 }
 
 /* End of Quixe namespace function. Return the object which will
