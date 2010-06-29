@@ -44,7 +44,14 @@ function quixe_prepare(image) {
     game_image = image;
 
     var ls = game_image.slice(0, 64);
-    game_signature = String.fromCharCode.apply(this, ls);
+    var ix, val;
+    for (ix=0; ix<ls.length; ix++) {
+        val = ls[ix].toString(16);
+        if (val.length < 2)
+            val = "0" + val;
+        ls[ix] = val;
+    }
+    game_signature = ls.join('');
 }
 
 /* This is called by the page (or the page's display library) when it
