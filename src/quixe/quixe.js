@@ -74,7 +74,7 @@ function quixe_init() {
         execute_loop();
     }
     catch (ex) {
-        Glk.fatal_error(ex);
+        Glk.fatal_error("Quixe init: " + ex);
     }
 }
 
@@ -88,7 +88,7 @@ function quixe_resume() {
         execute_loop();
     }
     catch (ex) {
-        Glk.fatal_error(ex);
+        Glk.fatal_error("Quixe run: " + ex);
     }
 }
 
@@ -730,7 +730,7 @@ function setup_operandlist_table() {
         0x178: list_LS, /* malloc */
         0x179: list_L, /* mfree */
         0x180: list_LL, /* accelfunc */
-        0x181: list_LL, /* accelparam */
+        0x181: list_LL /* accelparam */
     }
 }
 
@@ -2001,7 +2001,7 @@ var opcode_table = {
             context.code.push("}");
         }
         oputil_store(context, operands[2], "glkret");
-    },
+    }
 }
 
 /* Select a currently-unused "_hold*" variable, and mark it used. 
@@ -2718,7 +2718,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         offstack: [],
 
         /* Set true when no more opcodes should be compiled for this path. */
-        path_ends: false,
+        path_ends: false
     };
 
     /* This will hold the operand information for each opcode we compile.
@@ -3425,7 +3425,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         startaddr: startaddr,
         startbitnum: startbitnum,
         buffer: [],
-        code: [],
+        code: []
     }
 
     if (inmiddle == 0) {
@@ -4578,7 +4578,7 @@ function copy_protected_range() {
     var obj = {
         start: protectstart,
         end: protectend,
-        len: len,
+        len: len
     };
     var arr = memmap.slice(protectstart, protectend);
 
@@ -4655,7 +4655,7 @@ function quixe_get_statistics() {
         paths_cached: paths_cached,
         paths_compiled: paths_compiled,
         strings_cached: strings_cached,
-        strings_compiled: strings_compiled,
+        strings_compiled: strings_compiled
     };
 
     return stat;
@@ -4885,7 +4885,7 @@ return {
     WriteWord: WriteArgWord,
     ReadStructField: ReadStructField,
     WriteStructField: WriteStructField,
-    SetResumeStore: SetResumeStore,
+    SetResumeStore: SetResumeStore
 };
 
 }();

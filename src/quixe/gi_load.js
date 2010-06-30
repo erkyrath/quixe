@@ -69,7 +69,7 @@ var all_options = {
     use_query_story: true, // use the ?story= URL parameter (if provided)
     default_story: null,   // story URL to use if not otherwise set
     set_page_title: true,  // set the window title to the game name
-    proxy_url: 'http://zcode.appspot.com/proxy/',
+    proxy_url: 'http://zcode.appspot.com/proxy/'
 };
 
 var gameurl = null;  /* The URL we are loading. */
@@ -178,7 +178,7 @@ function load_run(optobj, image, image_format) {
                 evalJS: 'force',
                 onFailure: function(resp) {
                     all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
-                },
+                }
         });
         return;
     }
@@ -217,7 +217,7 @@ function load_run(optobj, image, image_format) {
                 },
                 onFailure: function(resp) {
                     all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
-                },
+                }
         });
         return;
     }
@@ -248,7 +248,7 @@ function load_run(optobj, image, image_format) {
                 },
                 onSuccess: function(resp) {
                     start_game(decode_base64(resp.responseText));
-                },
+                }
         });
         return;
     }
@@ -456,7 +456,7 @@ function start_game(image) {
 /* End of GiLoad namespace function. Return the object which will
    become the GiLoad global. */
 return {
-    load_run: load_run,
+    load_run: load_run
 };
 
 }();

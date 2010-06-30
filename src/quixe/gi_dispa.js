@@ -42,7 +42,7 @@ var class_defs = {
     0: 'window',
     1: 'stream',
     2: 'fileref',
-    3: 'schannel',
+    3: 'schannel'
 };
 
 /* FuncSpec is a data representation of a Glk function's prototype.
@@ -313,7 +313,7 @@ var proto_map = {
 // 320 (0x140): request_char_event_uni - 1Qa:
 320 : new FuncSpec(320, "request_char_event_uni", new Prototype([new ArgClass("window")], null)),
 // 321 (0x141): request_line_event_uni - 3Qa&+#!IuIu:
-321 : new FuncSpec(321, "request_line_event_uni", new Prototype([new ArgClass("window"), new ArgArray(new ArgInt(false), true, true, true, true), new ArgInt(false)], null)),
+321 : new FuncSpec(321, "request_line_event_uni", new Prototype([new ArgClass("window"), new ArgArray(new ArgInt(false), true, true, true, true), new ArgInt(false)], null))
 };
 // End of auto-generated table.
 
@@ -872,7 +872,7 @@ return {
     class_obj_to_id: class_obj_to_id,
     class_obj_from_id: class_obj_from_id,
     retain_array: retain_array,
-    unretain_array: unretain_array,
+    unretain_array: unretain_array
 };
 
 }();
