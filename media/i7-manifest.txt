@@ -83,7 +83,7 @@ g
 <script type="text/javascript">
 game_options = {
   use_query_story: false,
-  set_page_title: false,
+  set_page_title: false
 };
 </script>
 
