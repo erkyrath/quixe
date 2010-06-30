@@ -149,6 +149,7 @@ function load_run(optobj, image, image_format) {
     var regex_urldomain = /^(file:|(\w+:)?\/\/[^\/?#]+)/;
     var page_domain = regex_urldomain.exec(location)[0];
     var data_exec = regex_urldomain.exec(gameurl);
+    var is_relative = data_exec ? false : true;
     var data_domain = data_exec ? data_exec[0] : page_domain;
 
     var same_origin = (page_domain == data_domain);
@@ -161,7 +162,7 @@ function load_run(optobj, image, image_format) {
     }
     var old_js_url = gameurl.toLowerCase().endsWith('.js');
 
-    GlkOte.log('### same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
+    GlkOte.log('### is_relative=' + is_relative + ', same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
 
     if (old_js_url && same_origin) {
         /* Old-fashioned Javascript file -- the output of Parchment's
@@ -231,6 +232,14 @@ function load_run(optobj, image, image_format) {
         return;
     }
 
+    /* All the remaining options go through the proxy. But the proxy doesn't
+       understand relative URLs, so we absolutize it if necessary. */
+    var absgameurl = gameurl;
+    if (is_relative) {
+        absgameurl = absolutize(gameurl);
+        GlkOte.log('### absolutize ' + gameurl + ' to ' + absgameurl);
+    }
+
     if (crossorigin_supported) {
         /* Either we can't load binary data, or the data is on a different
            domain. Either way, we'll go through the proxy, which will
@@ -239,7 +248,7 @@ function load_run(optobj, image, image_format) {
         GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
         new Ajax.Request(all_options.proxy_url, {
                 method: 'get',
-                parameters: { encode: 'base64', url: gameurl },
+                parameters: { encode: 'base64', url: absgameurl },
                 onFailure: function(resp) {
                     /* I would like to display the responseText here, but
                        most servers return a whole HTML page, and that doesn't
@@ -256,7 +265,7 @@ function load_run(optobj, image, image_format) {
     if (true) {
         /* Cross-origin Ajax isn't available. We can still use the proxy,
            but we'll have to insert a <script> tag to do it. */
-        var fullurl = all_options.proxy_url + '?encode=base64&callback=processBase64Zcode&url=' + gameurl;
+        var fullurl = all_options.proxy_url + '?encode=base64&callback=processBase64Zcode&url=' + absgameurl;
         GlkOte.log('### trying proxy-script load... (' + fullurl + ')');
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
@@ -300,6 +309,17 @@ function get_query_params() {
     }
 
     return map;
+}
+
+/* I learned this terrible trick for turning a relative URL absolute. 
+   It's supposed to work on all browsers, if you don't go mad.
+*/
+function absolutize(url) {
+    var div = new Element('div');
+    div.innerHTML = '<a></a>';
+    div.firstChild.href = url;
+    div.innerHTML = div.innerHTML;
+    return div.firstChild.href;
 }
 
 /* Look through a Blorb file (provided as a byte array) and return the
