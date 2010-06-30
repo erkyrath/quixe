@@ -4235,7 +4235,7 @@ function compress_bytes(arr) {
             i++;
         }
     }
-    qlog("Compressed " + arr.length + " bytes to " + result.length);
+    //qlog("Compressed " + arr.length + " bytes to " + result.length);
     return result;
 }
 
@@ -4253,7 +4253,7 @@ function decompress_bytes(arr) {
             result.push(b);
         }
     }
-    qlog("Decompressed " + arr.length + " bytes to " + result.length);
+    //qlog("Decompressed " + arr.length + " bytes to " + result.length);
     return result;
 }
 
@@ -4274,7 +4274,7 @@ function pack_iff_chunks(chunks) {
     for (var ix = 0; ix < keys.length; ix++) {
         var key = keys[ix];
         var chunk = chunks[key];
-        qlog("Writing " + key + " (" + chunk.length + " bytes)");
+        //qlog("Writing " + key + " (" + chunk.length + " bytes)");
         BytePushString(bytes, key);
         BytePush4(bytes, chunk.length);
         bytes = bytes.concat(chunk);
@@ -4303,7 +4303,7 @@ function unpack_iff_chunks(bytes) {
         }
         chunks[key] = bytes.slice(pos, pos + size);
         pos += size;
-        qlog("Reading " + key + " (" + size + " bytes)");
+        //qlog("Reading " + key + " (" + size + " bytes)");
     }
     return chunks;
 }
@@ -4362,7 +4362,7 @@ function vm_save(streamid) {
     payload_bytes = payload_bytes.concat(pack_iff_chunks(chunks));
     
     var quetzal = pack_iff_chunks({"FORM": payload_bytes})
-    qlog("vm_save: writing " + quetzal.length + " bytes");    
+    //qlog("vm_save: writing " + quetzal.length + " bytes");    
     Glk.glk_put_buffer_stream(str, quetzal);
     return true;
 }
@@ -4385,7 +4385,7 @@ function vm_restore(streamid) {
         count = Glk.glk_get_buffer_stream(str, buffer);
         quetzal = quetzal.concat(buffer.slice(0, count));
     }
-    qlog("vm_restore: reading " + quetzal.length + " bytes");
+    //qlog("vm_restore: reading " + quetzal.length + " bytes");
     
     quetzal = unpack_iff_chunks(quetzal);
     if (!quetzal) {
