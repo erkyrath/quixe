@@ -129,7 +129,7 @@ function accept_ui_event(obj) {
             left: content_metrics.outspacingx,
             top: content_metrics.outspacingy,
             right: content_metrics.width-content_metrics.outspacingx,
-            bottom: content_metrics.height-content_metrics.outspacingy,
+            bottom: content_metrics.height-content_metrics.outspacingy
         };
         if (gli_rootwin)
             gli_window_rearrange(gli_rootwin, box);
@@ -565,7 +565,7 @@ var Const = {
       stylehint_just_LeftFlush : 0,
       stylehint_just_LeftRight : 1,
       stylehint_just_Centered : 2,
-      stylehint_just_RightFlush : 3,
+      stylehint_just_RightFlush : 3
 };
 
 var KeystrokeNameMap = {
@@ -583,7 +583,7 @@ var KeystrokeNameMap = {
     pageup : Const.keycode_PageUp,
     pagedown : Const.keycode_PageDown,
     home : Const.keycode_Home,
-    end : Const.keycode_End,
+    end : Const.keycode_End
 };
 
 var StyleNameMap = {
@@ -597,14 +597,14 @@ var StyleNameMap = {
     7 : 'blockquote',
     8 : 'input',
     9 : 'user1',
-    10 : 'user2',
+    10 : 'user2'
 };
 
 var FileTypeMap = {
     0: 'data',
     1: 'save',
     2: 'transcript',
-    3: 'command',
+    3: 'command'
 };
 
 /*### reduce the titlecase table to a diff off of the lowercase table? */
@@ -646,7 +646,7 @@ var unicode_upper_table = {
  8180: [ 911,921 ],  8182: [ 937,834 ],  8183: [ 937,834,921 ],  8188: [ 937,921 ],  64256: [ 70,70 ],
  64257: [ 70,73 ],  64258: [ 70,76 ],  64259: [ 70,70,73 ],  64260: [ 70,70,76 ],  64261: [ 83,84 ],
  64262: [ 83,84 ],  64275: [ 1348,1350 ],  64276: [ 1348,1333 ],  64277: [ 1348,1339 ],  64278: [ 1358,1350 ],
- 64279: [ 1348,1341 ],
+ 64279: [ 1348,1341 ]
 };
 /* add all the regular cases to unicode_upper_table */
 (function() {
@@ -759,7 +759,7 @@ var unicode_lower_table = {
  8124: 8115,  8136: 8050,  8137: 8051,  8138: 8052,  8139: 8053,
  8140: 8131,  8154: 8054,  8155: 8055,  8170: 8058,  8171: 8059,
  8172: 8165,  8184: 8056,  8185: 8057,  8186: 8060,  8187: 8061,
- 8188: 8179,  8486: 969,  8490: 107,  8491: 229,
+ 8188: 8179,  8486: 969,  8490: 107,  8491: 229
 };
 /* add all the regular cases to unicode_lower_table */
 (function() {
@@ -885,7 +885,7 @@ var unicode_title_table = {
  8165: 8172,  8166: [ 933,834 ],  8167: [ 933,776,834 ],  8178: [ 8186,837 ],  8179: 8188,
  8180: [ 911,837 ],  8182: [ 937,834 ],  8183: [ 937,834,837 ],  64256: [ 70,102 ],  64257: [ 70,105 ],
  64258: [ 70,108 ],  64259: [ 70,102,105 ],  64260: [ 70,102,108 ],  64261: [ 83,116 ],  64262: [ 83,116 ],
- 64275: [ 1348,1398 ],  64276: [ 1348,1381 ],  64277: [ 1348,1387 ],  64278: [ 1358,1398 ],  64279: [ 1348,1389 ],
+ 64275: [ 1348,1398 ],  64276: [ 1348,1381 ],  64277: [ 1348,1387 ],  64278: [ 1358,1398 ],  64279: [ 1348,1389 ]
 
 };
 /* add all the regular cases to unicode_title_table */
@@ -1551,13 +1551,13 @@ function gli_window_rearrange(win, box) {
                 left: win.bbox.left,
                 right: win.pair_splitpos,
                 top: win.bbox.top,
-                bottom: win.bbox.bottom,
+                bottom: win.bbox.bottom
             };
             box2 = {
                 left: box1.right + win.pair_splitwidth,
                 right: win.bbox.right,
                 top: win.bbox.top,
-                bottom: win.bbox.bottom,
+                bottom: win.bbox.bottom
             };
         }
         else {
@@ -1565,13 +1565,13 @@ function gli_window_rearrange(win, box) {
                 top: win.bbox.top,
                 bottom: win.pair_splitpos,
                 left: win.bbox.left,
-                right: win.bbox.right,
+                right: win.bbox.right
             };
             box2 = {
                 top: box1.bottom + win.pair_splitwidth,
                 bottom: win.bbox.bottom,
                 left: win.bbox.left,
-                right: win.bbox.right,
+                right: win.bbox.right
             };
         }
         if (!win.pair_backward) {
@@ -2185,7 +2185,7 @@ function glk_window_open(splitwin, method, size, wintype, rock) {
             left: content_metrics.outspacingx,
             top: content_metrics.outspacingy,
             right: content_metrics.width-content_metrics.outspacingx,
-            bottom: content_metrics.height-content_metrics.outspacingy,
+            bottom: content_metrics.height-content_metrics.outspacingy
         };
     }
     else {
@@ -3615,7 +3615,7 @@ return {
     glk_stream_open_file_uni : glk_stream_open_file_uni,
     glk_stream_open_memory_uni : glk_stream_open_memory_uni,
     glk_request_char_event_uni : glk_request_char_event_uni,
-    glk_request_line_event_uni : glk_request_line_event_uni,
+    glk_request_line_event_uni : glk_request_line_event_uni
 };
 
 }();

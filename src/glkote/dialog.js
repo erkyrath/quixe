@@ -754,7 +754,7 @@ return {
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
     file_write: file_write,
-    file_read: file_read,
+    file_read: file_read
 };
 
 }();
