@@ -74,7 +74,7 @@ function quixe_init() {
         execute_loop();
     }
     catch (ex) {
-        Glk.fatal_error("Quixe init: " + ex);
+        Glk.fatal_error("Quixe init: " + show_exception(ex));
     }
 }
 
@@ -88,8 +88,28 @@ function quixe_resume() {
         execute_loop();
     }
     catch (ex) {
-        Glk.fatal_error("Quixe run: " + ex);
+        Glk.fatal_error("Quixe run: " + show_exception(ex));
     }
+}
+
+/* Exception objects are hard to display in Javascript. This is a rough
+   attempt.
+*/
+function show_exception(ex) {
+    if (typeof(ex) == 'string')
+        return ex;
+    var res = ex.toString();
+    if (ex.message)
+        res = res + ' ' + ex.message;
+    if (ex.fileName)
+        res = res + ' ' + ex.fileName;
+    if (ex.lineNumber)
+        res = res + ' line:' + ex.lineNumber;
+    if (ex.name)
+        res = res + ' ' + ex.name;
+    if (ex.number)
+        res = res + ' ' + ex.number;
+    return res;
 }
 
 /* Log the message in the browser's error log, if it has one. (This shows
@@ -359,7 +379,12 @@ function fatal_error(msg) {
         msg += " (";
         for (ix = 1; ix < arguments.length; ix++) {
             val = arguments[ix];
-            val = val.toString(16);
+            if (typeof(val) == 'number') {
+                val = val.toString(16);
+            }
+            else {
+                val = ""+val;
+            }
             if (ix != 1)
                 msg += " ";
             msg += val;
@@ -615,7 +640,7 @@ function setup_operandlist_table() {
         this.numops = formlist.length;
         var ls = [];
         for (var ix=0; ix<formlist.length; ix++)
-            ls.push(formlist[ix]);
+            ls.push(formlist.charAt(ix));
         this.formlist = ls;
     }
     var list_none = new OperandList("");
