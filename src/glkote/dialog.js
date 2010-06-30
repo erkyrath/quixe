@@ -288,7 +288,7 @@ function evhan_select_change() {
     if (confirming)
         return false;
 
-    GlkOte.log('### select changed');
+    //GlkOte.log('### select changed');
     var selel = $(dialog_el_id+'_select');
     if (!selel)
         return false;
@@ -309,7 +309,7 @@ function evhan_accept_load_button() {
     if (!is_open)
         return false;
 
-    GlkOte.log('### accept load');
+    //GlkOte.log('### accept load');
     var selel = $(dialog_el_id+'_select');
     if (!selel)
         return false;
@@ -321,7 +321,7 @@ function evhan_accept_load_button() {
         return false;
 
     var callback = dialog_callback;
-    GlkOte.log('### selected ' + file.dirent.dirent);
+    //GlkOte.log('### selected ' + file.dirent.dirent);
     dialog_close();
     if (callback)
         callback(file.dirent);
@@ -335,7 +335,7 @@ function evhan_accept_save_button() {
     if (!is_open)
         return false;
 
-    GlkOte.log('### accept save');
+    //GlkOte.log('### accept save');
     var fel = $(dialog_el_id+'_infield');
     if (!fel)
         return false;
@@ -360,7 +360,7 @@ function evhan_accept_save_button() {
     }
 
     var callback = dialog_callback;
-    GlkOte.log('### selected ' + dirent.dirent);
+    //GlkOte.log('### selected ' + dirent.dirent);
     dialog_close();
     if (callback)
         callback(dirent);
@@ -389,7 +389,7 @@ function evhan_cancel_button() {
     }
 
     var callback = dialog_callback;
-    GlkOte.log('### cancel');
+    //GlkOte.log('### cancel');
     dialog_close();
     if (callback)
         callback(null);
@@ -413,7 +413,7 @@ function evhan_storage_changed(ev) {
     var changedkey = null;
     if (ev)
         changedkey = ev.key;
-    GlkOte.log('### noticed storage: key ' + changedkey);
+    //GlkOte.log('### noticed storage: key ' + changedkey);
     /* We could use the changedkey to decide whether it's worth redrawing 
        the field here. */
 
@@ -692,7 +692,7 @@ function files_list(usage, gameid) {
         ls.push(file);
     }
 
-    GlkOte.log('### files_list found ' + ls.length + ' files.');
+    //GlkOte.log('### files_list found ' + ls.length + ' files.');
     return ls;
 }
 

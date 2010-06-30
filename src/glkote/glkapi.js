@@ -417,7 +417,7 @@ function update() {
     dataobj.input = inputarray;
 
     if (ui_disabled) {
-        qlog("### disabling ui");
+        //qlog("### disabling ui");
         dataobj.disable = true;
     }
 
