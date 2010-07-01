@@ -53,6 +53,8 @@
  * add a human-readable game name, a text/binary flag, or other data.
  */
 
+//### accept "return" keystroke for load-select box (already works in Chrome)
+
 /* Put everything inside the Dialog namespace. */
 
 Dialog = function() {
@@ -153,10 +155,8 @@ function dialog_open(tosave, usage, gameid, callback) {
     var form, el, row;
 
     form = new Element('form');
-    if (will_save)
-        form.onsubmit = evhan_accept_save_button;
-    else
-        form.onsubmit = evhan_accept_load_button;
+    form.observe('submit', 
+        (will_save ? evhan_accept_save_button : evhan_accept_load_button));
     dia.insert(form);
 
     row = new Element('div', { id: dialog_el_id+'_cap', 'class': 'DiaCaption' });
@@ -180,10 +180,12 @@ function dialog_open(tosave, usage, gameid, callback) {
     row = new Element('div', { 'class': 'DiaButtons' });
     el = new Element('button', { id: dialog_el_id+'_cancel', type: 'button' });
     insert_text(el, 'Cancel');
-    el.onclick = evhan_cancel_button;
+    el.observe('click', evhan_cancel_button);
     row.insert(el);
     el = new Element('button', { id: dialog_el_id+'_accept', type: 'submit' });
     insert_text(el, (will_save ? 'Save' : 'Load'));
+    el.observe('click', 
+        (will_save ? evhan_accept_save_button : evhan_accept_load_button));
     row.insert(el);
     form.insert(row);
 
@@ -305,7 +307,8 @@ function evhan_select_change() {
 
 /* Event handler: The "Load" button.
 */
-function evhan_accept_load_button() {
+function evhan_accept_load_button(ev) {
+    ev.stop();
     if (!is_open)
         return false;
 
@@ -331,7 +334,8 @@ function evhan_accept_load_button() {
 
 /* Event handler: The "Save" or "Replace" button.
 */
-function evhan_accept_save_button() {
+function evhan_accept_save_button(ev) {
+    ev.stop();
     if (!is_open)
         return false;
 
@@ -373,7 +377,8 @@ function evhan_accept_save_button() {
    This can mean either cancelling the dialog, or cancelling confirm mode on a
    "do you want to replace that?" query.
 */
-function evhan_cancel_button() {
+function evhan_cancel_button(ev) {
+    ev.stop();
     if (!is_open)
         return false;
 
@@ -639,6 +644,7 @@ function file_read(dirent, israw) {
     if (content == null)
         return null;
 
+    content = content.toString();
     if (!content) {
         if (israw)
             return '';
@@ -683,7 +689,9 @@ function files_list(usage, gameid) {
 
     for (ix=0; ix<localStorage.length; ix++) {
         var key = localStorage.key(ix);
-        var dirent = file_decode_ref(key);
+        if (!key)
+            continue;
+        var dirent = file_decode_ref(key.toString());
         if (!dirent)
             continue;
         if (!file_ref_matches(dirent, usage, gameid))
@@ -741,6 +749,41 @@ if (window.localStorage != null) {
 else if (window.globalStorage != null) {
     /* This is a non-standard API used in Firefox 3.0 (but not 3.5). */
     localStorage = window.globalStorage[location.hostname];
+}
+if (localStorage == null) {
+    /* This browser doesn't support storage at all. We'll whip up a
+       simple implementation. It will only last as long as the window
+       does, but that's good enough for a game. */
+    localStorage = {
+        data: {},
+        keys: [],
+        length: 0,
+        getItem: function(key) {
+            return localStorage.data[key];
+        },
+        setItem: function(key, val) {
+            if (localStorage.keys.indexOf(key) < 0) {
+                localStorage.keys.push(key);
+                localStorage.length = localStorage.keys.length;
+            }
+            localStorage.data[key] = val;
+        },
+        removeItem: function(key) {
+            if (localStorage.keys.indexOf(key) >= 0) {
+                localStorage.keys = localStorage.keys.without(key);
+                localStorage.length = localStorage.keys.length;
+                delete localStorage.data[key];
+            }
+        },
+        key: function(index) {
+            return localStorage.keys[index];
+        },
+        clear: function() {
+            localStorage.data = {};
+            localStorage.keys = [];
+            localStorage.length = 0;
+        }
+    }
 }
 
 Event.observe(window, 'storage', evhan_storage_changed); // prototype-ism

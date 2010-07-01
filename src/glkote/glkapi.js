@@ -1287,7 +1287,7 @@ function gli_window_put_string(win, val) {
         break;
     case Const.wintype_TextGrid:
         for (ix=0; ix<val.length; ix++) {
-            ch = val[ix];
+            ch = val.charAt(ix);
 
             /* Canonicalize the cursor position. This is like calling
                gli_window_grid_canonicalize(), but I've inlined it. */
@@ -2612,6 +2612,8 @@ function glk_stream_open_file(fref, fmode, rock) {
             Dialog.file_write(fref.ref, '', true);
         }
     }
+    if (content.length == null) 
+        throw('glk_stream_open_file: data read had no length');
 
     str = gli_new_stream(strtype_File, 
         (fmode != Const.filemode_Write), 
