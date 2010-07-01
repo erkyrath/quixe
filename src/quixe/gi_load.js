@@ -171,7 +171,6 @@ function load_run(optobj, image, image_format) {
            as the argument. */
         GlkOte.log('### trying old-fashioned load...');
         window.processBase64Zcode = function(val) { 
-            GlkOte.log('### processBase64Zcode: ' + val.slice(0, 20) + ' (' + val.length + ') ...');
             start_game(decode_base64(val));
         };
         new Ajax.Request(gameurl, {
