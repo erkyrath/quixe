@@ -14,6 +14,9 @@
  * and then starts up the display layer and game engine. It also extracts
  * data from a Blorb image, if that's what's provided.
  *
+ * (This code makes use of the Prototype library, which therefore must be
+ * available.)
+ *
  * When you are putting together a Quixe installation page, you call
  * GiLoad.load_run() to get the game started. You should do this in the
  * document's "onload" handler, or later. (If you call it before "onload" 

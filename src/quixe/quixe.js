@@ -9,6 +9,10 @@
  * modify this code and use and distribute the modified version, as long
  * as you retain a notice in your program or documentation which mentions
  * my name and the URL shown above.
+ *
+ * This library is intended to be standalone. However, it was developed
+ * with Prototype available, and some Prototype-isms may have crept into
+ * the code.
  */
 
 // ### Optimizations I have not yet tried:
