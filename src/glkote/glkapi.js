@@ -1080,29 +1080,6 @@ function qlog(msg) {
         opera.postError(msg);
 }
 
-//### debugging
-function qobjdump(obj, depth) {
-    var key, proplist;
-
-    if (obj instanceof Array) {
-        if (depth)
-            depth--;
-        var ls = obj.map(function(v) {return qobjdump(v, depth);});
-        return ("[" + ls.join(",") + "]");
-    }
-    if (!(obj instanceof Object))
-        return (""+obj);
-
-    proplist = [ ];
-    for (key in obj) {
-        var val = obj[key];
-        if (depth && val instanceof Object)
-            val = qobjdump(val, depth-1);
-        proplist.push(key + ":" + val);
-    }
-    return "{ " + proplist.join(", ") + " }";
-}
-
 /* RefBox: Simple class used for "call-by-reference" Glk arguments. The object
    is just a box containing a single value, which can be written and read.
 */
