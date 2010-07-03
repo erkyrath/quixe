@@ -70,6 +70,7 @@ on the web site), copy play-remote.html.
   - dialog.css      -- dialog-box stylesheet (copied from GlkOte project)
   - waiting.gif     -- timer animation (copied from GlkOte project)
   - i7-manifest.txt -- I7 template file; becomes (manifest).txt
+  - i7-glkote.css   -- another stylesheet (adjusted to suit i7-manifest)
 
 - stories -- game files
   - glulxercise.ulx.js -- Glulxercise VM unit test
