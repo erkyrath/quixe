@@ -10,6 +10,10 @@
  * as you retain a notice in your program or documentation which mentions
  * my name and the URL shown above.
  *
+ * For documentation, see the README.txt or the web page noted above.
+ * For information on getting Quixe installed on a web page, see the
+ * comments in the gi_load.js file.
+ *
  * This library is intended to be standalone. However, it was developed
  * with Prototype available, and some Prototype-isms may have crept into
  * the code.

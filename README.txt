@@ -14,8 +14,9 @@ Quixe currently supports text buffer and grid windows, character and line
 input, timers, and hyperlinks. It does not (yet) support graphics, sound,
 or style hints.
 
-You can save and restore games, as long as your browser supports the HTML5
-local-storage feature.
+You can save and restore games. If your browser supports the HTML5
+local-storage feature, the save files will be available from one browser
+session to the next.
 
 
 * Using Quixe
