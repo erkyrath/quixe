@@ -49,15 +49,34 @@ g
 
 <style type="text/css">
 
+/* The gameport is the window area in which all the game windows (status
+   and story) are laid out. We leave the left-hand column for the template
+   text, which includes the cover art, links, and interpreter credit.
+
+   The background color here shows up only as a flash during loading. If
+   you increased the "spacing" game options below, the background color
+   would fill the gap between windows.
+
+   This template uses zero spacing between windows, because that looks good
+   for the standard game layout of one grid window and one buffer window.
+   If you wanted several buffer windows, you might prefer to increase
+   "inspacing" and darken the gameport background color.
+*/
 #gameport {
   position: absolute;
   overflow: hidden;
   top: 0px;
-  left: 0px;
+  left: 15.4em;
   right: 0px;
   bottom: 0px;
-  background: #CCAA88;
+  background: white;
   margin: 0px;
+}
+
+.interpretercredit {
+  font-size: 80%;
+  position: absolute;
+  bottom: 1em;
 }
 
 </style>
@@ -68,7 +87,9 @@ g
 <script type="text/javascript">
 game_options = {
   use_query_story: false,
-  set_page_title: false
+  set_page_title: false,
+  inspacing: 0,     // gap between windows
+  outspacing: 0     // gap between windows and edge of gameport
 };
 </script>
 
