@@ -81,6 +81,12 @@ on the web site), copy play-remote.html.
   - game2js.py -- convert game files to base64 for easier loading
 
 
+* Version History
+
+- 1.0.0 (July 4, 2010):
+  - Initial release
+
+
 * Permissions
 
 The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010 by
