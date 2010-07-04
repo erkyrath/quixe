@@ -143,14 +143,18 @@ function dialog_open(tosave, usage, gameid, callback) {
 
     /* And now, a lot of DOM creation for the dialog box. */
 
+    var frame = $(dialog_el_id+'_frame');
+    if (!frame) {
+        frame = new Element('div',
+            { id: dialog_el_id+'_frame' });
+        rootel.insert(frame);
+    }
+
     var dia = $(dialog_el_id);
     if (dia)
         dia.remove();
 
     dia = new Element('div', { id: dialog_el_id });
-    //### center better?
-    var styledic = { left: 150+'px', top: 150+'px' };
-    dia.setStyle(styledic);
 
     var form, el, row;
 
@@ -189,7 +193,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     row.insert(el);
     form.insert(row);
 
-    rootel.insert(dia);
+    frame.insert(dia);
     is_open = true;
 
     evhan_storage_changed();
@@ -225,6 +229,9 @@ function dialog_close() {
     var dia = $(dialog_el_id);
     if (dia)
         dia.remove();
+    var frame = $(dialog_el_id+'_frame');
+    if (frame)
+        frame.remove();
     var screen = $(dialog_el_id+'_screen');
     if (screen)
         screen.remove();
