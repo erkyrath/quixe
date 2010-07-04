@@ -46,7 +46,7 @@ Quixe = function() {
 
    This also computes the game signature, which is a 64-character string
    unique to the game. (In fact it is just the first 64 bytes of the
-   game file, encoded as characters.)
+   game file, encoded as hexidecimal digits.)
 */
 function quixe_prepare(image) {
     game_image = image;
@@ -130,6 +130,10 @@ function qlog(msg) {
         opera.postError(msg);
 }
 
+/* This returns a string displaying an object and all its properties.
+   It's not used in the normal course of execution, but some (commented-out)
+   debug log message use it.
+*/
 function qobjdump(obj, depth) {
     var key, proplist;
 
@@ -152,18 +156,9 @@ function qobjdump(obj, depth) {
     return "{ " + proplist.join(", ") + " }";
 }
 
-function qstrcachedump(obj) {
-    var key, ls, val;
-    ls = []
-    for (key in obj) {
-        val = obj[key];
-        if (val instanceof Function)
-            val = "<func>";
-        ls.push(key + ":" + val);
-    }
-    return "{ " + ls.join(", ") + " }";
-}
-
+/* Fast char-to-hex and char-to-quoted-char conversion tables. 
+   setup_bytestring_table() is called once, at startup time.
+*/
 var bytestring_table = Array(256);
 var quotechar_table = Array(256);
 function setup_bytestring_table() {
@@ -331,6 +326,12 @@ function WriteStructField(addr, fieldnum, val) {
         MemW4(addr + 4*fieldnum, val);
 }
 
+/* GiDispa calls this, right before resuming execution at the end of a
+   blocking Glk call. The value passed in is the result of the Glk
+   call, which may have to be stored in a local variable or wherever.
+   (This is only really relevant for glk_fileref_create_by_prompt(),
+   since it's the only non-void blocking Glk call.)
+*/
 function SetResumeStore(val) {
     resumevalue = val;
 }
@@ -381,6 +382,11 @@ function QuoteEscapeString(val) {
     return '"' + val + '"';
 }
 
+/* All fatal errors in the interpreter call this. It just converts the
+   arguments to a nicely-formatted string, and then throws the string
+   as an exception. The top-level quixe_init() or quixe_resume() will
+   catch the exception and display it.
+*/
 function fatal_error(msg) {
     var ix, val;
     if (arguments.length > 1) {
@@ -420,9 +426,9 @@ function make_code(val, arg) {
     return _func;
 }
 
-/* Everything we know about a function. This includes the layout of the
-   local variables, the compiled paths for various start points within
-   the function, and the addresses known to be start points.
+/* The VMFunc class: Everything we know about a function. This includes the
+   layout of the local variables, the compiled paths for various start points
+   within the function, and the addresses known to be start points.
 
    If the function is not in ROM, we still create this, but we will not
    add it to the permanent vmfunc_table.
@@ -642,6 +648,7 @@ function VMTextEnv(addr, dectab) {
 
 var operandlist_table = null;
 
+/* This is called once, at startup time. */
 function setup_operandlist_table() {
     function OperandList(formlist, argsize) {
         this.argsize = (argsize ? argsize : 4);
@@ -1015,6 +1022,14 @@ function oputil_perform_jump(context, operand, unconditional) {
     }
     context.code.push("return;");
 }
+
+/* opcode_table: All the Glulx VM opcodes. 
+
+   Each entry in this table is a function that *generates* executable
+   Javascript code for that opcode. When we're compiling a code path,
+   we call the sequence of opcode functions, and the result is a
+   working Javascript function for that code path.
+*/
 
 var opcode_table = {
     0x0: function(context, operands) { /* nop */
@@ -2952,6 +2967,12 @@ function pop_stack_to(val) {
     frame.valstack.length = val;
 }
 
+/* Pop a callstub off the stack, and store a value at the appropriate 
+   location. (When returning from a function, for example, the value is
+   the function return value, and it gets stored wherever the function
+   call wants it. The pc winds up pointing after the function call
+   opcode.)
+*/
 function pop_callstub(val) {
     var destaddr, desttype;
 
@@ -3080,6 +3101,9 @@ function store_operand_by_funcop(funcop, val) {
     }
 }
 
+/* Set the VM's random-number function to either a "true" RNG (Javascript's
+   Math.random), or a seeded deterministic RNG.
+*/
 function set_random(val) {
     if (val == 0) {
         random_func = Math.random;
@@ -3175,6 +3199,8 @@ function set_string_table(addr) {
     vmstring_table = textenv.vmstring_tables[iosysmode];
 }
 
+/* Set the VM iosys, and adjust the vmstring_table register appropriately. 
+*/
 function set_iosys(mode, rock) {
     switch (mode) {
     case 0: /* null */
@@ -4250,6 +4276,7 @@ function vm_restart() {
     /* We're now ready to execute. */
 }
 
+/* Run-length-encode an array, for Quetzal. */
 function compress_bytes(arr) {
     result = [];
     var i = 0;
@@ -4272,6 +4299,7 @@ function compress_bytes(arr) {
     return result;
 }
 
+/* Run-length-decode an array, for Quetzal. */
 function decompress_bytes(arr) {
     result = [];
     var i = 0;
@@ -4292,7 +4320,7 @@ function decompress_bytes(arr) {
 
 /* Pack a map of { ID -> bytes } into a single byte array.
    The ID should be a 4-character string.
- */
+*/
 function pack_iff_chunks(chunks) {
     keys = [];
     for (var key in chunks) {
@@ -4316,7 +4344,7 @@ function pack_iff_chunks(chunks) {
 }
 
 /* Unpack a byte array into an { ID -> bytes } map, or undefined on error.
- */
+*/
 function unpack_iff_chunks(bytes) {
     chunks = {};
     var pos = 0;
@@ -4694,6 +4722,8 @@ function quixe_get_statistics() {
     return stat;
 }
 
+/* Heap functions. */
+
 function heap_clear() {
     heapstart = 0;
     usedlist = [];
@@ -4801,7 +4831,8 @@ function heap_free(addr) {
     freelist.splice(pos, 0, block);
 }
 
-/* Check that the heap state is consistent. This is slow.
+/* Check that the heap state is consistent. This is slow, so we only
+   call it in debug assertions.
 */
 function assert_heap_valid() {
     if (!heap_is_active()) {        
