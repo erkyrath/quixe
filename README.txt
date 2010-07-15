@@ -5,10 +5,10 @@ Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
 
-Quixe is a pure-Javascript interpreter for the Glulx IF virtual machine.
-When used with the GlkOte display library, it can play any Glulx game file
-(.ulx or .gblorb) in a web browser. It does not require a server component;
-it runs entirely in the browser.
+Quixe is a pure-Javascript interpreter for the Glulx IF virtual
+machine. It can play any Glulx game file (.ulx or .gblorb) in a web
+browser. It does not require a server component; it runs entirely in
+the browser.
 
 Quixe currently supports text buffer and grid windows, character and line
 input, timers, and hyperlinks. It does not (yet) support graphics, sound,
