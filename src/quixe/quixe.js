@@ -14,6 +14,15 @@
  * For information on getting Quixe installed on a web page, see the
  * comments in the gi_load.js file.
  *
+ * Some interpreter behaviors can be customized by adding attributes to
+ * the game_options object. (See gi_load.js for more about this object.)
+ * Quixe currently understands one option:
+ *
+ *   rethrow_exceptions: If true, any fatal VM errors encountered during
+ *     play will be allowed to bubble up to the browser. If you're using
+ *     a browser debugging facility, this may give you more information
+ *     than the usual red "fatal-error" banner.
+ *
  * This library is intended to be standalone. However, it was developed
  * with Prototype available, and some Prototype-isms may have crept into
  * the code.
@@ -40,15 +49,17 @@ Quixe = function() {
 /* This is called by the page (or the page's loader library) when it
    starts up. It must be called before quixe_init().
 
-   The argument is the game file image, encoded as an array of byte
+   The first argument is the game file image, encoded as an array of byte
    values (integers between 0 and 255). It is stashed away for when
    the game is started up.
 
+   The (optional) second object supplies execution options.
+
    This also computes the game signature, which is a 64-character string
    unique to the game. (In fact it is just the first 64 bytes of the
-   game file, encoded as hexidecimal digits.)
+   game file, encoded as hexadecimal digits.)
 */
-function quixe_prepare(image) {
+function quixe_prepare(image, all_options) {
     game_image = image;
 
     var ls = game_image.slice(0, 64);
@@ -60,6 +71,10 @@ function quixe_prepare(image) {
         ls[ix] = val;
     }
     game_signature = ls.join('');
+
+    if (all_options) {
+        opt_rethrow_exceptions = all_options.rethrow_exceptions;
+    }
 }
 
 /* This is called by the page (or the page's display library) when it
@@ -83,6 +98,8 @@ function quixe_init() {
     }
     catch (ex) {
         Glk.fatal_error("Quixe init: " + show_exception(ex));
+        if (opt_rethrow_exceptions)
+            throw ex;
     }
 }
 
@@ -97,6 +114,8 @@ function quixe_resume() {
     }
     catch (ex) {
         Glk.fatal_error("Quixe run: " + show_exception(ex));
+        if (opt_rethrow_exceptions)
+            throw ex;
     }
 }
 
@@ -4115,10 +4134,15 @@ function linked_search(key, keysize, start,
     return 0;
 }
 
-/* The VM state variables */
+/* Parameters set at prepare() time, including the game image and any
+   execution options. */
 
 var game_image = null; /* the original game image, as an array of bytes */
 var game_signature = null; /* string, containing the first 64 bytes of image */
+var opt_rethrow_exceptions = null;
+
+/* The VM state variables */
+
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */

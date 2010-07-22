@@ -58,6 +58,8 @@
  *
  *   You can also include any of the display options used by the GlkOte
  *   library, such as gameport, windowport, spacing, ...
+ *   And also the interpreter options used by the Quixe library, such as
+ *   rethrow_exceptions, ...
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -468,7 +470,7 @@ function start_game(image) {
     }
 
     /* Pass the game image file along to the VM engine. */
-    all_options.vm.prepare(image);
+    all_options.vm.prepare(image, all_options);
 
     /* Now fire up the display library. This will take care of starting
        the VM engine, once the window is properly set up. */
