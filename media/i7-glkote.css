@@ -82,6 +82,19 @@
   padding-bottom: 14px;
 }
 
+.MorePrompt {
+  /* This describes the "More" prompt that flashes in the bottom right corner
+     of a window when it needs paging. */
+  font-weight: bold;
+  position: absolute;
+  background: #603010;
+  color: #FFFFCC;
+  opacity: 0.5;
+  padding: 2px 6px;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+}
+
 .Input {
   /* This class mimicks the Style_input class. It also eliminates the 
      usual decoration of an <input> field, as much as possible. */
