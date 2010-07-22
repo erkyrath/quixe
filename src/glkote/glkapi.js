@@ -81,7 +81,7 @@ function init(vm_options) {
 function accept_ui_event(obj) {
     var box;
 
-    qlog("### accept_ui_event: " + obj.type + ", gen " + obj.gen);
+    //qlog("### accept_ui_event: " + obj.type + ", gen " + obj.gen);
     if (ui_disabled) {
         /* We've hit glk_exit() or a VM fatal error, or just blocked the UI for
            some modal dialog. */

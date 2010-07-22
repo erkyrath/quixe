@@ -50,9 +50,12 @@ var windowdic = null;
 var current_metrics = null;
 var currently_focussed = false;
 var last_known_focus = 0;
+var last_known_paging = 0;
+var windows_paging_count = 0;
 var resize_timer = null;
 var retry_timer = null;
 var is_ie7 = false;
+var perform_paging = true;
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -280,16 +283,75 @@ function glkote_update(arg) {
   if (arg.input != null)
     accept_inputset(arg.input);
 
-  /* Any buffer windows that have changed need to be scrolled to the
-     bottom. */
+  /* Any buffer windows that have changed need to be scrolled down.
+     Then, we take the opportunity to update topunseen. (If a buffer
+     window hasn't changed, topunseen hasn't changed.) */
 
   windowdic.values().each(function(win) {
     if (win.type == 'buffer' && win.needscroll) {
+      /* needscroll is true if the window has accumulated any content or
+         an input field in this update cycle. needspaging is true if
+         the window has any unviewed content from *last* cycle; we set 
+         it now if any new content remains unviewed after the first
+         obligatory scrolldown. 
+         (If perform_paging is false, we forget about needspaging and
+         just always scroll to the bottom.) */
       win.needscroll = false;
-      var frameel = win.frameel;
-      frameel.scrollTop = frameel.scrollHeight;
+
+      if (!win.needspaging) {
+        var frameel = win.frameel;
+
+        if (!perform_paging) {
+          /* Scroll all the way down. */
+          frameel.scrollTop = frameel.scrollHeight;
+          win.needspaging = false;
+        }
+        else {
+          /* Scroll the unseen content to the top. */
+          frameel.scrollTop = win.topunseen - current_metrics.buffercharheight;
+          /* Compute the new topunseen value. */
+          var frameheight = frameel.getHeight();
+          var realbottom = last_line_top_offset(frameel);
+          var newtopunseen = frameel.scrollTop + frameheight;
+          if (newtopunseen > realbottom)
+            newtopunseen = realbottom;
+          if (win.topunseen < newtopunseen)
+            win.topunseen = newtopunseen;
+          /* The scroll-down has not touched needspaging, because it is
+             currently false. Let's see if it should be true. */
+          if (frameel.scrollTop + frameheight >= frameel.scrollHeight) {
+            win.needspaging = false;
+          }
+          else {
+            win.needspaging = true;
+          }
+        }
+
+        /* Add or remove the more prompt, based on the new needspaging flag. */
+        var moreel = $('win'+win.id+'_moreprompt');
+        if (!win.needspaging) {
+          if (moreel)
+            moreel.remove();
+        }
+        else {
+          if (!moreel) {
+            moreel = new Element('div',
+              { id: 'win'+win.id+'_moreprompt', 'class': 'MorePrompt' } );
+            insert_text(moreel, 'More');
+            /* 20 pixels is a cheap approximation of a scrollbar-width. */
+            var morex = win.coords.right + 20;
+            var morey = win.coords.bottom;
+            moreel.setStyle({ bottom:morey+'px', right:morex+'px' });
+            $(windowport_id).insert(moreel);
+          }
+        }
+      }
     }
   });
+
+  /* Set windows_paging_count. (But don't set the focus -- we'll do that
+     momentarily.) */
+  readjust_paging_focus(false);
 
   /* Disable everything, if that was requested. */
   disabled = false;
@@ -302,10 +364,13 @@ function glkote_update(arg) {
     });
   }
 
-  /* Figure out which window to set the focus to. */
+  /* Figure out which window to set the focus to. (But not if the UI is
+     disabled. We also skip this if there's paging to be done, because
+     focussing might autoscroll and we want to trap keystrokes for 
+     paging anyhow.) */
 
   var newinputwin = 0;
-  if (!disabled) {
+  if (!disabled && !windows_paging_count) {
     windowdic.values().each(function(win) {
       if (win.input) {
         if (!newinputwin || win.id == last_known_focus)
@@ -323,8 +388,6 @@ function glkote_update(arg) {
       var win = windowdic.get(newinputwin);
       if (win.inputel) {
         win.inputel.focus();
-        if (Prototype.Browser.IE)
-          win.frameel.scrollTop = win.frameel.scrollHeight;
       }
     };
     focusfunc.defer();
@@ -375,6 +438,8 @@ function accept_one_window(arg) {
         'class': 'WindowFrame ' + typeclass + ' ' + rockclass });
     frameel.winid = arg.id;
     frameel.onmousedown = function() { evhan_window_mousedown(frameel); };
+    if (perform_paging && win.type == 'buffer')
+      frameel.onscroll = function() { evhan_window_scroll(frameel); };
     win.frameel = frameel;
     win.gridheight = 0;
     win.gridwidth = 0;
@@ -382,6 +447,9 @@ function accept_one_window(arg) {
     win.inputel = null;
     win.reqhyperlink = false;
     win.needscroll = false;
+    win.needspaging = false;
+    win.topunseen = 0;
+    win.coords = { left:null, top:null, right:null, bottom:null };
     win.history = new Array();
     win.historypos = 0;
     $(windowport_id).insert(frameel);
@@ -425,8 +493,9 @@ function accept_one_window(arg) {
      border. (Measured by the browser's DOM methods, I mean.) */
   var styledic;
   if (Prototype.Browser.IE) {
-    /* Actually this works in Safari also, but in Firefox the buffer
-       windows are too narrow by a scrollbar-width. */
+    /* Actually this method works in Safari also, but in Firefox the buffer
+       windows are too narrow by a scrollbar-width. So we don't use it
+       generally. */
     var width = arg.width;
     var height = arg.height;
     if (arg.type == 'grid') {
@@ -439,12 +508,22 @@ function accept_one_window(arg) {
     }
     styledic = { left: arg.left+'px', top: arg.top+'px',
       width: width+'px', height: height+'px' };
+    win.coords.left = arg.left;
+    win.coords.top = arg.top;
+    //#### probably wrong for IE
+    win.coords.right = current_metrics.width - (arg.left+arg.width);
+    win.coords.bottom = current_metrics.height - (arg.top+arg.height);
   }
   else {
+    /* This method works in everything but IE. */
     var right = current_metrics.width - (arg.left + arg.width);
     var bottom = current_metrics.height - (arg.top + arg.height);
     styledic = { left: arg.left+'px', top: arg.top+'px',
       right: right+'px', bottom: bottom+'px' };
+    win.coords.left = arg.left;
+    win.coords.top = arg.top;
+    win.coords.right = right;
+    win.coords.bottom = bottom;
   }
   frameel.setStyle(styledic);
 }
@@ -454,6 +533,10 @@ function close_one_window(win) {
   win.frameel.remove();
   windowdic.unset(win.id);
   win.frameel = null;
+
+  var moreel = $('win'+win.id+'_moreprompt');
+  if (moreel)
+    moreel.remove();
 }
 
 /* Regular expressions used in twiddling runs of whitespace. */
@@ -560,7 +643,8 @@ function accept_one_content(arg) {
     cursel = null;
 
     if (arg.clear) {
-      win.frameel.update();
+      win.frameel.update(); // remove all children
+      win.topunseen = 0;
     }
 
     /* Each line we receive has a flag indicating whether it *starts*
@@ -654,6 +738,9 @@ function accept_one_content(arg) {
       var totrim = parals.length - max_buffer_length;
       if (totrim > 0) {
         var ix, obj;
+        win.topunseen -= parals[totrim].offsetTop;
+        if (win.topunseen < 0)
+          win.topunseen = 0;
         for (ix=0; ix<totrim; ix++) {
           obj = parals.item(0);
           if (obj)
@@ -839,6 +926,67 @@ function accept_inputset(arg) {
       }
     }
   });
+}
+
+/* Return the vertical offset (relative to the parent) of the top of the 
+   last child of the parent.
+*/
+function last_line_top_offset(el) {
+  var ls = el.childElements();
+  if (ls.length == 0)
+    return 0;
+  return ls[ls.length-1].offsetTop;
+}
+
+/* Set windows_paging_count to the number of windows that need paging.
+   If that's nonzero, pick an appropriate window for the paging focus.
+
+   The canfocus flag determines whether this function can jump to an
+   input field focus (should paging be complete).
+
+   This must be called whenever a window's needspaging flag changes.
+*/
+function readjust_paging_focus(canfocus) {
+  windows_paging_count = 0;
+  var pageable_win = 0;
+
+  if (perform_paging) {
+    windowdic.values().each(function(win) {
+        if (win.needspaging) {
+          windows_paging_count += 1;
+          if (!pageable_win || win.id == last_known_paging)
+            pageable_win = win.id;
+        }
+      });
+  }
+    
+  if (windows_paging_count) {
+    /* pageable_win will be set. This is our new paging focus. */
+    last_known_paging = pageable_win;
+  }
+
+  if (!windows_paging_count && canfocus) {
+    /* Time to set the input field focus. This is the same code as in
+       the update routine, although somewhat simplified since we don't
+       need to worry about the DOM being in flux. */
+
+    var newinputwin = 0;
+    if (!disabled && !windows_paging_count) {
+      windowdic.values().each(function(win) {
+          if (win.input) {
+            if (!newinputwin || win.id == last_known_focus)
+              newinputwin = win.id;
+          }
+        });
+    }
+    
+    if (newinputwin) {
+      var win = windowdic.get(newinputwin);
+      if (win.inputel) {
+        win.inputel.focus();
+      }
+    }
+  }
 }
 
 /* Return the game interface object that was provided to init(). Call
@@ -1150,15 +1298,51 @@ function evhan_doc_keypress(ev) {
       return;
   }
 
-  var win = windowdic.get(last_known_focus);
+  var win;
+
+  if (windows_paging_count) {
+    win = windowdic.get(last_known_paging);
+    if (win) {
+      if (!((keycode >= 32 && keycode <= 126) || keycode == 13)) {
+        /* If the keystroke is not a printable character (or Enter),
+           we return and let the default behavior happen. That lets
+           pageup/pagedown/home/end work normally. */
+        return;
+      }
+      ev.preventDefault();
+      var frameel = win.frameel;
+      /* Scroll the unseen content to the top. */
+      frameel.scrollTop = win.topunseen - current_metrics.buffercharheight;
+      /* Compute the new topunseen value. */
+      var frameheight = frameel.getHeight();
+      var realbottom = last_line_top_offset(frameel);
+      var newtopunseen = frameel.scrollTop + frameheight;
+      if (newtopunseen > realbottom)
+        newtopunseen = realbottom;
+      if (win.topunseen < newtopunseen)
+        win.topunseen = newtopunseen;
+      if (win.needspaging) {
+        /* The scroll-down might have cleared needspaging already. But 
+           if not... */
+        if (frameel.scrollTop + frameheight >= frameel.scrollHeight) {
+          win.needspaging = false;
+          var moreel = $('win'+win.id+'_moreprompt');
+          if (moreel)
+            moreel.remove();
+          readjust_paging_focus(true);
+        }
+      }
+      return;
+    }
+  }
+
+  win = windowdic.get(last_known_focus);
   if (!win)
     return;
   if (!win.inputel)
     return;
 
   win.inputel.focus();
-  if (Prototype.Browser.IE || Prototype.Browser.Gecko)
-    win.frameel.scrollTop = win.frameel.scrollHeight;
 
   if (win.input.type == 'line') {
 
@@ -1212,7 +1396,7 @@ function evhan_doc_keypress(ev) {
 /* Event handler: mousedown events on windows.
 
    Remember which window the user clicked in last, as a hint for setting
-   the focus.
+   the focus. (Input focus and paging focus are tracked separately.)
 */
 function evhan_window_mousedown(frameel) {
   if (!frameel.winid)
@@ -1220,9 +1404,14 @@ function evhan_window_mousedown(frameel) {
   var win = windowdic.get(frameel.winid);
   if (!win)
     return;
-  if (!win.inputel)
-    return;
-  last_known_focus = win.id;
+
+  if (win.inputel)
+    last_known_focus = win.id;
+
+  if (win.needspaging)
+    last_known_paging = win.id;
+  else if (win.inputel)
+    last_known_paging = 0;
 }
 
 /* Event handler: keydown events on input fields (character input)
@@ -1399,6 +1588,7 @@ function evhan_input_focus(winid) {
 
   currently_focussed = true;
   last_known_focus = winid;
+  last_known_paging = winid;
 }
 
 /* Event handler: blur events on input fields
@@ -1411,6 +1601,34 @@ function evhan_input_blur(winid) {
     return;
 
   currently_focussed = false;
+}
+
+function evhan_window_scroll(frameel) {
+  if (!frameel.winid)
+    return;
+  var win = windowdic.get(frameel.winid);
+  if (!win)
+    return;
+
+  if (!win.needspaging)
+    return;
+
+  var frameheight = frameel.getHeight();
+  var realbottom = last_line_top_offset(frameel);
+  var newtopunseen = frameel.scrollTop + frameheight;
+  if (newtopunseen > realbottom)
+    newtopunseen = realbottom;
+  if (win.topunseen < newtopunseen)
+    win.topunseen = newtopunseen;
+
+  if (frameel.scrollTop + frameheight >= frameel.scrollHeight) {
+    win.needspaging = false;
+    var moreel = $('win'+win.id+'_moreprompt');
+    if (moreel)
+      moreel.remove();
+    readjust_paging_focus(true);
+    return;
+  }
 }
 
 /* Event handler constructor: report a click on a hyperlink
@@ -1437,7 +1655,7 @@ function build_evhan_hyperlink(winid, linkval) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '1.1.1',
+  version:  '1.2.0',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
