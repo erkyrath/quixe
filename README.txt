@@ -84,6 +84,7 @@ on the web site), copy play-remote.html.
 * Version History
 
 - 1.0.1 (###, 2010):
+  - Included GlkOte 1.2.0 ("more" paging).
   - Fixed the inconsistent font size for the input line.
 
 - 1.0.0 (July 4, 2010):
