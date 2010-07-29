@@ -506,11 +506,14 @@ function accept_one_window(arg) {
       width -= current_metrics.buffermarginx;
       height -= current_metrics.buffermarginy;
     }
+    if (width < 0)
+      width = 0;
+    if (height < 0)
+      height = 0;
     styledic = { left: arg.left+'px', top: arg.top+'px',
       width: width+'px', height: height+'px' };
     win.coords.left = arg.left;
     win.coords.top = arg.top;
-    //#### probably wrong for IE
     win.coords.right = current_metrics.width - (arg.left+arg.width);
     win.coords.bottom = current_metrics.height - (arg.top+arg.height);
   }
