@@ -681,10 +681,12 @@ function setup_operandlist_table() {
     var list_L = new OperandList("L");
     var list_LL = new OperandList("LL");
     var list_LLL = new OperandList("LLL");
+    var list_LLLL = new OperandList("LLLL");
     var list_LS = new OperandList("LS");
     var list_LLS = new OperandList("LLS");
     var list_LLLLLLS = new OperandList("LLLLLLS");
     var list_LLLLLLLS = new OperandList("LLLLLLLS");
+    var list_LLSS = new OperandList("LLSS");
     var list_LC = new OperandList("LC");
     var list_LLC = new OperandList("LLC");
     var list_LLLC = new OperandList("LLLC");
@@ -789,7 +791,36 @@ function setup_operandlist_table() {
         0x178: list_LS, /* malloc */
         0x179: list_L, /* mfree */
         0x180: list_LL, /* accelfunc */
-        0x181: list_LL /* accelparam */
+        0x181: list_LL, /* accelparam */
+        0x190: list_LS, /* numtof */
+        0x191: list_LS, /* ftonumz */
+        0x192: list_LS, /* ftonumn */
+        0x198: list_LS, /* ceil */
+        0x199: list_LS, /* floor */
+        0x1A0: list_LLS, /* fadd */
+        0x1A1: list_LLS, /* fsub */
+        0x1A2: list_LLS, /* fmul */
+        0x1A3: list_LLS, /* fdiv */
+        0x1A4: list_LLSS, /* fmod */
+        0x1A8: list_LS, /* sqrt */
+        0x1A9: list_LS, /* exp */
+        0x1AA: list_LS, /* log */
+        0x1AB: list_LLS, /* pow */
+        0x1B0: list_LS, /* sin */
+        0x1B1: list_LS, /* cos */
+        0x1B2: list_LS, /* tan */
+        0x1B3: list_LS, /* asin */
+        0x1B4: list_LS, /* acos */
+        0x1B5: list_LS, /* atan */
+        0x1B6: list_LLS, /* atan2 */
+        0x1C0: list_LLLL, /* jfeq */
+        0x1C1: list_LLLL, /* jfne */
+        0x1C2: list_LLL, /* jflt */
+        0x1C3: list_LLL, /* jfle */
+        0x1C4: list_LLL, /* jfgt */
+        0x1C5: list_LLL, /* jfge */
+        0x1C8: list_LL, /* jisnan */
+        0x1C9: list_LL  /* jisinf */
     }
 }
 
@@ -2025,6 +2056,67 @@ var opcode_table = {
             context.path_ends = true;
         }
     },
+
+    0x190: function(context, operands) { /* numtof */
+        //### const case
+        context.code.push(operands[1]+"encode_float("+operands[0]+"));");
+    },
+    //0x191: function(context, operands) { /* ftonumz */
+    //},
+    //0x192: function(context, operands) { /* ftonumn */
+    //},
+    //0x198: function(context, operands) { /* ceil */
+    //},
+    //0x199: function(context, operands) { /* floor */
+    //},
+    //0x1A0: function(context, operands) { /* fadd */
+    //},
+    //0x1A1: function(context, operands) { /* fsub */
+    //},
+    //0x1A2: function(context, operands) { /* fmul */
+    //},
+    //0x1A3: function(context, operands) { /* fdiv */
+    //},
+    //0x1A4: function(context, operands) { /* fmod */
+    //},
+    //0x1A8: function(context, operands) { /* sqrt */
+    //},
+    //0x1A9: function(context, operands) { /* exp */
+    //},
+    //0x1AA: function(context, operands) { /* log */
+    //},
+    //0x1AB: function(context, operands) { /* pow */
+    //},
+    //0x1B0: function(context, operands) { /* sin */
+    //},
+    //0x1B1: function(context, operands) { /* cos */
+    //},
+    //0x1B2: function(context, operands) { /* tan */
+    //},
+    //0x1B3: function(context, operands) { /* asin */
+    //},
+    //0x1B4: function(context, operands) { /* acos */
+    //},
+    //0x1B5: function(context, operands) { /* atan */
+    //},
+    //0x1B6: function(context, operands) { /* atan2 */
+    //},
+    //0x1C0: function(context, operands) { /* jfeq */
+    //},
+    //0x1C1: function(context, operands) { /* jfne */
+    //},
+    //0x1C2: function(context, operands) { /* jflt */
+    //},
+    //0x1C3: function(context, operands) { /* jfle */
+    //},
+    //0x1C4: function(context, operands) { /* jfgt */
+    //},
+    //0x1C5: function(context, operands) { /* jfge */
+    //},
+    //0x1C8: function(context, operands) { /* jisnan */
+    //},
+    //0x1C9: function(context, operands) { /* jisinf */
+    //},
 
     0x130: function(context, operands) { /* glk */
         var mayblock;
@@ -3968,6 +4060,10 @@ function do_gestalt(val, val2) {
         return 0; /* Despite the above, no accelerated functions are 
                      currently supported. */
 
+    case 11: /* Float */
+        return 1; /* We can handle the floating-point opcodes. */
+
+
     default:
         return 0;
     }
@@ -4131,6 +4227,16 @@ function linked_search(key, keysize, start,
         start = Mem4(start + nextoffset);
     }
 
+    return 0;
+}
+
+function decode_float(val) {
+    return ((val & 0x7fffff | 0x800000) * 1.0 / Math.pow(2,23) 
+        * Math.pow(2, ((val>>23 & 0xff) - 127)));
+}
+
+function encode_float(val) {
+    /*####*/
     return 0;
 }
 
