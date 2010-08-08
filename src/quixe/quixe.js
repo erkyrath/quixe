@@ -4230,14 +4230,102 @@ function linked_search(key, keysize, start,
     return 0;
 }
 
+/* Convert an integer (in IEEE-754 single-precision format) into a
+   Javascript number.
+*/
 function decode_float(val) {
-    return ((val & 0x7fffff | 0x800000) * 1.0 / Math.pow(2,23) 
+    var sign, res;
+
+    if (val & 0x80000000) {
+        sign = true;
+        val = val & 0x7fffffff;
+    }
+    else {
+        sign = false;
+    }
+
+    if (val == 0) {
+        return (sign ? -0.0 : 0.0);
+    }
+
+    /* 8388608 is 2^23, in case you're curious. */
+    res = ((val & 0x7fffff | 0x800000) / 8388608
         * Math.pow(2, ((val>>23 & 0xff) - 127)));
+    if (sign)
+        return -res;
+    else
+        return res;
 }
 
+/* Convert a Javascript number into IEEE-754 single-precision format.
+   The result will be a (non-negative) 32-bit integer.
+*/
 function encode_float(val) {
-    /*####*/
-    return 0;
+    var absval, fbits;
+    var mant, expo, sign;
+
+    if (isNaN(val)) {
+        return 0x7f800001;
+    }
+    if (!isFinite(val)) {
+        if (val < 0)
+            return 0xff800000;
+        else
+            return 0x7f800000;
+    }
+    if (val == 0) {
+        /* We have to deal with zeroes separately, because you can't test
+           (-0 < 0) -- it ain't so. You have to turn the thing into an
+           infinity and test that. */
+        if (1 / val < 0)
+            return 0x80000000;
+        else
+            return 0x0;
+    }
+
+    if (val < 0) {
+        sign = true;
+        absval = -val;
+    }
+    else {
+        sign = false;
+        absval = val;
+    }
+
+    expo = Math.floor(Math.log(absval) / Math.log(2));
+    mant = absval / Math.pow(2, expo);
+
+    if (expo >= 128) {
+        /* Oops, overflow */
+        return (sign ? 0xff800000 : 0x7f800000); /* infinity */
+    }
+    else if (expo < -126) {
+        /* Denormalized (very small) number */
+        mant = mant * Math.pow(2, 126 + expo);
+        expo = 0;
+    }
+    else if (!(expo == 0 && mant == 0.0)) {
+        expo += 127;
+        mant -= 1.0; /* Get rid of leading 1 */
+    }
+
+    mant = mant * 8388608.0; /* 2^23 */
+
+    fbits = (mant + 0.5) << 0; /* round mant to nearest int */
+    if (fbits >= 8388608) {
+        /* The carry propagated out of a string of 23 1 bits. */
+        fbits = 0;
+        expo++;
+        if (expo >= 255) {
+            /* Oops, overflow */
+            return (sign ? 0xff800000 : 0x7f800000); /* infinity */
+        }
+    }
+
+    if (sign)
+        return ((0x80000000) | (expo << 23) | (fbits)) >>>0;
+    else
+        return (expo << 23) | (fbits);
 }
 
 /* Parameters set at prepare() time, including the game image and any
@@ -5072,6 +5160,7 @@ return {
     resume: quixe_resume,
     get_signature: quixe_get_signature,
     get_statistics: quixe_get_statistics,
+    encode_float: encode_float, decode_float: decode_float, //####tmp
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
