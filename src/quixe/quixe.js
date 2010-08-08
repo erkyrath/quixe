@@ -2059,12 +2059,48 @@ var opcode_table = {
 
     0x190: function(context, operands) { /* numtof */
         //### const case
-        context.code.push(operands[1]+"encode_float("+operands[0]+"));");
+        var sign0 = oputil_signify_operand(context, operands[0]);
+        context.code.push(operands[1]+"encode_float("+sign0+"));");
     },
-    //0x191: function(context, operands) { /* ftonumz */
-    //},
-    //0x192: function(context, operands) { /* ftonumn */
-    //},
+
+    0x191: function(context, operands) { /* ftonumz */
+        context.varsused["valf"] = true;
+        context.varsused["res"] = true;
+        context.code.push("valf = decode_float("+operands[0]+");");
+        context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
+        context.code.push("  if (isNaN(valf) || !isFinite(valf) || (valf > 0x7fffffff))");
+        context.code.push("    res = 0x7fffffff;");
+        context.code.push("  else");
+        context.code.push("    res = Math.floor(valf);");
+        context.code.push("} else {");
+        context.code.push("  if (isNaN(valf) || !isFinite(valf) || (valf < -0x8000000))");
+        context.code.push("    res = -0x80000000;");
+        context.code.push("  else");
+        context.code.push("    res = Math.ceil(valf);");
+        context.code.push("}");
+        context.code.push(operands[1]+"res>>>0);");
+    },
+
+    0x192: function(context, operands) { /* ftonumn */
+        context.varsused["valf"] = true;
+        context.varsused["res"] = true;
+        context.code.push("valf = decode_float("+operands[0]+");");
+        context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
+        context.code.push("  if (isNaN(valf) || !isFinite(valf))");
+        context.code.push("    res = 0x7fffffff;");
+        context.code.push("  else");
+        context.code.push("    res = Math.round(valf);");
+        context.code.push("  if (res > 0x7fffffff) res = 0x7fffffff;");
+        context.code.push("} else {");
+        context.code.push("  if (isNaN(valf) || !isFinite(valf))");
+        context.code.push("    res = -0x80000000;");
+        context.code.push("  else");
+        context.code.push("    res = Math.round(valf);");
+        context.code.push("  if (res < -0x80000000) res = -0x80000000;");
+        context.code.push("}");
+        context.code.push(operands[1]+"res>>>0);");
+    },
+
     //0x198: function(context, operands) { /* ceil */
     //},
     //0x199: function(context, operands) { /* floor */
@@ -2972,7 +3008,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
             context.code[0] = "var " + ls.join(",") + ";";
     }
 
-    //qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
+    qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
     return make_code(context.code.join("\n"));
 }
 
