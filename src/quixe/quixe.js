@@ -2132,10 +2132,16 @@ var opcode_table = {
         context.code.push(operands[1]+"res>>>0);");
     },
 
-    //0x198: function(context, operands) { /* ceil */
-    //},
-    //0x199: function(context, operands) { /* floor */
-    //},
+    0x198: function(context, operands) { /* ceil */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.ceil("+valf+")));");
+    },
+
+    0x199: function(context, operands) { /* floor */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.floor("+valf+")));");
+    },
+
     //0x1A0: function(context, operands) { /* fadd */
     //},
     //0x1A1: function(context, operands) { /* fsub */
@@ -4313,6 +4319,16 @@ function decode_float(val) {
 
     if (val == 0) {
         return (sign ? -0.0 : 0.0);
+    }
+
+    if ((val & 0x7f800000) == 0x7f800000) {
+        /* Either an infinity or a NaN. */
+        if ((val & 0x7fffff) == 0) {
+            return (sign ? -Infinity : Infinity);
+        }
+        else {
+            return (sign ? -NaN : NaN);
+        }
     }
 
     /* 8388608 is 2^23, in case you're curious. */
