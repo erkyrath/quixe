@@ -1034,6 +1034,32 @@ function oputil_signify_operand(context, operand, hold) {
     }
 }
 
+/* Return the float equivalent of a value. If it is a constant, this
+   returns a float constant. If it is a _hold_ variable or expression,
+   a new expression is returned with the signed value.
+
+   If the hold parameter is true, the expression will be assigned to a
+   new _hold var. Use this if you intend to use the returned value more
+   than once.
+*/
+function oputil_decode_float(context, operand, hold) {
+    var val;
+    if (quot_isconstant(operand)) {
+        val = Number(operand);
+        return ""+decode_float(val);
+    }
+
+    val = "decode_float("+operand+")";
+    if (hold) {
+        var holdvar = alloc_holdvar(context);
+        context.code.push(holdvar+"="+val+";");
+        return holdvar;
+    }
+    else {
+        return val;
+    }
+}
+
 /* Generate code for a branch to operand. This includes the usual branch
    hack; 0 or 1 return from the current function. 
    If unconditional is false, the offstack values are left in place,
@@ -2058,16 +2084,20 @@ var opcode_table = {
     },
 
     0x190: function(context, operands) { /* numtof */
-        //### const case
         var sign0 = oputil_signify_operand(context, operands[0]);
-        context.code.push(operands[1]+"encode_float("+sign0+"));");
+        if (quot_isconstant(operands[0])) {
+            var val = Number(sign0);
+            context.code.push(operands[1]+encode_float(val)+");");
+        }
+        else {
+            context.code.push(operands[1]+"encode_float("+sign0+"));");
+        }
     },
 
     0x191: function(context, operands) { /* ftonumz */
         context.varsused["valf"] = true;
         context.varsused["res"] = true;
-        //### pre-decode in const case
-        context.code.push("valf = decode_float("+operands[0]+");");
+        context.code.push("valf = "+oputil_decode_float(context, operands[0])+";");
         context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
         context.code.push("  if (isNaN(valf) || !isFinite(valf) || (valf > 0x7fffffff))");
         context.code.push("    res = 0x7fffffff;");
@@ -2085,8 +2115,7 @@ var opcode_table = {
     0x192: function(context, operands) { /* ftonumn */
         context.varsused["valf"] = true;
         context.varsused["res"] = true;
-        //### pre-decode in const case
-        context.code.push("valf = decode_float("+operands[0]+");");
+        context.code.push("valf = "+oputil_decode_float(context, operands[0])+";");
         context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
         context.code.push("  if (isNaN(valf) || !isFinite(valf))");
         context.code.push("    res = 0x7fffffff;");
