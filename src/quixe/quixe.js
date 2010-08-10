@@ -2170,8 +2170,48 @@ var opcode_table = {
         context.code.push(operands[2]+"encode_float("+valf0+" / "+valf1+"));");
     },
 
-    //0x1A4: function(context, operands) { /* fmod */
-    //},
+    0x1A4: function(context, operands) { /* fmod */
+        var val, orsign0, valf0, valf1;
+        /* We force the second argument positive, to get the right sign
+           for the quotient. We also record the sign of the first argument
+           and stuff it in manually -- this is necessary to make the -0
+           case work right. */
+
+        if (quot_isconstant(operands[0])) {
+            val = Number(operands[0]);
+            if (val & 0x80000000)
+                orsign0 = " | 0x80000000";
+            else
+                orsign0 = "";
+            valf0 = "" + decode_float(val & 0x7fffffff);
+        }
+        else {
+            context.varsused["sign0"] = true;
+            context.code.push("sign0 = "+operands[0]+" & 0x80000000;");
+            orsign0 = " | sign0";
+            val = "decode_float(("+operands[0]+") & 0x7fffffff)";
+            valf0 = alloc_holdvar(context);
+            context.code.push(valf0+"="+val+";");
+        }
+
+        if (quot_isconstant(operands[1])) {
+            val = Number(operands[1]);
+            valf1 = "" + decode_float(val & 0x7fffffff);
+        }
+        else {
+            val = "decode_float(("+operands[1]+") & 0x7fffffff)";
+            valf1 = alloc_holdvar(context);
+            context.code.push(valf1+"="+val+";");
+        }
+
+        context.varsused["modv"] = true;
+        context.varsused["quov"] = true;
+        context.code.push("modv=("+valf0+" % "+valf1+");");
+        context.code.push("quov=(("+valf0+" - modv) / "+valf1+");");
+        context.code.push(operands[2]+"(encode_float(modv)"+orsign0+") >>>0);");
+        context.code.push(operands[3]+"(encode_float(quov)"+orsign0+") >>>0);");
+    },
+
     //0x1A8: function(context, operands) { /* sqrt */
     //},
     //0x1A9: function(context, operands) { /* exp */
