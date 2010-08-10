@@ -1046,6 +1046,10 @@ function oputil_decode_float(context, operand, hold) {
     var val;
     if (quot_isconstant(operand)) {
         val = Number(operand);
+        /* The standard toString rendering of -0 is "0", so we have to
+           handle that case specially. */
+        if (val == 0x80000000)
+            return "-0";
         return ""+decode_float(val);
     }
 
