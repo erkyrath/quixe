@@ -2220,24 +2220,101 @@ var opcode_table = {
     //},
     //0x1AB: function(context, operands) { /* pow */
     //},
-    //0x1B0: function(context, operands) { /* sin */
-    //},
-    //0x1B1: function(context, operands) { /* cos */
-    //},
-    //0x1B2: function(context, operands) { /* tan */
-    //},
-    //0x1B3: function(context, operands) { /* asin */
-    //},
-    //0x1B4: function(context, operands) { /* acos */
-    //},
-    //0x1B5: function(context, operands) { /* atan */
-    //},
-    //0x1B6: function(context, operands) { /* atan2 */
-    //},
-    //0x1C0: function(context, operands) { /* jfeq */
-    //},
-    //0x1C1: function(context, operands) { /* jfne */
-    //},
+
+    0x1B0: function(context, operands) { /* sin */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.sin("+valf+")));");
+    },
+
+    0x1B1: function(context, operands) { /* cos */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.cos("+valf+")));");
+    },
+
+    0x1B2: function(context, operands) { /* tan */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.tan("+valf+")));");
+    },
+
+    0x1B3: function(context, operands) { /* asin */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.asin("+valf+")));");
+    },
+
+    0x1B4: function(context, operands) { /* acos */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.acos("+valf+")));");
+    },
+
+    0x1B5: function(context, operands) { /* atan */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.atan("+valf+")));");
+    },
+
+    0x1B6: function(context, operands) { /* atan2 */
+        var valf0 = oputil_decode_float(context, operands[0]);
+        var valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push(operands[2]+"encode_float(Math.atan2("+valf0+", "+valf1+")));");
+    },
+
+    0x1C0: function(context, operands) { /* jfeq */
+        var val, valf0, valf1, valf2;
+        context.varsused["fequal"] = true;
+        context.varsused["fdiff"] = true;
+        context.code.push("if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        /* Both are infinite. Opposite infinities are never equal,
+           even if the difference is infinite, so this is easy. */
+        context.code.push("  fequal = ("+operands[0]+" == "+operands[1]+");");
+        context.code.push("} else {");
+        /* The other case: the values are not both infinite. */
+        if (quot_isconstant(operands[2])) {
+            val = Number(operands[2]);
+            valf2 = "" + decode_float(val & 0x7fffffff);
+        }
+        else {
+            val = "decode_float(("+operands[2]+") & 0x7fffffff)";
+            valf2 = alloc_holdvar(context);
+            context.code.push(valf2+"="+val+";");
+        }
+        valf0 = oputil_decode_float(context, operands[0]);
+        valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push("  fdiff = "+valf1+" - "+valf0+";");
+        context.code.push("  fequal = (fdiff <= "+valf2+" && fdiff >= -("+valf2+"));");
+        context.code.push("}");
+        context.code.push("if (fequal) {");
+        oputil_perform_jump(context, operands[3]);
+        context.code.push("}");
+    },
+
+    0x1C1: function(context, operands) { /* jfne */
+        var val, valf0, valf1, valf2;
+        context.varsused["fequal"] = true;
+        context.varsused["fdiff"] = true;
+        context.code.push("if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        /* Both are infinite. Opposite infinities are never equal,
+           even if the difference is infinite, so this is easy. */
+        context.code.push("  fequal = ("+operands[0]+" == "+operands[1]+");");
+        context.code.push("} else {");
+        /* The other case: the values are not both infinite. */
+        if (quot_isconstant(operands[2])) {
+            val = Number(operands[2]);
+            valf2 = "" + decode_float(val & 0x7fffffff);
+        }
+        else {
+            val = "decode_float(("+operands[2]+") & 0x7fffffff)";
+            valf2 = alloc_holdvar(context);
+            context.code.push(valf2+"="+val+";");
+        }
+        valf0 = oputil_decode_float(context, operands[0]);
+        valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push("  fdiff = "+valf1+" - "+valf0+";");
+        context.code.push("  fequal = (fdiff <= "+valf2+" && fdiff >= -("+valf2+"));");
+        context.code.push("}");
+        context.code.push("if (!fequal) {");
+        oputil_perform_jump(context, operands[3]);
+        context.code.push("}");
+    },
+
     //0x1C2: function(context, operands) { /* jflt */
     //},
     //0x1C3: function(context, operands) { /* jfle */
