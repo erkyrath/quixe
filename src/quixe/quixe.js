@@ -2315,18 +2315,49 @@ var opcode_table = {
         context.code.push("}");
     },
 
-    //0x1C2: function(context, operands) { /* jflt */
-    //},
-    //0x1C3: function(context, operands) { /* jfle */
-    //},
-    //0x1C4: function(context, operands) { /* jfgt */
-    //},
-    //0x1C5: function(context, operands) { /* jfge */
-    //},
-    //0x1C8: function(context, operands) { /* jisnan */
-    //},
-    //0x1C9: function(context, operands) { /* jisinf */
-    //},
+    0x1C2: function(context, operands) { /* jflt */
+        valf0 = oputil_decode_float(context, operands[0]);
+        valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push("if ("+valf0+" < "+valf1+") {");
+        oputil_perform_jump(context, operands[2]);
+        context.code.push("}");
+    },
+
+    0x1C3: function(context, operands) { /* jfle */
+        valf0 = oputil_decode_float(context, operands[0]);
+        valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push("if ("+valf0+" <= "+valf1+") {");
+        oputil_perform_jump(context, operands[2]);
+        context.code.push("}");
+    },
+
+    0x1C4: function(context, operands) { /* jfgt */
+        valf0 = oputil_decode_float(context, operands[0]);
+        valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push("if ("+valf0+" > "+valf1+") {");
+        oputil_perform_jump(context, operands[2]);
+        context.code.push("}");
+    },
+
+    0x1C5: function(context, operands) { /* jfge */
+        valf0 = oputil_decode_float(context, operands[0]);
+        valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push("if ("+valf0+" >= "+valf1+") {");
+        oputil_perform_jump(context, operands[2]);
+        context.code.push("}");
+    },
+
+    0x1C8: function(context, operands) { /* jisnan */
+        context.code.push("if (("+operands[0]+" & 0x7f800000) == 0x7f800000 && ("+operands[0]+" & 0x007fffff) != 0) {");
+        oputil_perform_jump(context, operands[1]);
+        context.code.push("}");
+    },
+
+    0x1C9: function(context, operands) { /* jisinf */
+        context.code.push("if ("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) {");
+        oputil_perform_jump(context, operands[1]);
+        context.code.push("}");
+    },
 
     0x130: function(context, operands) { /* glk */
         var mayblock;
