@@ -2212,14 +2212,26 @@ var opcode_table = {
         context.code.push(operands[3]+"(encode_float(quov)"+orsign0+") >>>0);");
     },
 
-    //0x1A8: function(context, operands) { /* sqrt */
-    //},
-    //0x1A9: function(context, operands) { /* exp */
-    //},
-    //0x1AA: function(context, operands) { /* log */
-    //},
-    //0x1AB: function(context, operands) { /* pow */
-    //},
+    0x1A8: function(context, operands) { /* sqrt */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.sqrt("+valf+")));");
+    },
+
+    0x1A9: function(context, operands) { /* exp */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.exp("+valf+")));");
+    },
+
+    0x1AA: function(context, operands) { /* log */
+        var valf = oputil_decode_float(context, operands[0]);
+        context.code.push(operands[1]+"encode_float(Math.log("+valf+")));");
+    },
+
+    0x1AB: function(context, operands) { /* pow */
+        var valf0 = oputil_decode_float(context, operands[0]);
+        var valf1 = oputil_decode_float(context, operands[1]);
+        context.code.push(operands[2]+"encode_float(Math.pow("+valf0+", "+valf1+")));");
+    },
 
     0x1B0: function(context, operands) { /* sin */
         var valf = oputil_decode_float(context, operands[0]);
