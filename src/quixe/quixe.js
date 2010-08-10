@@ -2066,6 +2066,7 @@ var opcode_table = {
     0x191: function(context, operands) { /* ftonumz */
         context.varsused["valf"] = true;
         context.varsused["res"] = true;
+        //### pre-decode in const case
         context.code.push("valf = decode_float("+operands[0]+");");
         context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
         context.code.push("  if (isNaN(valf) || !isFinite(valf) || (valf > 0x7fffffff))");
@@ -2073,7 +2074,7 @@ var opcode_table = {
         context.code.push("  else");
         context.code.push("    res = Math.floor(valf);");
         context.code.push("} else {");
-        context.code.push("  if (isNaN(valf) || !isFinite(valf) || (valf < -0x8000000))");
+        context.code.push("  if (isNaN(valf) || !isFinite(valf) || (valf < -0x80000000))");
         context.code.push("    res = -0x80000000;");
         context.code.push("  else");
         context.code.push("    res = Math.ceil(valf);");
@@ -2084,6 +2085,7 @@ var opcode_table = {
     0x192: function(context, operands) { /* ftonumn */
         context.varsused["valf"] = true;
         context.varsused["res"] = true;
+        //### pre-decode in const case
         context.code.push("valf = decode_float("+operands[0]+");");
         context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
         context.code.push("  if (isNaN(valf) || !isFinite(valf))");
@@ -4347,7 +4349,10 @@ function encode_float(val) {
 
     mant = mant * 8388608.0; /* 2^23 */
 
-    fbits = (mant + 0.5) << 0; /* round mant to nearest int */
+    /* We want to round mant to the nearest integer. However, we bias
+       towards rounding down, in order to make Javascript's math
+       (which is double-precision) match the single-precision C code. */
+    fbits = (mant + 0.4999999999999999) << 0; 
     if (fbits >= 8388608) {
         /* The carry propagated out of a string of 23 1 bits. */
         fbits = 0;
