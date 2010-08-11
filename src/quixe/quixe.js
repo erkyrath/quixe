@@ -2228,9 +2228,19 @@ var opcode_table = {
     },
 
     0x1AB: function(context, operands) { /* pow */
-        var valf0 = oputil_decode_float(context, operands[0]);
-        var valf1 = oputil_decode_float(context, operands[1]);
-        context.code.push(operands[2]+"encode_float(Math.pow("+valf0+", "+valf1+")));");
+        context.varsused["valf"] = true;
+        var valf0 = oputil_decode_float(context, operands[0], true);
+        var valf1 = oputil_decode_float(context, operands[1], true);
+        context.code.push("if ("+operands[0]+" == 0x3f800000) {");
+        /* pow(1, anything) is 1 */
+        context.code.push("  valf = 0x3f800000;");
+        context.code.push("} else if ("+operands[0]+" == 0xbf800000 && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        /* pow(-1, infinity) is 1 */
+        context.code.push("  valf = 0x3f800000;");
+        context.code.push("} else {");
+        context.code.push("  valf=encode_float(Math.pow("+valf0+", "+valf1+"));");
+        context.code.push("}");
+        context.code.push(operands[2]+"valf);");
     },
 
     0x1B0: function(context, operands) { /* sin */
