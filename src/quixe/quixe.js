@@ -3235,7 +3235,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
             context.code[0] = "var " + ls.join(",") + ";";
     }
 
-    qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
+    //qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
     return make_code(context.code.join("\n"));
 }
 
