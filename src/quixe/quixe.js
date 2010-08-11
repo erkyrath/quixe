@@ -4497,7 +4497,7 @@ function linked_search(key, keysize, start,
    Javascript number.
 */
 function decode_float(val) {
-    var sign, res;
+    var sign, res, expo;
 
     if (val & 0x80000000) {
         sign = true;
@@ -4521,9 +4521,17 @@ function decode_float(val) {
         }
     }
 
+    expo = (val>>23 & 0xff);
     /* 8388608 is 2^23, in case you're curious. */
-    res = ((val & 0x7fffff | 0x800000) / 8388608
-        * Math.pow(2, ((val>>23 & 0xff) - 127)));
+    if (expo) {
+        res = ((val & 0x7fffff | 0x800000) / 8388608
+            * Math.pow(2, (expo - 127)));
+    }
+    else {
+        res = ((val & 0x7fffff) / 8388608
+            * Math.pow(2, -126));
+    }
+
     if (sign)
         return -res;
     else
