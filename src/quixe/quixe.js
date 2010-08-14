@@ -2258,7 +2258,10 @@ var opcode_table = {
         var val, valf0, valf1, valf2;
         context.varsused["fequal"] = true;
         context.varsused["fdiff"] = true;
-        context.code.push("if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        context.code.push("if (("+operands[2]+" & 0x7f800000) == 0x7f800000 && ("+operands[2]+" & 0x007fffff) != 0) {");
+        /* The delta is NaN, which can never match. */
+        context.code.push("  fequal = 0;");
+        context.code.push("} else if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
         /* Both are infinite. Opposite infinities are never equal,
            even if the difference is infinite, so this is easy. */
         context.code.push("  fequal = ("+operands[0]+" == "+operands[1]+");");
@@ -2287,7 +2290,10 @@ var opcode_table = {
         var val, valf0, valf1, valf2;
         context.varsused["fequal"] = true;
         context.varsused["fdiff"] = true;
-        context.code.push("if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        context.code.push("if (("+operands[2]+" & 0x7f800000) == 0x7f800000 && ("+operands[2]+" & 0x007fffff) != 0) {");
+        /* The delta is NaN, which can never match. */
+        context.code.push("  fequal = 0;");
+        context.code.push("} else if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
         /* Both are infinite. Opposite infinities are never equal,
            even if the difference is infinite, so this is easy. */
         context.code.push("  fequal = ("+operands[0]+" == "+operands[1]+");");
