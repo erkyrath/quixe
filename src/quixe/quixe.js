@@ -4261,7 +4261,7 @@ function do_gestalt(val, val2) {
 
     switch (val) {
     case 0: /* GlulxVersion */
-        return 0x00030101; /* Glulx spec version 3.1.1 */
+        return 0x00030102; /* Glulx spec version 3.1.2 */
 
     case 1: /* TerpVersion */
         return 0x00010001; /* Quixe version 1.0.1 */
