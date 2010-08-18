@@ -5425,7 +5425,6 @@ return {
     resume: quixe_resume,
     get_signature: quixe_get_signature,
     get_statistics: quixe_get_statistics,
-    encode_float: encode_float, decode_float: decode_float, //####tmp
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
