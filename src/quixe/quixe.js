@@ -4264,7 +4264,7 @@ function do_gestalt(val, val2) {
         return 0x00030102; /* Glulx spec version 3.1.2 */
 
     case 1: /* TerpVersion */
-        return 0x00010001; /* Quixe version 1.0.1 */
+        return 0x00010002; /* Quixe version 1.0.2 */
 
     case 2: /* ResizeMem */
         return 1; /* Memory resizing works. */
@@ -5419,7 +5419,7 @@ function execute_loop() {
 /* End of Quixe namespace function. Return the object which will
    become the Quixe global. */
 return {
-    version: '1.0.1', /* Quixe version */
+    version: '1.0.2', /* Quixe version */
     prepare: quixe_prepare,
     init: quixe_init,
     resume: quixe_resume,
