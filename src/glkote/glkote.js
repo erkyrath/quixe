@@ -91,6 +91,11 @@ function glkote_init(iface) {
     return;
   }
 
+  if (Prototype.Browser.MobileSafari) {
+    /* Paging doesn't make sense for iphone/android, because you can't
+       get keystroke events from a window. */
+    perform_paging = false;
+  }
   if (Prototype.Browser.IE) {
     is_ie7 = window.XMLHttpRequest != null;
   }
@@ -108,7 +113,8 @@ function glkote_init(iface) {
     return;
   }
   el.update();
-  Event.observe(document, 'keypress', evhan_doc_keypress);
+  if (!Prototype.Browser.MobileSafari) 
+    Event.observe(document, 'keypress', evhan_doc_keypress);
   Event.observe(window, 'resize', evhan_doc_resize);
 
   var res = measure_window();
@@ -437,7 +443,8 @@ function accept_one_window(arg) {
       { id: 'window'+arg.id,
         'class': 'WindowFrame ' + typeclass + ' ' + rockclass });
     frameel.winid = arg.id;
-    frameel.onmousedown = function() { evhan_window_mousedown(frameel); };
+    Event.observe(frameel, 'mousedown', 
+      function(ev) { evhan_window_mousedown(ev, frameel); });
     if (perform_paging && win.type == 'buffer')
       frameel.onscroll = function() { evhan_window_scroll(frameel); };
     win.frameel = frameel;
@@ -858,6 +865,8 @@ function accept_inputset(arg) {
       inputel = new Element('input',
         { id: 'win'+win.id+'_input',
           'class': classes, type: 'text', maxlength: maxlen });
+      if (Prototype.Browser.MobileSafari)
+        inputel.writeAttribute('autocapitalize', 'off');
       if (argi.type == 'line') {
         inputel.onkeypress = evhan_input_keypress;
         inputel.onkeydown = evhan_input_keydown;
@@ -1401,15 +1410,22 @@ function evhan_doc_keypress(ev) {
    Remember which window the user clicked in last, as a hint for setting
    the focus. (Input focus and paging focus are tracked separately.)
 */
-function evhan_window_mousedown(frameel) {
+function evhan_window_mousedown(ev, frameel) {
   if (!frameel.winid)
     return;
   var win = windowdic.get(frameel.winid);
   if (!win)
     return;
 
-  if (win.inputel)
+  if (win.inputel) {
     last_known_focus = win.id;
+    if (Prototype.Browser.MobileSafari) {
+      ev.stop();
+      //glkote_log("### focus to " + win.id); //####
+      //### This doesn't always work, blah
+      win.inputel.focus();
+    }
+  }
 
   if (win.needspaging)
     last_known_paging = win.id;
@@ -1494,6 +1510,11 @@ function evhan_input_char_keypress(ev) {
   }
   if (!keycode) return false;
 
+  if (keycode == 10 && Prototype.Browser.MobileSafari) {
+    /* This case only occurs on old iPhones (iOS 3.1.3). */
+    keycode = 13;
+  }
+
   var res;
   if (keycode == 13)
     res = 'return';
@@ -1565,6 +1586,11 @@ function evhan_input_keypress(ev) {
     if (ev) keycode = ev.which;
   }
   if (!keycode) return true;
+
+  if (keycode == 10 && Prototype.Browser.MobileSafari) {
+    /* This case only occurs on old iPhones (iOS 3.1.3). */
+    keycode = 13;
+  }
 
   if (keycode == 13) {
     if (!this.winid)
@@ -1658,7 +1684,7 @@ function build_evhan_hyperlink(winid, linkval) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '1.2.0',
+  version:  '1.2.1',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
