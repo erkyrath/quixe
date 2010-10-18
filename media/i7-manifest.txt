@@ -79,6 +79,12 @@ g
   bottom: 1em;
 }
 
+@media screen and (max-device-width: 480px) {
+  #gameport {
+    left: 0px;
+  }
+}
+
 </style>
 
 <script src="interpreter/glkote.min.js" type="text/javascript"></script>
@@ -93,7 +99,7 @@ game_options = {
 };
 </script>
 
-<script src="interpreter/[ENCODEDSTORYFILE]" type="text/javascript"></script>
+<script src="interpreter/[*ENCODEDSTORYFILE]" type="text/javascript"></script>
 []
 
 ! [INTERPRETERBODY] provides the part of the page where the window
