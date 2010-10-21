@@ -46,47 +46,6 @@ g
 [INTERPRETERHEAD]
 <link rel="stylesheet" href="interpreter/glkote.css" type="text/css">
 <link rel="stylesheet" href="interpreter/dialog.css" type="text/css">
-
-<style type="text/css">
-
-/* The gameport is the window area in which all the game windows (status
-   and story) are laid out. We leave the left-hand column for the template
-   text, which includes the cover art, links, and interpreter credit.
-
-   The background color here shows up only as a flash during loading. If
-   you increased the "spacing" game options below, the background color
-   would fill the gap between windows.
-
-   This template uses zero spacing between windows, because that looks good
-   for the standard game layout of one grid window and one buffer window.
-   If you wanted several buffer windows, you might prefer to increase
-   "inspacing" and darken the gameport background color.
-*/
-#gameport {
-  position: absolute;
-  overflow: hidden;
-  top: 0px;
-  left: 15.4em;
-  right: 0px;
-  bottom: 0px;
-  background: white;
-  margin: 0px;
-}
-
-.interpretercredit {
-  font-size: 80%;
-  position: absolute;
-  bottom: 1em;
-}
-
-@media screen and (max-device-width: 480px) {
-  #gameport {
-    left: 0px;
-  }
-}
-
-</style>
-
 <script src="interpreter/glkote.min.js" type="text/javascript"></script>
 <script src="interpreter/quixe.min.js" type="text/javascript"></script>
 
@@ -99,14 +58,13 @@ game_options = {
 };
 </script>
 
-<script src="interpreter/[*ENCODEDSTORYFILE]" type="text/javascript"></script>
+<script src="interpreter/[ENCODEDSTORYFILE]" type="text/javascript"></script>
 []
 
 ! [INTERPRETERBODY] provides the part of the page where the window
 ! or gadget actually appears.
 
 [INTERPRETERBODY]
-<div id="gameport">
 <div id="windowport">
 <noscript><hr>
 <p>You'll need to turn on Javascript in your web browser to play this game.</p>
@@ -122,8 +80,6 @@ This should not be visible
 <div id="layouttest_grid" class="WindowFrame GridWindow"><div id="layouttest_gridline" class="GridLine"><span id="layouttest_gridspan" class="Style_normal">12345678</span></div><div id="layouttest_gridline2" class="GridLine"><span class="Style_normal">12345678</span></div></div>
 <div id="layouttest_buffer" class="WindowFrame BufferWindow"><div id="layouttest_bufferline" class="BufferLine"><span id="layouttest_bufferspan" class="Style_normal">12345678</span></div><div id="layouttest_bufferline2" class="BufferLine"><span class="Style_normal">12345678</span></div></div>
 </div>
-</div>
-
 []
 
 ! The following footnote is added to the small print about how to play IF
