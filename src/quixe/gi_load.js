@@ -565,7 +565,7 @@ function start_game(image) {
 
     if (all_options.set_page_title) {
         var title = null;
-        if (blorb.metadata)
+        if (blorb && blorb.metadata)
             title = blorb.metadata.title;
         if (!title && gameurl) 
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
