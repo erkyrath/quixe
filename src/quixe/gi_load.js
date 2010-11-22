@@ -78,7 +78,7 @@ var all_options = {
 };
 
 var gameurl = null;  /* The URL we are loading. */
-var metadata = {}; /* Title, author, etc -- loaded from Blorb */
+var blorb = null; /* The BLORB object */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -326,53 +326,151 @@ function absolutize(url) {
     return div.firstChild.href;
 }
 
-/* Look through a Blorb file (provided as a byte array) and return the
-   Glulx game file chunk (ditto). If no such chunk is found, returns 
-   null.
-
-   This also loads the IFID metadata into the metadata object.
+/* Blorb file parser.
+   Allows access important chunks (Executable, Metadata)
+   and resource files by resource ID
 */
-function unpack_blorb(image) {
-    var len = image.length;
+function Blorb(data) {
+    this.data = (typeof data == "undefined") ? "" : data;
+
+    // Resources
+    this.pict_resources = {};
+    this.snd_resources = {};
+    this.exec_resource = null;
+
+    // References to important chunks
+    this.metadata = null;
+
+    this.parseBlorb();
+};
+
+Blorb.prototype.read = function (offset, n) {
+    return this.data.slice(offset, offset + n);
+};
+
+Blorb.prototype.ubInt32 = function (offset) {
+    var d = this.read(offset, 4);
+    return d[0] * (1<<24) + d[1] * (1<<16) + d[2] * (1<<8) + d[3];
+};
+
+Blorb.prototype.fourCC = function (offset) {
+    var d = this.read(offset, 4);
+    return String.fromCharCode.apply(null, d);
+};
+
+/* Augment the resource object with its chunk data */
+Blorb.prototype.readResource = function(resource) {
+    var chunk_type = this.fourCC(resource.offset);
+    var chunk_len  = this.ubInt32(resource.offset + 4);
+    var chunk_data = this.read(resource.offset + 8, chunk_len);
+
+    resource.type = chunk_type;
+    resource.data = chunk_data;
+
+    return resource;
+};
+
+Blorb.prototype.parseMetadata = function(data) {
+    this.metadata = {};
+    var dat = String.fromCharCode.apply(null, data);
+    /* This works around Prototype's annoying habit of doing
+       something, I'm not sure what, with the <title> tag. */
+    dat = dat.replace(/<title>/gi, '<xtitle>');
+    dat = dat.replace(/<\/title>/gi, '</xtitle>');
+    var met = new Element('metadata').update(dat);
+    if (met.down('bibliographic')) {
+        var els = met.down('bibliographic').childElements();
+        var el, ix;
+        for (ix=0; ix<els.length; ix++) {
+            el = els[ix];
+            if (el.tagName.toLowerCase() == 'xtitle')
+                this.metadata.title = el.textContent;
+            else
+                this.metadata[el.tagName.toLowerCase()] = el.textContent;
+        }
+    }
+};
+
+Blorb.prototype.parseBlorb = function() {
     var pos = 12;
-    var result = null;
 
-    while (pos < len) {
-        var chunktype = String.fromCharCode(image[pos+0], image[pos+1], image[pos+2], image[pos+3]);
-        pos += 4;
-        var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
-        pos += 4;
+    var chunk_type = this.fourCC(pos);
+    if (chunk_type != "RIdx")
+        throw('invalid BLORB file');
 
-        if (chunktype == "GLUL") {
-            result = image.slice(pos, pos+chunklen);
+    var chunk_len      = this.ubInt32(pos + 4);
+    var resource_count = this.ubInt32(pos + 8);
+
+    pos += 12;
+
+    var i;
+    for (i = 0; i < resource_count; i++) {
+        usage   = this.fourCC(pos);
+        res_num = this.ubInt32(pos + 4);
+        offset  = this.ubInt32(pos + 8);
+        pos += 12;
+
+        switch (usage) {
+        case "Pict":
+            this.pict_resources[res_num] = {
+                'offset': offset
+            };
+            break;
+        case "Snd ":
+            this.snd_resources[res_num] = {
+                'offset': offset
+            };
+            break;
+        case "Exec":
+            if (this.exec_resource != null)
+                throw('invalid BLORB file. More than one Exec chunk');
+            this.exec_resource = {
+                'offset': offset
+            };
+            this.readResource(this.exec_resource);
+            break;
         }
-        if (chunktype == "IFmd") {
-            var arr = image.slice(pos, pos+chunklen);
-            var dat = String.fromCharCode.apply(this, arr);
-            /* This works around Prototype's annoying habit of doing
-               something, I'm not sure what, with the <title> tag. */
-            dat = dat.replace(/<title>/gi, '<xtitle>');
-            dat = dat.replace(/<\/title>/gi, '</xtitle>');
-            var met = new Element('metadata').update(dat);
-            if (met.down('bibliographic')) {
-                var els = met.down('bibliographic').childElements();
-                var el, ix;
-                for (ix=0; ix<els.length; ix++) {
-                    el = els[ix];
-                    if (el.tagName.toLowerCase() == 'xtitle')
-                        metadata.title = el.textContent;
-                    else
-                        metadata[el.tagName.toLowerCase()] = el.textContent;
-                }
-            }
-        }
-
-        pos += chunklen;
-        if (pos & 1)
-            pos++;
     }
 
-    return result;
+    // Look for other important chunks
+    while (pos < this.data.length) {
+        var chunk_type = this.fourCC(pos);
+        var chunk_len  = this.ubInt32(pos + 4);
+        pos += 8;
+
+        if (chunk_type == "IFmd") {
+            this.parseMetadata(this.read(pos, chunk_len));
+        }
+
+        pos += chunk_len;
+        if (chunk_len & 1)
+            pos++;
+    }
+};
+
+Blorb.prototype.getPictURI = function(resource_id) {
+    res = this.pict_resources[resource_id]
+    if (typeof res == "undefined")
+        throw('Image resource ' + resource_id + ' does not exist');
+
+    if (typeof res.data == "undefined")
+        this.readResource(res);
+
+    if (typeof res.data_uri == "undefined") {
+        var mime_type;
+        if (res.type == "JPEG") {
+            mime_type = "image/jpeg";
+        } else if (res.type == "PNG ") {
+            mime_type = "image/png";
+        } else {
+            throw("Unknown image type '" + res.type + "'");
+        }
+
+        // TODO: Implement btoa for IE
+        res.data_uri = "data:" + mime_type + ";base64," + btoa(String.fromCharCode.apply(null, res.data));
+    }
+
+    return res.data_uri;
 }
 
 /* Convert a byte string into an array of numeric byte values. */
@@ -444,24 +542,31 @@ function start_game(image) {
         return;
     }
 
+    var exec;
+
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
         try {
-            image = unpack_blorb(image);
+            blorb = new Blorb(image);
         }
         catch (ex) {
             all_options.io.fatal_error("Blorb file could not be parsed: " + ex);
             return;
         }
-        if (!image) {
+        if (!blorb.exec_resource || blorb.exec_resource.type != "GLUL") {
             all_options.io.fatal_error("Blorb file contains no Glulx game!");
             return;
         }
+
+        exec = blorb.exec_resource.data;
+
+    } else {
+        exec = image;
     }
 
     if (all_options.set_page_title) {
         var title = null;
-        if (metadata)
-            title = metadata.title;
+        if (blorb.metadata)
+            title = blorb.metadata.title;
         if (!title && gameurl) 
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
         if (!title)
@@ -470,7 +575,7 @@ function start_game(image) {
     }
 
     /* Pass the game image file along to the VM engine. */
-    all_options.vm.prepare(image, all_options);
+    all_options.vm.prepare(exec, all_options);
 
     /* Now fire up the display library. This will take care of starting
        the VM engine, once the window is properly set up. */
