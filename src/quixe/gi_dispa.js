@@ -288,6 +288,10 @@ var proto_map = {
 289 : new FuncSpec(289, "buffer_to_upper_case_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
 // 290 (0x122): buffer_to_title_case_uni - 4&+#IuIuIu:Iu
 290 : new FuncSpec(290, "buffer_to_title_case_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
+// 291 (0x123): buffer_canon_decompose_uni - 3&+#IuIu:Iu
+291 : new FuncSpec(291, "buffer_canon_decompose_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
+// 292 (0x124): buffer_canon_normalize_uni - 3&+#IuIu:Iu
+292 : new FuncSpec(292, "buffer_canon_normalize_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
 // 296 (0x128): put_char_uni - 1Iu:
 296 : new FuncSpec(296, "put_char_uni", new Prototype([new ArgInt(false)], null)),
 // 297 (0x129): put_string_uni - 1U:
