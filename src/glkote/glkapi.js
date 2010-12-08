@@ -3784,14 +3784,18 @@ function glk_buffer_to_title_case_uni(arr, numchars, lowerrest) {
     return pos;
 }
 
-function glk_buffer_canon_decompose_uni(arr, numchars) {
+function gli_buffer_canon_decompose_uni(arr, numchars) {
+    /* This is a utility function to decompose an array. The behavior is
+       almost the same as glk_buffer_canon_decompose_uni(), except that
+       this *doesn't* trim the array down to its original length. That
+       is, this decomposition can cause the array to grow. */
+
     /* The algorithm for the canonical decomposition of a string: For
        each character, look up the decomposition in the decomp table.
        Append the decomposition to the buffer. Finally, sort every
        substring of the buffer which is made up of combining
        characters (characters with a nonzero combining class). */
 
-    var arrlen = arr.length;
     var src = arr.slice(0, numchars);
     var pos, ix, jx, origval, val;
     var grpstart, grpend, kx, tmp;
@@ -3841,14 +3845,65 @@ function glk_buffer_canon_decompose_uni(arr, numchars) {
         }
     }
 
-    /* in case we stretched the array */
-    arr.length = arrlen;
+    return pos;
+}
+
+function gli_buffer_canon_compose_uni(arr, numchars) {
+    /* The algorithm for canonically composing characters in a string:
+       look at each adjacent pair of characters, and if they're composable,
+       compose them. Repeat until no more pairs are found. We do this
+       from the beginning of the string to the end, which suffices. */
+
+    var src = arr.slice(0, numchars);
+    var ix, curch, newch, map, pos;
+
+    if (numchars == 0)
+        return 0;
+
+    curch = src[0];
+    ix = 1;
+    pos = 0;
+    while (1) {
+        if (ix >= numchars) {
+            arr[pos++] = curch;
+            break;
+        }
+        newch = src[ix++];
+        map = unicode_compo_table[curch];
+        if (map === undefined || map[newch] === undefined) {
+            arr[pos++] = curch;
+            curch = newch;
+            continue;
+        }
+        curch = map[newch];
+    }
 
     return pos;
 }
 
+function glk_buffer_canon_decompose_uni(arr, numchars) {
+    var arrlen = arr.length;
+    var len;
+
+    len = gli_buffer_canon_decompose_uni(arr, numchars);
+
+    /* in case we stretched the array */
+    arr.length = arrlen;
+
+    return len;
+}
+
 function glk_buffer_canon_normalize_uni(arr, numchars) {
-    return 0;
+    var arrlen = arr.length;
+    var len;
+
+    len = gli_buffer_canon_decompose_uni(arr, numchars);
+    len = gli_buffer_canon_compose_uni(arr, len);
+
+    /* in case we stretched the array */
+    arr.length = arrlen;
+
+    return len;
 }
 
 function glk_put_char_uni(ch) {
