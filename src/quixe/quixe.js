@@ -1949,11 +1949,13 @@ var opcode_table = {
     },
 
     0x180: function(context, operands) { /* accelfunc */
-        /* No functions supported; do nothing. */
+        context.code.push("accel_address_map["+operands[1]+"] = accel_func_map["+operands[0]+"];");
     },
     
     0x181: function(context, operands) { /* accelparam */
-        /* No functions supported; do nothing. */
+        context.code.push("if ("+operands[0]+" < 9) {");
+        context.code.push("  accel_params["+operands[0]+"] = "+operands[1]+";");
+        context.code.push("}");
     },
     
 
@@ -3234,8 +3236,15 @@ function enter_function(addr, argcount) {
 
     total_function_calls++; //###stats
 
-    /* If we supported accelerated functions, we'd check and dispatch them
-       here. */
+    /* If this address has been registered for an accelerated function,
+       dispatch it. */
+    var accelfunc = accel_address_map[addr];
+    if (accelfunc !== undefined) {
+        accel_function_calls++; //###stats
+        var val = accelfunc(argcount);
+        pop_callstub(val);
+        return;
+    }
 
     var vmfunc = vmfunc_table[addr];
     if (vmfunc === undefined) {
@@ -3509,6 +3518,41 @@ function srand_get_random() {
     srand_table[srand_index1] = (srand_table[srand_index1] - srand_table[srand_index2]) >>>0;
     return srand_table[srand_index1] / 0x100000000;
 }
+
+/* Maps VM addresses to the (native) functions used to accelerate them. */
+var accel_address_map = {};
+
+/* A list of the nine parameter fields used by the accelerated functions. */
+var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+
+/* The code for all the functions we can accelerate. The actual arguments are
+   in the tempcallargs array. But remember that there may be fewer than
+   expected, and any beyond argc should be taken as zero. 
+*/
+var accel_func_map = {
+    1: function func_1_z__region(argc) {
+        if (argc < 1)
+            return 0;
+
+        var addr = tempcallargs[0];
+        if (addr < 36)
+            return 0;
+        if (addr >= endmem)
+            return 0;
+
+        var tb = Mem1(addr);
+        if (tb >= 0xE0) {
+            return 3;
+        }
+        if (tb >= 0xC0) {
+            return 2;
+        }
+        if (tb >= 0x70 && tb <= 0x7F && addr >= ramstart) {
+            return 1;
+        }
+        return 0;
+    }
+};
 
 /* Set the current table address, and rebuild decoding tree. */
 function set_string_table(addr) {
@@ -4301,8 +4345,10 @@ function do_gestalt(val, val2) {
         return 1; /* The acceleration opcodes work. */
 
     case 10: /* AccelFunc */
-        return 0; /* Despite the above, no accelerated functions are 
-                     currently supported. */
+        if (accel_func_map[val2])
+            return 1;
+        else
+            return 0;
 
     case 11: /* Float */
         return 1; /* We can handle the floating-point opcodes. */
@@ -4647,6 +4693,7 @@ var freelist;      // Sorted array of free blocks.
 /* Statistics -- may only be meaningful in a debug release. */
 var total_execution_time = 0;
 var total_function_calls = 0;
+var accel_function_calls = 0;
 var total_path_calls = 0;
 var paths_cached = 0;
 var paths_compiled = 0;
@@ -5195,6 +5242,7 @@ function quixe_get_statistics() {
         game_image_length: game_image.length,
         total_execution_time: total_execution_time,
         total_function_calls: total_function_calls,
+        accel_function_calls : accel_function_calls,
         total_path_calls: total_path_calls,
         paths_cached: paths_cached,
         paths_compiled: paths_compiled,
@@ -5419,7 +5467,7 @@ function execute_loop() {
 /* End of Quixe namespace function. Return the object which will
    become the Quixe global. */
 return {
-    version: '1.0.3', /* Quixe version */
+    version: '1.0.3', /* Quixe version */ /*###*/
     prepare: quixe_prepare,
     init: quixe_init,
     resume: quixe_resume,
