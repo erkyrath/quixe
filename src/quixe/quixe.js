@@ -3241,7 +3241,7 @@ function enter_function(addr, argcount) {
     var accelfunc = accel_address_map[addr];
     if (accelfunc !== undefined) {
         accel_function_calls++; //###stats
-        var val = accelfunc(argcount);
+        var val = accelfunc(argcount, tempcallargs);
         pop_callstub(val);
         return;
     }
@@ -3525,16 +3525,16 @@ var accel_address_map = {};
 /* A list of the nine parameter fields used by the accelerated functions. */
 var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
-/* The code for all the functions we can accelerate. The actual arguments are
-   in the tempcallargs array. But remember that there may be fewer than
-   expected, and any beyond argc should be taken as zero. 
+/* The code for all the functions we can accelerate. Remember that there may
+   be fewer arguments than expected, and any beyond argc should be taken as 
+   zero.
 */
 var accel_func_map = {
-    1: function func_1_z__region(argc) {
+    1: function func_1_z__region(argc, argv) {
         if (argc < 1)
             return 0;
 
-        var addr = tempcallargs[0];
+        var addr = argv[0];
         if (addr < 36)
             return 0;
         if (addr >= endmem)
@@ -3551,8 +3551,219 @@ var accel_func_map = {
             return 1;
         }
         return 0;
+    },
+
+    2: function func_2_cp__tab(argc, argv) {
+        var obj = ((argc > 0) ? argv[0] : 0);
+        var id = ((argc > 1) ? argv[1] : 0);
+
+        /* func_1_z__region(obj) */
+        if (accel_func_map[1](argc, argv) != 1) { 
+            Glk.glk_put_jstring("\n[** Programming error: tried to find the \".\" of (something) **]\n");
+            return 0;
+        }
+
+        var otab = Mem4(obj + 16);
+        if (!otab)
+            return 0;
+
+        var max = Mem4(otab);
+        otab += 4;
+        /* @binarysearch id 2 otab 10 max 0 0 res; */
+        return binary_search(id, 2, otab, 10, max, 0, 0);
+    },
+
+    3: function func_3_ra__pr(argc, argv) {
+        var obj = ((argc > 0) ? argv[0] : 0);
+        var id = ((argc > 1) ? argv[1] : 0);
+
+        var prop = accel_helper_get_prop(obj, id);
+        if (prop == 0)
+            return 0;
+
+        return Mem4(prop + 4);
+    },
+
+    4: function func_4_rl__pr(argc, argv) {
+        var obj = ((argc > 0) ? argv[0] : 0);
+        var id = ((argc > 1) ? argv[1] : 0);
+
+        var prop = accel_helper_get_prop(obj, id);
+        if (prop == 0)
+            return 0;
+
+        return 4 * Mem2(prop + 2);
+    },
+
+    5: function func_5_oc__cl(argc, argv) {
+        var zr, prop, inlist, inlistlen, jx;
+
+        var obj = ((argc > 0) ? argv[0] : 0);
+        var cla = ((argc > 1) ? argv[1] : 0);
+
+        /* func_1_z__region(obj) */
+        zr = accel_func_map[1](argc, argv);
+        if (zr == 3)
+            return (cla == accel_params[5]) ? 1 : 0;
+        if (zr == 2)
+            return (cla == accel_params[4]) ? 1 : 0;
+        if (zr != 1)
+            return 0;
+    
+        if (cla == accel_params[2]) {
+            if (accel_helper_obj_in_class(obj))
+                return 1;
+            if (obj == accel_params[2])
+                return 1;
+            if (obj == accel_params[5])
+                return 1;
+            if (obj == accel_params[4])
+                return 1;
+            if (obj == accel_params[3])
+                return 1;
+            return 0;
+        }
+        if (cla == accel_params[3]) {
+            if (accel_helper_obj_in_class(obj))
+                return 0;
+            if (obj == accel_params[2])
+                return 0;
+            if (obj == accel_params[5])
+                return 0;
+            if (obj == accel_params[4])
+                return 0;
+            if (obj == accel_params[3])
+                return 0;
+            return 1;
+        }
+        if ((cla == accel_params[5]) || (cla == accel_params[4]))
+            return 0;
+    
+        if (!accel_helper_obj_in_class(cla)) {
+            Glk.glk_put_jstring("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
+            return 0;
+        }
+    
+        prop = accel_helper_get_prop(obj, 2);
+        if (prop == 0)
+           return 0;
+    
+        inlist = Mem4(prop + 4);
+        if (inlist == 0)
+           return 0;
+    
+        inlistlen = Mem2(prop + 2);
+        for (jx = 0; jx < inlistlen; jx++) {
+            if (Mem4(inlist + (4 * jx)) == cla)
+                return 1;
+        }
+        return 0;
+    },
+
+    6: function func_6_rv__pr(argc, argv) {
+        var id = ((argc > 1) ? argv[1] : 0);
+        var addr;
+
+        /* func_3_ra__pr */
+        addr = accel_func_map[3](argc, argv);
+        
+        if (addr == 0) {
+            /* id > 0 && id < indiv_prop_start */
+            if ((id > 0) && (id < accel_params[1])) {
+                /* Mem4(cpv__start + 4*id) */
+                return Mem4(accel_params[8] + (4 * id));
+            }
+
+            Glk.glk_put_jstring("\n[** Programming error: tried to read (something) **]\n");
+            return 0;
+        }
+
+        return Mem4(addr);
+    },
+
+    7: function func_7_op__pr(argc, argv) {
+        var obj = ((argc > 0) ? argv[0] : 0);
+        var id = ((argc > 1) ? argv[1] : 0);
+
+        var indiv_prop_start = accel_params[1];
+
+        /* func_1_z__region(obj) */
+        var zr = accel_func_map[1](argc, argv);
+        if (zr == 3) {
+            /* print is INDIV_PROP_START+6 */
+            if (id == indiv_prop_start+6)
+                return 1;
+            /* print_to_array is INDIV_PROP_START+7 */
+            if (id == indiv_prop_start+7)
+                return 1;
+            return 0;
+        }
+        if (zr == 2) {
+            /* call is INDIV_PROP_START+5 */
+            return ((id == indiv_prop_start+5) ? 1 : 0);
+        }
+        if (zr != 1)
+            return 0;
+    
+        if ((id >= indiv_prop_start) && (id < indiv_prop_start+8)) {
+            if (accel_helper_obj_in_class(obj))
+                return 1;
+        }
+    
+        /* func_3_ra__pr */
+        return ((accel_func_map[3](argc, argv)) ? 1 : 0);
     }
 };
+
+var accel_helper_temp_args = [ 0, 0 ];
+
+function accel_helper_obj_in_class(obj)
+{
+    /* This checks whether obj is contained in Class, not whether
+       it is a member of Class. */
+    /* (Mem4(obj + 13 + num_attr_bytes) == class_metaclass) */
+    return (Mem4(obj + 13 + accel_params[7]) == accel_params[2]);
+}
+
+function accel_helper_get_prop(obj, id)
+{
+    var cla = 0;
+    var prop;
+
+    if (id & 0xFFFF0000) {
+        /* Mem4(classes_table+...) */
+        cla = Mem4(accel_params[0]+((id & 0xFFFF) * 4));
+        accel_helper_temp_args[0] = obj;
+        accel_helper_temp_args[1] = cla;
+        /* func_5_oc__cl */
+        if (accel_func_map[5](2, accel_helper_temp_args) == 0)
+            return 0;
+
+        id = id >> 16;
+        obj = cla;
+    }
+
+    accel_helper_temp_args[0] = obj;
+    accel_helper_temp_args[1] = id;
+    /* func_2_cp__tab */
+    prop = accel_func_map[2](2, accel_helper_temp_args);
+    if (prop == 0)
+        return 0;
+
+    if (accel_helper_obj_in_class(obj) && (cla == 0)) {
+        /* id < num_attr_bytes || id >= num_attr_bytes+8 */
+        if ((id < accel_params[1]) || (id >= accel_params[1]+8))
+            return 0;
+    }
+
+    /* Mem4(self) -- the global variable self */
+    if (Mem4(accel_params[6]) != obj) {
+        if (Mem1(prop + 9) & 1)
+            return 0;
+    }
+    return prop;
+}
+
 
 /* Set the current table address, and rebuild decoding tree. */
 function set_string_table(addr) {

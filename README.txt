@@ -83,6 +83,9 @@ on the web site), copy play-remote.html.
 
 * Version History
 
+- ###
+  - The Glulx accelerated-function feature.
+
 - 1.0.3 (October 14, 2010):
   - Better display and input on iPhone/Android.
 
