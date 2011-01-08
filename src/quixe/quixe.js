@@ -770,9 +770,9 @@ function setup_operandlist_table() {
         0x121: list_S, /* verify */
         0x122: list_none, /* restart */
         0x123: list_LC, /* save */
-        0x124: list_LS, /* restore */
+        0x124: list_LF, /* restore */
         0x125: list_C, /* saveundo */
-        0x126: list_S, /* restoreundo */
+        0x126: list_F, /* restoreundo */
         0x127: list_LL, /* protect */
         0x130: list_LLF, /* glk */
         0x140: list_S, /* getstringtbl */
@@ -824,20 +824,28 @@ function setup_operandlist_table() {
     }
 }
 
-/* A brief lecture on the offstack:
+/* A brief lecture on the offstate:
 
    One way we optimize JIT-compiled code is to do a running static analysis,
    and try to determine what values are on top of the VM stack at any given
-   kind. (That is, during any given instruction.) This list is the "offstack",
-   and it can contain both numeric literals and (Javascript) temporary
-   variables. When we add a value to the offstack, we delay generating the code
-   that pushes it into the real (VM) stack. If we're lucky, we never have to do
-   that push at all.
+   time. (That is, during any given instruction.) We also try to keep track
+   of what values are in all the local variables. These lists are the
+   "offstate" ("offstack" and "offloc" lists). They can contain both numeric
+   literals and (Javascript) temporary variables. When we add a value to the
+   offstack, we delay generating the code that pushes it into the real (VM)
+   stack. If we're lucky, we never have to do that push at all. Similarly,
+   when we add a value to the offloc, we delay writing it to the real
+   local-variable array.
 
-   Whenever anything happens to the stack that can't be statically analyzed --
-   notably, any jump, call, or return -- we "unload the offstack", by
-   generating the appropriate VM stack pushes. This must certainly be
-   done at the end of a code path, and we have asserts to ensure this.
+   Temporary variables are considered immutable as long as they remain in
+   the offstate. So a variable can actually appear in the offstate more
+   than once.
+
+   Whenever anything happens that can't be statically analyzed --
+   notably, any jump, call, or return -- we "unload the offstate", by
+   generating the appropriate VM stack pushes and local writes. This must
+   certainly be done at the end of a code path, and we have asserts to
+   ensure this.
 */
 
 /* Some utility functions for opcode handlers. */
@@ -879,30 +887,42 @@ function oputil_record_funcop(funcop) {
 /* Store the result of an opcode, using the information specified in
    funcop. The operand may be a quoted constant, a holdvar, or an
    expression. (As usual, constants are identified by starting with a
-   "0".)
+   "0", and holdvars with a "_".)
 */
 function oputil_store(context, funcop, operand) {
     switch (funcop.mode) {
 
     case 8: /* push on stack */
-        if (quot_isconstant(operand) && funcop.argsize == 4) {
-            /* If this is an untruncated constant, we can move it 
-               directly to the offstack. */
-            context.offstack.push(operand);
-            ;;;context.code.push("// push to offstack: "+operand); //debug
+        if (funcop.argsize == 4) {
+            /* These two cases are tested in a nasty fast way. Pretend
+               I'm calling quot_isconstant() and quot_isholdvar(). */
+            var opchar = operand[0];
+            if (opchar === "0") { /* quot_isconstant(operand) */
+                /* If this is an untruncated constant, we can move it 
+                   directly to the offstack. */
+                context.offstack.push(operand);
+                ;;;context.code.push("// push to offstack: "+operand); //debug
+                return;
+            }
+            if (opchar === "_") { /* quot_isholdvar(operand) */
+                /* If it's an untruncated variable, we can still move it
+                   to the offstack, but we have to increase its usage. */
+                push_offstack_holdvar(context, operand);
+                ;;;context.code.push("// re-push to offstack: "+operand); //debug
+                return;
+            }
+        }
+
+        holdvar = alloc_holdvar(context, true);
+        context.offstack.push(holdvar);
+        if (funcop.argsize == 4) {
+            context.code.push(holdvar+"=("+operand+");");
+        }
+        else if (funcop.argsize == 2) {
+            context.code.push(holdvar+"=0xffff&("+operand+");");
         }
         else {
-            holdvar = alloc_holdvar(context, true);
-            context.offstack.push(holdvar);
-            if (funcop.argsize == 4) {
-                context.code.push(holdvar+"=("+operand+");");
-            }
-            else if (funcop.argsize == 2) {
-                context.code.push(holdvar+"=0xffff&("+operand+");");
-            }
-            else {
-                context.code.push(holdvar+"=0xff&("+operand+");");
-            }
+            context.code.push(holdvar+"=0xff&("+operand+");");
         }
         return;
 
@@ -911,6 +931,29 @@ function oputil_store(context, funcop, operand) {
         return;
 
     case 11: /* The local-variable cases. */
+        if (funcop.argsize == 4) {
+            /* These two cases are tested in a nasty fast way. Pretend
+               I'm calling quot_isconstant() and quot_isholdvar(). */
+            var opchar = operand[0];
+            if (opchar === "0") { /* quot_isconstant(operand) */
+                /* If this is an untruncated constant, we can move it 
+                   directly to the offloc. */
+                store_offloc_value(context, funcop.addr, operand, false);
+                ;;;context.code.push("// store to offloc["+funcop.addr+"]: "+operand); //debug
+                return;
+            }
+            if (opchar === "_") { /* quot_isholdvar(operand) */
+                /* If it's an untruncated variable, we can still move it
+                   to the offloc, but we have to increase its usage. */
+                store_offloc_value(context, funcop.addr, operand, true);
+                ;;;context.code.push("// re-store to offloc["+funcop.addr+"]: "+operand); //debug
+                return;
+            }
+        }
+
+        /* Wipe the offloc entry, if any. */
+        store_offloc_value(context, funcop.addr, undefined);
+        /* Store directly to the locals array. */
         if (funcop.argsize == 4) {
             context.code.push("frame.locals["+funcop.addr+"]=("+operand+");");
         }
@@ -966,28 +1009,47 @@ function oputil_push_substring_callstub(context) {
     context.code.push("}");
 }
 
-/* Move all values on the offstack to the real stack. A handler should
-   call this before any operation which requires a legal stack, and
+/* Move all values on the offstack to the real stack, and all values
+   on the offloc to the real local variables. A handler should call
+   this before any operation which requires a legal game state, and
    also before ending compilation. 
 
    If keepstack is true, this generates code to move the values, but
    leaves them on the offstack as well. Call this form before a conditional
    "return" which does not end compilation.
 */
-function oputil_unload_offstack(context, keepstack) {
-    ;;;context.code.push("// unload offstack: " + context.offstack.length + " items" + (keepstack ? " (conditional)" : "")); //debug
+function oputil_unload_offstate(context, keepstack) {
+    var ix;
+    ;;;context.code.push("// unload offstate: " + context.offstack.length + " stack" + (context.offloc.length ? ", plus locs" : "") + (keepstack ? " (conditional)" : "")); //debug
     if (context.offstack.length) {
         context.code.push("frame.valstack.push("+context.offstack.join(",")+");");
-        if (!keepstack) {
-            var holdvar;
-            while (context.offstack.length) {
-                holdvar = context.offstack.pop();
+    }
+    if (context.offloc.length) {
+        for (ix=0; ix<context.offloc.length; ix++) {
+            if (context.offloc[ix] !== undefined && context.offlocdirty[ix]) {
+                context.code.push("frame.locals["+ix+"]="+context.offloc[ix]+";");
+            }
+        }
+    }
+    if (!keepstack) {
+        var holdvar;
+        for (ix=0; ix<context.offloc.length; ix++) {
+            holdvar = context.offloc[ix];
+            if (holdvar !== undefined) {
                 if (context.holduse[holdvar] !== undefined)
                     context.holduse[holdvar] = false;
             }
-            /* Now offstack is empty, and all its variables are marked not 
-               on it. */
         }
+        context.offloc.length = 0;
+        context.offlocdirty.length = 0;
+        while (context.offstack.length) {
+            holdvar = context.offstack.pop();
+            if (context.holduse[holdvar] !== undefined)
+                context.holduse[holdvar] = false;
+        }
+        /* Now offstack/offloc are empty, and all their variables are marked 
+           not on it. (There might have been constant values too, but that
+           didn't affect holduse.) */
     }
 }
 
@@ -1076,6 +1138,8 @@ function oputil_perform_jump(context, operand, unconditional) {
             if (unconditional) {
                 ;;;context.code.push("// quashing offstack for unconditional return: " + context.offstack.length); //debug
                 context.offstack.length = 0;
+                context.offloc.length = 0;
+                context.offlocdirty.length = 0;
             }
             else {
                 ;;;context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //debug
@@ -1084,14 +1148,14 @@ function oputil_perform_jump(context, operand, unconditional) {
             context.code.push("pop_callstub("+val+");");
         }
         else {
-            oputil_unload_offstack(context, !unconditional);
+            oputil_unload_offstate(context, !unconditional);
             var newpc = (context.cp+val-2) >>>0;
             context.code.push("pc = "+newpc+";");
             context.vmfunc.pathaddrs[newpc] = true;
         }
     }
     else {
-        oputil_unload_offstack(context, !unconditional);
+        oputil_unload_offstate(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
         context.code.push("leave_function();");
         context.code.push("pop_callstub("+operand+");");
@@ -1235,7 +1299,7 @@ var opcode_table = {
         else {
             context.code.push("pc = "+operands[0]+";");
         }
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -1333,11 +1397,11 @@ var opcode_table = {
                     context.code.push("tempcallargs["+ix+"]=frame.valstack.pop();");
                 }
             }
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
         }
         else {
             context.varsused["ix"] = true;
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempcallargs[ix]=frame.valstack.pop(); }");
         }
         oputil_push_callstub(context, operands[2]);
@@ -1359,11 +1423,11 @@ var opcode_table = {
                     context.code.push("tempcallargs["+ix+"]=frame.valstack.pop();");
                 }
             }
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
         }
         else {
             context.varsused["ix"] = true;
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempcallargs[ix]=frame.valstack.pop(); }");
         }
         /* Note that tailcall in the top-level function will not work.
@@ -1375,7 +1439,7 @@ var opcode_table = {
     },
 
     0x160: function(context, operands) { /* callf */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         oputil_push_callstub(context, operands[1]);
         context.code.push("enter_function("+operands[0]+", 0);");
         context.code.push("return;");
@@ -1383,7 +1447,7 @@ var opcode_table = {
     },
 
     0x161: function(context, operands) { /* callfi */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("tempcallargs[0]=("+operands[1]+");");
         oputil_push_callstub(context, operands[2]);
         context.code.push("enter_function("+operands[0]+", 1);");
@@ -1392,7 +1456,7 @@ var opcode_table = {
     },
 
     0x162: function(context, operands) { /* callfii */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("tempcallargs[0]=("+operands[1]+");");
         context.code.push("tempcallargs[1]=("+operands[2]+");");
         oputil_push_callstub(context, operands[3]);
@@ -1402,7 +1466,7 @@ var opcode_table = {
     },
 
     0x163: function(context, operands) { /* callfiii */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("tempcallargs[0]=("+operands[1]+");");
         context.code.push("tempcallargs[1]=("+operands[2]+");");
         context.code.push("tempcallargs[2]=("+operands[3]+");");
@@ -1417,6 +1481,8 @@ var opcode_table = {
            frame, so nothing of the stack will survive. */
         ;;;context.code.push("// quashing offstack for return: " + context.offstack.length); //debug
         context.offstack.length = 0;
+        context.offloc.length = 0;
+        context.offlocdirty.length = 0;
         context.code.push("leave_function();");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
@@ -1424,7 +1490,7 @@ var opcode_table = {
     },
 
     0x32: function(context, operands) { /* catch */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         oputil_push_callstub(context, operands[0]);
         context.code.push("store_operand("+operands[0]+",frame.framestart+frame.framelen+4*frame.valstack.length);");
         oputil_perform_jump(context, operands[1], true);
@@ -1436,6 +1502,8 @@ var opcode_table = {
            at minimum reset it. A valid call stub cannot be on the offstack. */
         ;;;context.code.push("// quashing offstack for throw: " + context.offstack.length); //debug
         context.offstack.length = 0;
+        context.offloc.length = 0;
+        context.offlocdirty.length = 0;
         context.code.push("pop_stack_to("+operands[1]+");");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
@@ -1719,7 +1787,7 @@ var opcode_table = {
             }
         }
         else {
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             val = "frame.valstack[frame.valstack.length-("+operands[0]+"+1)]";
         }
         oputil_store(context, operands[1], val);
@@ -1738,7 +1806,7 @@ var opcode_table = {
     },
 
     0x53: function(context, operands) { /* stkroll */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.varsused["ix"] = true;
         context.varsused["pos"] = true;
         context.varsused["roll"] = true;
@@ -1761,7 +1829,7 @@ var opcode_table = {
     },
 
     0x54: function(context, operands) { /* stkcopy */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         if (quot_isconstant(operands[0])) {
             var ix, holdvar;
             var pos = Number(operands[0]);
@@ -1835,6 +1903,8 @@ var opcode_table = {
         /* Quash the offstack. No more execution. */
         ;;;context.code.push("// quashing offstack for quit: " + context.offstack.length); //debug
         context.offstack.length = 0;
+        context.offloc.length = 0;
+        context.offlocdirty.length = 0;
         context.code.push("done_executing = true; vm_stopped = true;");
         context.code.push("return;");
         context.path_ends = true;
@@ -1845,13 +1915,18 @@ var opcode_table = {
     },
 
     0x122: function(context, operands) { /* restart */
+        /* Quash the offstack. No more execution. */
+        ;;;context.code.push("// quashing offstack for quit: " + context.offstack.length); //debug
+        context.offstack.length = 0;
+        context.offloc.length = 0;
+        context.offlocdirty.length = 0;
         context.code.push("vm_restart();");
         context.code.push("return;");
         context.path_ends = true;
     },
 
     0x123: function(context, operands) { /* save */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.varsused["ix"] = true;
         oputil_push_callstub(context, operands[1]);
         context.code.push("ix = vm_save("+operands[0]+");");
@@ -1861,14 +1936,15 @@ var opcode_table = {
     },
 
     0x124: function(context, operands) { /* restore */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("if (vm_restore("+operands[0]+")) {");
         /* Succeeded. Pop the call stub that save pushed, using -1
            to indicate success. */
         context.code.push("pop_callstub((-1)>>>0);");
         context.code.push("} else {");
         /* Failed to restore. Put back the PC, in case it got overwritten. */
-        context.code.push(operands[1]+"1);");
+        oputil_store(context, operands[1], "1");
+        oputil_unload_offstate(context); // again
         context.code.push("pc = "+context.cp+";");
         context.code.push("}");
         context.code.push("return;");
@@ -1876,7 +1952,7 @@ var opcode_table = {
     },
 
     0x125: function(context, operands) { /* saveundo */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         oputil_push_callstub(context, operands[0]);
         context.code.push("vm_saveundo();");
         /* Any failure was a fatal error, so we return success. */
@@ -1886,14 +1962,15 @@ var opcode_table = {
     },
 
     0x126: function(context, operands) { /* restoreundo */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("if (vm_restoreundo()) {");
         /* Succeeded. Pop the call stub that saveundo pushed, using -1
            to indicate success. */
         context.code.push("pop_callstub((-1)>>>0);");
         context.code.push("} else {");
         /* Failed to restore. Put back the PC, in case it got overwritten. */
-        context.code.push(operands[0]+"1);");
+        oputil_store(context, operands[0], "1");
+        oputil_unload_offstate(context); // again
         context.code.push("pc = "+context.cp+";");
         context.code.push("}");
         context.code.push("return;");
@@ -1986,7 +2063,7 @@ var opcode_table = {
             }
             break;
         case 1: /* filter */
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("tempcallargs[0]=(("+operands[0]+")&0xff);");
             oputil_push_callstub(context, "0,0");
             context.code.push("enter_function(iosysrock, 1);");
@@ -2012,7 +2089,7 @@ var opcode_table = {
             }
             break;
         case 1: /* filter */
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("stream_num("+context.cp+","+operands[0]+", false, 0);");
             /* stream_num always creates a new frame in filter mode. */
             context.code.push("return;");
@@ -2031,7 +2108,7 @@ var opcode_table = {
            to unload the offstack or return. (Or, of the value is 
            determined to be a function, we can unload and return.)
         */
-        oputil_unload_offstack(context);
+        oputil_unload_offstate(context);
         context.code.push("if (stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
     },
 
@@ -2047,7 +2124,7 @@ var opcode_table = {
             }
             break;
         case 1: /* filter */
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("tempcallargs[0]=("+operands[0]+");");
             oputil_push_callstub(context, "0,0");
             context.code.push("enter_function(iosysrock, 1);");
@@ -2082,7 +2159,7 @@ var opcode_table = {
         else {
             /* We can't compile with an unknown iosysmode. So, stop 
                compiling. */
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("pc = "+context.cp+";");
             context.code.push("return;");
             context.path_ends = true;
@@ -2383,11 +2460,11 @@ var opcode_table = {
                     context.code.push("tempglkargs["+ix+"]=frame.valstack.pop();");
                 }
             }
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
         }
         else {
             context.varsused["ix"] = true;
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempglkargs[ix]=frame.valstack.pop(); }");
         }
         /* In the blocking case, we don't perform a normal store; we write a
@@ -2410,7 +2487,8 @@ var opcode_table = {
 }
 
 /* Select a currently-unused "_hold*" variable, and mark it used. 
-   If use is true, it's marked "1", meaning it's going onto the offstack. 
+   If use is true, it's marked "1", meaning it's going onto the offstack
+   or offloc. 
 */
 function alloc_holdvar(context, use) {
     var ix = 0;
@@ -2437,7 +2515,7 @@ function pop_offstack_holdvar(context) {
     }
 
     var use = context.holduse[holdvar];
-    ;;;if (isNaN(use)) {
+    ;;;if (isNaN(use) || use === false || use === true) {
     ;;;    fatal_error("Offstack variable not marked as stack.", holdvar); //assert
     ;;;}
     use--;
@@ -2445,6 +2523,59 @@ function pop_offstack_holdvar(context) {
         use = true; // Not on the stack any more
     context.holduse[holdvar] = use;
     return holdvar;
+}
+
+/* Push a variable value onto the offstack. (This must be a holdvar, not
+   a constant or expression.) Mark it as used an additional time by the
+   offstate.
+*/
+function push_offstack_holdvar(context, holdvar) {
+    context.offstack.push(holdvar);
+
+    var use = context.holduse[holdvar];
+    if (!use || use === true)
+        use = 1;
+    else
+        use++;
+    context.holduse[holdvar] = use;
+}
+
+/* Push a constant or holdvar into the offloc array. Reduce the usage of
+   the holdvar already there, if there was one. If inchold is true,
+   increase the usage of the new holdvar. (Only set this if value *is*
+   a holdvar, and if you haven't already set its use.)
+
+   If value is undefined, this erases the entry in the offloc array,
+   instead.
+*/
+function store_offloc_value(context, addr, value, inchold) {
+    var oldvar = context.offloc[addr];
+    if (oldvar && quot_isholdvar(oldvar)) {
+        var use = context.holduse[oldvar];
+        use--;
+        if (use == 0)
+            use = true; // Not on the offloc any more
+        context.holduse[oldvar] = use;
+    }
+
+    if (value === undefined) {
+        context.offloc[addr] = undefined;
+        context.offlocdirty[addr] = false;
+        return;
+    }
+
+    context.offloc[addr] = value;
+    context.offlocdirty[addr] = true;
+
+    if (inchold) {
+        var holdvar = value;
+        var use = context.holduse[holdvar];
+        if (!use || use === true)
+            use = 1;
+        else
+            use++;
+        context.holduse[holdvar] = use;
+    }
 }
 
 /* Transfer values from the real stack to the offstack until there are at
@@ -2463,6 +2594,11 @@ function transfer_to_offstack(context, count) {
 /* Check whether a quoted value is a constant. */
 function quot_isconstant(val) {
     return (val[0] === "0");
+}
+
+/* Check whether a quoted value is a holdvar. */
+function quot_isholdvar(val) {
+    return (val[0] === "_");
 }
 
 /* Read the list of operands of an instruction, and put accessor code
@@ -2596,6 +2732,11 @@ function parse_operands(context, cp, oplist, operands) {
                     cp += 4;
                 }
 
+                if (context.offloc[addr] !== undefined) {
+                    operands[ix] = context.offloc[addr];
+                    continue;
+                }
+
                 if (oplist.argsize == 4) {
                     value = "frame.locals["+addr+"]";
                 }
@@ -2605,8 +2746,10 @@ function parse_operands(context, cp, oplist, operands) {
                 else {
                     value = "frame.locals["+addr+"] & 0xff";
                 }
-                holdvar = alloc_holdvar(context);
+                holdvar = alloc_holdvar(context, true);
                 context.code.push(holdvar+"=("+value+");");
+                context.offloc[addr] = holdvar;
+                context.offlocdirty[addr] = false;
                 operands[ix] = holdvar;
                 continue;
             }
@@ -2715,15 +2858,25 @@ function parse_operands(context, cp, oplist, operands) {
                     cp += 4;
                 }
 
+                if (context.offloc[addr] !== undefined) {
+                    operands[ix] = context.offloc[addr];
+                    continue;
+                }
+
                 if (oplist.argsize == 4) {
-                    operands[ix] = "frame.locals["+addr+"]";
+                    value = "frame.locals["+addr+"]";
                 }
                 else if (oplist.argsize == 2) {
-                    operands[ix] = "frame.locals["+addr+"] & 0xffff";
+                    value = "frame.locals["+addr+"] & 0xffff";
                 }
                 else {
-                    operands[ix] = "frame.locals["+addr+"] & 0xff";
+                    value = "frame.locals["+addr+"] & 0xff";
                 }
+                holdvar = alloc_holdvar(context, true);
+                context.code.push(holdvar+"=("+value+");");
+                context.offloc[addr] = holdvar;
+                context.offlocdirty[addr] = false;
+                operands[ix] = holdvar;
                 continue;
             }
 
@@ -2807,12 +2960,16 @@ function parse_operands(context, cp, oplist, operands) {
                 
                 /* The local-variable cases. */
                 if (oplist.argsize == 4) {
-                    operands[ix] = "frame.locals["+addr+"]=(";
+                    holdvar = alloc_holdvar(context, true);
+                    store_offloc_value(context, addr, holdvar, false);
+                    operands[ix] = holdvar+"=(";
                 }
                 else if (oplist.argsize == 2) {
+                    store_offloc_value(context, addr, undefined);
                     operands[ix] = "frame.locals["+addr+"]=(0xffff &";
                 }
                 else {
+                    store_offloc_value(context, addr, undefined);
                     operands[ix] = "frame.locals["+addr+"]=(0xff &";
                 }
                 continue;
@@ -3112,7 +3269,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         /* Dict indicating which _hold variables are in use. A true value
            means that the variable is used in this opcode; false means
            it is not, but has been used before in the path; an integer
-           means the variable is in use on offstack (N times). */
+           means the variable is in use on offstack or offloc (N times). */
         holduse: {},
 
         /* Dict indicating which other ad-hoc variables are in use. */
@@ -3121,6 +3278,16 @@ function compile_path(vmfunc, startaddr, startiosys) {
         /* A stack of quoted values (constants and _hold variables)
            which should be on the value stack, but temporarily aren't. */
         offstack: [],
+
+        /* An array of quoted values (constants and _hold variables)
+           which should be in the locals array, but temporarily aren't. */
+        offloc: [],
+
+        /* Indicates whether the values in offloc need to be written back
+           to the locals array. (True means yes; false means it's just a
+           a cached value and doesn't need to be written.) Same indices as 
+           offloc. */
+        offlocdirty: [],
 
         /* Set true when no more opcodes should be compiled for this path. */
         path_ends: false
@@ -3184,7 +3351,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         ophandler(context, operands);
 
         /* Any _hold variables which were used in this opcode (only)
-           are no longer used. Variables on the offstack are immune
+           are no longer used. Variables in the offstate are immune
            to this. */
         for (key in context.holduse) {
             if (context.holduse[key] === true)
@@ -3192,13 +3359,15 @@ function compile_path(vmfunc, startaddr, startiosys) {
         }
 
         ;;;if (context.offstack.length) context.code.push("// offstack: " + context.offstack.join(",")); //debug
+        ;;;if (context.offloc.length) context.code.push("// offloc: " + context.offloc.join(",") + "; dirty: " + context.offlocdirty.join(",")); //debug
+        //context.code.push("// holduse: " + qobjdump(context.holduse));
 
         /* Check if any other compilation starts, or will start, at this
            address. If so, no need to compile further. */
         if (vmfunc.pathaddrs[cp] && !context.path_ends) {
             ;;;context.code.push("// reached jump-in point"); //debug
             context.code.push("pc="+cp+";");
-            oputil_unload_offstack(context);
+            oputil_unload_offstate(context);
             context.code.push("return;");
             context.path_ends = true;
         }
@@ -3206,6 +3375,8 @@ function compile_path(vmfunc, startaddr, startiosys) {
 
     if (context.offstack.length) 
         fatal_error("Path compilation ended with nonempty offstack.", context.offstack.length);
+    if (context.offloc.length) 
+        fatal_error("Path compilation ended with nonempty offloc.", context.offloc.length);
 
     /* Declare all the _hold variables, and other variables, that we need. */
     {
