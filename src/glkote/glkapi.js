@@ -2293,6 +2293,8 @@ function gli_window_rearrange(win, box) {
             max = win.bbox.bottom;
             splitwid = content_metrics.inspacingy;
         }
+        if (!win.pair_hasborder)
+            splitwid = 0;
         diff = max - min;
 
         if (win.pair_division == Const.winmethod_Proportional) {
@@ -3055,6 +3057,7 @@ function glk_window_open(splitwin, method, size, wintype, rock) {
         pairwin.pair_key = newwin;
         pairwin.pair_keydamage = false;
         pairwin.pair_size = size;
+        pairwin.pair_hasborder = ((method & Const.winmethod_BorderMask) == Const.winmethod_Border);
         pairwin.pair_vertical = (pairwin.pair_dir == Const.winmethod_Left || pairwin.pair_dir == Const.winmethod_Right);
         pairwin.pair_backward = (pairwin.pair_dir == Const.winmethod_Left || pairwin.pair_dir == Const.winmethod_Above);
 
@@ -3240,6 +3243,7 @@ function glk_window_set_arrangement(win, method, size, keywin) {
     win.pair_key = keywin;
     win.pair_size = size;
 
+    win.pair_hasborder = ((method & Const.winmethod_BorderMask) == Const.winmethod_Border);
     win.pair_vertical = (win.pair_dir == Const.winmethod_Left || win.pair_dir == Const.winmethod_Right);
     win.pair_backward = (win.pair_dir == Const.winmethod_Left || win.pair_dir == Const.winmethod_Above);
 
@@ -3257,7 +3261,7 @@ function glk_window_get_arrangement(win, methodref, sizeref, keywinref) {
     if (keywinref)
         keywinref.set_value(win.pair_key);
     if (methodref)
-        methodref.set_value(win.pair_dir | win.pair_division);
+        methodref.set_value(win.pair_dir | win.pair_division | (win.pair_hasborder ? Const.winmethod_Border : Const.winmethod_NoBorder));
 }
 
 function glk_window_get_type(win) {
