@@ -120,7 +120,7 @@ function accept_ui_event(obj) {
         break;
 
     case 'line':
-        handle_line_input(obj.window, obj.value);
+        handle_line_input(obj.window, obj.value, obj.terminator);
         break;
 
     case 'arrange':
@@ -233,7 +233,7 @@ function handle_char_input(disprock, input) {
     VM.resume();
 }
 
-function handle_line_input(disprock, input) {
+function handle_line_input(disprock, input, termkey) {
     var ix;
 
     if (!gli_selectref)
@@ -265,10 +265,14 @@ function handle_line_input(disprock, input) {
     for (ix=0; ix<input.length; ix++)
         win.linebuf[ix] = input.charCodeAt(ix);
 
+    var termcode = 0;
+    if (termkey && KeystrokeNameMap[termkey]) 
+        termcode = KeystrokeNameMap[termkey];
+
     gli_selectref.set_field(0, Const.evtype_LineInput);
     gli_selectref.set_field(1, win);
     gli_selectref.set_field(2, input.length);
-    gli_selectref.set_field(3, 0);
+    gli_selectref.set_field(3, termcode);
 
     if (window.GiDispa)
         GiDispa.unretain_array(win.linebuf);
@@ -401,8 +405,14 @@ function update() {
                 if (val)
                     initial = val;
             }
+            /* Note that the initial and terminators fields will be ignored
+               if this is a continued (old) input request. So it doesn't
+               matter if they're wrong. */
             obj = { id: win.disprock, type: 'line', gen: win.input_generation,
                     maxlen: win.linebuf.length, initial: initial };
+            if (win.line_input_terminators.length) {
+                obj.terminators = win.line_input_terminators;
+            }
             if (win.type == Const.wintype_TextGrid) {
                 gli_window_grid_canonicalize(win);
                 obj.xpos = win.cursorx;
@@ -597,8 +607,24 @@ var KeystrokeNameMap = {
     pageup : Const.keycode_PageUp,
     pagedown : Const.keycode_PageDown,
     home : Const.keycode_Home,
-    end : Const.keycode_End
+    end : Const.keycode_End,
+    func1 : Const.keycode_Func1,
+    func2 : Const.keycode_Func2,
+    func3 : Const.keycode_Func3,
+    func4 : Const.keycode_Func4,
+    func5 : Const.keycode_Func5,
+    func6 : Const.keycode_Func6,
+    func7 : Const.keycode_Func7,
+    func8 : Const.keycode_Func8,
+    func9 : Const.keycode_Func9,
+    func10 : Const.keycode_Func10,
+    func11 : Const.keycode_Func11,
+    func12 : Const.keycode_Func12
 };
+
+/* The inverse of KeystrokeNameMap. We'll fill this in if needed. (It 
+   generally isn't.) */
+var KeystrokeValueMap = null;
 
 var StyleNameMap = {
     0 : 'normal',
@@ -2004,6 +2030,7 @@ function gli_new_window(type, rock) {
     win.line_request_uni = false;
     win.hyperlink_request = false;
     win.echo_line_input = true;
+    win.line_input_terminators = [];
     win.request_echo_line_input = null; /* only used during a request */
 
     /* window-type-specific info is set up in glk_window_open */
@@ -2940,6 +2967,19 @@ function glk_gestalt_ext(sel, val, arr) {
     case 17: //gestalt_LineInputEcho
         return 1;
 
+    case 18: //gestalt_LineTerminators
+        return 1;
+
+    case 19: //gestalt_LineTerminatorKey
+        /* Really this result should be inspected from glkote.js. Since it
+           isn't, be sure to keep these values in sync with 
+           terminator_key_names. */
+        if (val == Const.keycode_Escape)
+            return 1;
+        if (val >= Const.keycode_Func12 && val <= Const.keycode_Func1)
+            return 1;
+        return 0;
+
     }
 
     return 0;
@@ -3871,6 +3911,30 @@ function glk_set_echo_line_event(win, val) {
    win.echo_line_input = (val != 0);
 }
 
+function glk_set_terminators_line_event(win, arr) {
+   if (!win)
+        throw('glk_set_terminators_line_event: invalid window');
+
+   if (KeystrokeValueMap === null) {
+       /* First, we have to build this map. (It's only used by this
+          function, which is why the constructor code is here. */
+       KeystrokeValueMap = {};
+       for (var val in KeystrokeNameMap) {
+           KeystrokeValueMap[KeystrokeNameMap[val]] = val;
+       }
+   }
+
+   var res = [];
+   if (arr) {
+       for (var ix=0; ix<arr.length; ix++) {
+           var val = KeystrokeValueMap[arr[ix]];
+           if (val)
+               res.push(val);
+       }
+   }
+   win.line_input_terminators = res;
+}
+
 function glk_request_mouse_event(win) {
    if (!win)
         throw('glk_request_mouse_event: invalid window');
@@ -4414,6 +4478,7 @@ function glk_request_char_event_uni(win) {
         || win.type == Const.wintype_TextGrid) {
         win.char_request = true;
         win.char_request_uni = true;
+        win.input_generation = event_generation;
     }
     else {
         throw('glk_request_char_event: window does not support keyboard input');
@@ -4572,7 +4637,8 @@ return {
     glk_stream_open_memory_uni : glk_stream_open_memory_uni,
     glk_request_char_event_uni : glk_request_char_event_uni,
     glk_request_line_event_uni : glk_request_line_event_uni,
-    glk_set_echo_line_event : glk_set_echo_line_event
+    glk_set_echo_line_event : glk_set_echo_line_event,
+    glk_set_terminators_line_event : glk_set_terminators_line_event
 };
 
 }();
