@@ -1,4 +1,5 @@
 /* GlkOte -- a Javascript display library for IF interfaces
+ * GlkOte Library: version 0.2.2.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -63,6 +64,17 @@ var NBSP = "\xa0";
 /* Number of paragraphs to retain in a buffer window's scrollback. */
 var max_buffer_length = 200;
 
+/* All the keys that can be used as line input terminators, and their
+   native values. */
+var terminator_key_names = {
+    escape : Event.KEY_ESC,
+    func1 : 112, func2 : 113, func3 : 114, func4 : 115, func5 : 116, 
+    func6 : 117, func7 : 118, func8 : 119, func9 : 120, func10 : 121, 
+    func11 : 122, func12 : 123
+};
+/* The inverse of the above. Set up at init time. */
+var terminator_key_values = {};
+
 /* This function becomes GlkOte.init(). The document calls this to begin
    the game. The simplest way to do this is to give the <body> tag an
    onLoad="GlkOte.init();" attribute.
@@ -89,6 +101,11 @@ function glkote_init(iface) {
   if (version.length < 2 || (version[0] == 1 && version[1] < 6)) {
     glkote_error('This version of the Prototype library is too old. (Version ' + Prototype.Version + ' found; 1.6.0 required.)');
     return;
+  }
+
+  /* Set up a static table. */
+  for (var val in terminator_key_names) {
+    terminator_key_values[terminator_key_names[val]] = val;
   }
 
   if (Prototype.Browser.MobileSafari) {
@@ -452,6 +469,7 @@ function accept_one_window(arg) {
     win.gridwidth = 0;
     win.input = null;
     win.inputel = null;
+    win.terminators = {};
     win.reqhyperlink = false;
     win.needscroll = false;
     win.needspaging = false;
@@ -872,6 +890,11 @@ function accept_inputset(arg) {
         inputel.onkeydown = evhan_input_keydown;
         if (argi.initial)
           inputel.value = argi.initial;
+        win.terminators = {};
+        if (argi.terminators) {
+          for (var ix=0; ix<argi.terminators.length; ix++) 
+            win.terminators[argi.terminators[ix]] = true;
+        }
       }
       else if (argi.type == 'char') {
         inputel.onkeypress = evhan_input_char_keypress;
@@ -1161,7 +1184,7 @@ function inspect_deep(res) {
    the game. (This is a utility function used by various keyboard input
    handlers.)
 */
-function submit_line_input(win, inputel) {
+function submit_line_input(win, inputel, termkey) {
   var val = inputel.value;
 
   /* Store this input in the command history for this window, unless
@@ -1174,7 +1197,7 @@ function submit_line_input(win, inputel) {
     }
   }
 
-  send_response('line', win, val);
+  send_response('line', win, val, termkey);
 }
 
 /* Invoke the game interface's accept() method, passing along an input
@@ -1183,8 +1206,11 @@ function submit_line_input(win, inputel) {
 
    This is called by each event handler that can signal a completed input
    event.
+
+   The val and val2 arguments are only used by certain event types, which
+   is why most of the invocations pass three arguments instead of four.
 */
-function send_response(type, win, val) {
+function send_response(type, win, val, val2) {
   if (disabled)
     return;
 
@@ -1196,6 +1222,8 @@ function send_response(type, win, val) {
   if (type == 'line') {
     res.window = win.id;
     res.value = val;
+    if (val2)
+      res.terminator = val2;
   }
   else if (type == 'char') {
     res.window = win.id;
@@ -1361,7 +1389,7 @@ function evhan_doc_keypress(ev) {
     if (keycode == 13) {
       /* Grab the Return/Enter key here. This is the same thing we'd do if
          the input field handler caught it. */
-      submit_line_input(win, win.inputel);
+      submit_line_input(win, win.inputel, null);
       /* Safari drops an extra newline into the input field unless we call
          preventDefault() here. I don't know why. */
       ev.preventDefault();
@@ -1421,7 +1449,7 @@ function evhan_window_mousedown(ev, frameel) {
     last_known_focus = win.id;
     if (Prototype.Browser.MobileSafari) {
       ev.stop();
-      //glkote_log("### focus to " + win.id); //####
+      //glkote_log("### focus to " + win.id);
       //### This doesn't always work, blah
       win.inputel.focus();
     }
@@ -1477,6 +1505,30 @@ function evhan_input_char_keydown(ev) {
       res = 'home'; break;
     case Event.KEY_END:
       res = 'end'; break;
+    case 112:
+      res = 'func1'; break;
+    case 113:
+      res = 'func2'; break;
+    case 114:
+      res = 'func3'; break;
+    case 115:
+      res = 'func4'; break;
+    case 116:
+      res = 'func5'; break;
+    case 117:
+      res = 'func6'; break;
+    case 118:
+      res = 'func7'; break;
+    case 119:
+      res = 'func8'; break;
+    case 120:
+      res = 'func9'; break;
+    case 121:
+      res = 'func10'; break;
+    case 122:
+      res = 'func11'; break;
+    case 123:
+      res = 'func12'; break;
   }
 
   if (res) {
@@ -1568,6 +1620,20 @@ function evhan_input_keydown(ev) {
 
     return false;
   }
+  else if (terminator_key_values[keycode]) {
+    if (!this.winid)
+      return true;
+    var win = windowdic.get(this.winid);
+    if (!win || !win.input)
+      return true;
+
+    if (win.terminators[terminator_key_values[keycode]]) {
+      /* This key is listed as a current terminator for this window,
+         so we'll submit the line of input. */
+      submit_line_input(win, win.inputel, terminator_key_values[keycode]);
+      return false;
+    }
+  }
 
   return true;
 }
@@ -1599,7 +1665,7 @@ function evhan_input_keypress(ev) {
     if (!win || !win.input)
       return true;
 
-    submit_line_input(win, this);
+    submit_line_input(win, this, null);
     return false;
   }
 
@@ -1684,7 +1750,7 @@ function build_evhan_hyperlink(winid, linkval) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '1.2.1',
+  version:  '1.2.2',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,

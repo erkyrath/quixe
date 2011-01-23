@@ -288,6 +288,10 @@ var proto_map = {
 289 : new FuncSpec(289, "buffer_to_upper_case_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
 // 290 (0x122): buffer_to_title_case_uni - 4&+#IuIuIu:Iu
 290 : new FuncSpec(290, "buffer_to_title_case_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
+// 291 (0x123): buffer_canon_decompose_uni - 3&+#IuIu:Iu
+291 : new FuncSpec(291, "buffer_canon_decompose_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
+// 292 (0x124): buffer_canon_normalize_uni - 3&+#IuIu:Iu
+292 : new FuncSpec(292, "buffer_canon_normalize_uni", new Prototype([new ArgArray(new ArgInt(false), false, true, true, true), new ArgInt(false)], new ArgRef(new ArgInt(false), false, true, true))),
 // 296 (0x128): put_char_uni - 1Iu:
 296 : new FuncSpec(296, "put_char_uni", new Prototype([new ArgInt(false)], null)),
 // 297 (0x129): put_string_uni - 1U:
@@ -313,7 +317,11 @@ var proto_map = {
 // 320 (0x140): request_char_event_uni - 1Qa:
 320 : new FuncSpec(320, "request_char_event_uni", new Prototype([new ArgClass("window")], null)),
 // 321 (0x141): request_line_event_uni - 3Qa&+#!IuIu:
-321 : new FuncSpec(321, "request_line_event_uni", new Prototype([new ArgClass("window"), new ArgArray(new ArgInt(false), true, true, true, true), new ArgInt(false)], null))
+321 : new FuncSpec(321, "request_line_event_uni", new Prototype([new ArgClass("window"), new ArgArray(new ArgInt(false), true, true, true, true), new ArgInt(false)], null)),
+// 336 (0x150): set_echo_line_event - 2QaIu:
+336 : new FuncSpec(336, "set_echo_line_event", new Prototype([new ArgClass("window"), new ArgInt(false)], null)),
+// 337 (0x151): set_terminators_line_event - 2Qa>#Iu:
+337 : new FuncSpec(337, "set_terminators_line_event", new Prototype([new ArgClass("window"), new ArgArray(new ArgInt(false), false, true, false, false)], null))
 };
 // End of auto-generated table.
 
