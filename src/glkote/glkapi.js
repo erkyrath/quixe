@@ -1,4 +1,6 @@
 /* GlkAPI -- a Javascript Glk API for IF interfaces
+ * GlkOte Library: version 0.2.2.
+ * Glk API which this implements: version 0.7.1.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -2883,7 +2885,8 @@ function glk_gestalt_ext(sel, val, arr) {
     switch (sel) {
 
     case 0: // gestalt_Version
-        return 0x00000700;
+        /* This implements Glk spec version 0.7.1. */
+        return 0x00000701;
 
     case 1: // gestalt_CharInput
         /* This is not a terrific approximation. Return false for function
@@ -4519,7 +4522,7 @@ function glk_request_line_event_uni(win, buf, initlen) {
 /* End of Glk namespace function. Return the object which will
    become the Glk global. */
 return {
-    version: '0.2.0', /* GlkApi version */
+    version: '0.2.2', /* GlkOte/GlkApi version */
     init : init,
     update : update,
     fatal_error : fatal_error,
