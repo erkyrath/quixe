@@ -4294,32 +4294,46 @@ function gli_buffer_canon_decompose_uni(arr, numchars) {
 
 function gli_buffer_canon_compose_uni(arr, numchars) {
     /* The algorithm for canonically composing characters in a string:
-       look at each adjacent pair of characters, and if they're composable,
-       compose them. Repeat until no more pairs are found. We do this
-       from the beginning of the string to the end, which suffices. */
+       for each base character, compare it to all the following
+       combining characters (up to the next base character). If they're 
+       composable, compose them. Repeat until no more pairs are found. */
 
-    var src = arr.slice(0, numchars);
-    var ix, curch, newch, map, pos;
+    var ix, jx, curch, newch, curclass, newclass, map, pos;
 
     if (numchars == 0)
         return 0;
 
-    curch = src[0];
-    ix = 1;
     pos = 0;
-    while (1) {
-        if (ix >= numchars) {
-            arr[pos++] = curch;
+    curch = arr[0];
+    curclass = unicode_combin_table[curch];
+    if (curclass)
+        curclass = 999; // just in case the first character is a combiner
+    ix = 1;
+    jx = ix;
+    while (true) {
+        if (jx >= numchars) {
+            arr[pos] = curch;
+            pos = ix;
             break;
         }
-        newch = src[ix++];
+        newch = arr[jx];
+        newclass = unicode_combin_table[newch];
         map = unicode_compo_table[curch];
-        if (map === undefined || map[newch] === undefined) {
-            arr[pos++] = curch;
-            curch = newch;
-            continue;
+        if (map !== undefined && map[newch] !== undefined
+            && (!curclass || (newclass && curclass < newclass))) {
+            curch = map[newch];
+            arr[pos] = curch;
         }
-        curch = map[newch];
+        else {
+            if (!newclass) {
+                pos = ix;
+                curch = newch;
+            }
+            curclass = newclass;
+            arr[ix] = newch;
+            ix++;
+        }
+        jx++;
     }
 
     return pos;
