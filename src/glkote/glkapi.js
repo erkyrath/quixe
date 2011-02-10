@@ -1,6 +1,6 @@
 /* GlkAPI -- a Javascript Glk API for IF interfaces
- * GlkOte Library: version 0.2.2.
- * Glk API which this implements: version 0.7.1.
+ * GlkOte Library: version 0.2.2###.
+ * Glk API which this implements: version 0.7.2.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -2885,8 +2885,8 @@ function glk_gestalt_ext(sel, val, arr) {
     switch (sel) {
 
     case 0: // gestalt_Version
-        /* This implements Glk spec version 0.7.1. */
-        return 0x00000701;
+        /* This implements Glk spec version 0.7.2. */
+        return 0x00000702;
 
     case 1: // gestalt_CharInput
         /* This is not a terrific approximation. Return false for function
@@ -2967,13 +2967,13 @@ function glk_gestalt_ext(sel, val, arr) {
     case 16: // gestalt_UnicodeNorm
         return 1;
 
-    case 17: //gestalt_LineInputEcho
+    case 17: // gestalt_LineInputEcho
         return 1;
 
-    case 18: //gestalt_LineTerminators
+    case 18: // gestalt_LineTerminators
         return 1;
 
-    case 19: //gestalt_LineTerminatorKey
+    case 19: // gestalt_LineTerminatorKey
         /* Really this result should be inspected from glkote.js. Since it
            isn't, be sure to keep these values in sync with 
            terminator_key_names. */
@@ -2982,6 +2982,9 @@ function glk_gestalt_ext(sel, val, arr) {
         if (val >= Const.keycode_Func12 && val <= Const.keycode_Func1)
             return 1;
         return 0;
+
+    case 20: // gestalt_DateTime
+        return 1;
 
     }
 
@@ -4533,6 +4536,143 @@ function glk_request_line_event_uni(win, buf, initlen) {
     }
 }
 
+function glk_current_time(timevalref) {
+    var now = new Date().getTime();
+    var usec;
+
+    timevalref.set_field(0, Math.floor(now / 4294967296000));
+    timevalref.set_field(1, Math.floor(now / 1000) >>>0);
+    usec = Math.floor((now % 1000) * 1000);
+    if (usec < 0)
+        usec = 1000000 + usec;
+    timevalref.set_field(2, usec);
+}
+
+function glk_current_simple_time(factor) {
+    var now = new Date().getTime();
+    return Math.floor(now / (factor * 1000));
+}
+
+function glk_time_to_date_utc(timevalref, dateref) {
+    var now = timevalref.get_field(0) * 4294967296000 + timevalref.get_field(1) * 1000 + timevalref.get_field(2) / 1000;
+    var obj = new Date(now);
+    
+    dateref.set_field(0, obj.getUTCFullYear())
+    dateref.set_field(1, 1+obj.getUTCMonth())
+    dateref.set_field(2, obj.getUTCDate())
+    dateref.set_field(3, obj.getUTCDay())
+    dateref.set_field(4, obj.getUTCHours())
+    dateref.set_field(5, obj.getUTCMinutes())
+    dateref.set_field(6, obj.getUTCSeconds())
+    dateref.set_field(7, 1000*obj.getUTCMilliseconds())
+}
+
+function glk_time_to_date_local(timevalref, dateref) {
+    var now = timevalref.get_field(0) * 4294967296000 + timevalref.get_field(1) * 1000 + timevalref.get_field(2) / 1000;
+    var obj = new Date(now);
+    
+    dateref.set_field(0, obj.getFullYear())
+    dateref.set_field(1, 1+obj.getMonth())
+    dateref.set_field(2, obj.getDate())
+    dateref.set_field(3, obj.getDay())
+    dateref.set_field(4, obj.getHours())
+    dateref.set_field(5, obj.getMinutes())
+    dateref.set_field(6, obj.getSeconds())
+    dateref.set_field(7, 1000*obj.getMilliseconds())
+}
+
+function glk_simple_time_to_date_utc(time, factor, dateref) {
+    var now = time*(1000*factor);
+    var obj = new Date(now);
+    
+    dateref.set_field(0, obj.getUTCFullYear())
+    dateref.set_field(1, 1+obj.getUTCMonth())
+    dateref.set_field(2, obj.getUTCDate())
+    dateref.set_field(3, obj.getUTCDay())
+    dateref.set_field(4, obj.getUTCHours())
+    dateref.set_field(5, obj.getUTCMinutes())
+    dateref.set_field(6, obj.getUTCSeconds())
+    dateref.set_field(7, 1000*obj.getUTCMilliseconds())
+}
+
+function glk_simple_time_to_date_local(time, factor, dateref) {
+    var now = time*(1000*factor);
+    var obj = new Date(now);
+    
+    dateref.set_field(0, obj.getFullYear())
+    dateref.set_field(1, 1+obj.getMonth())
+    dateref.set_field(2, obj.getDate())
+    dateref.set_field(3, obj.getDay())
+    dateref.set_field(4, obj.getHours())
+    dateref.set_field(5, obj.getMinutes())
+    dateref.set_field(6, obj.getSeconds())
+    dateref.set_field(7, 1000*obj.getMilliseconds())
+}
+
+function glk_date_to_time_utc(dateref, timevalref) {
+    var obj = new Date(0);
+
+    obj.setUTCFullYear(dateref.get_field(0));
+    obj.setUTCMonth(dateref.get_field(1)-1);
+    obj.setUTCDate(dateref.get_field(2));
+    obj.setUTCHours(dateref.get_field(4));
+    obj.setUTCMinutes(dateref.get_field(5));
+    obj.setUTCSeconds(dateref.get_field(6));
+    obj.setUTCMilliseconds(dateref.get_field(7)/1000);
+
+    var now = obj.getTime();
+    var usec;
+
+    timevalref.set_field(0, Math.floor(now / 4294967296000));
+    timevalref.set_field(1, Math.floor(now / 1000) >>>0);
+    usec = Math.floor((now % 1000) * 1000);
+    if (usec < 0)
+        usec = 1000000 + usec;
+    timevalref.set_field(2, usec);
+}
+
+function glk_date_to_time_local(dateref, timevalref) {
+    var obj = new Date(
+        dateref.get_field(0), dateref.get_field(1)-1, dateref.get_field(2),
+        dateref.get_field(4), dateref.get_field(5), dateref.get_field(6), 
+        dateref.get_field(7)/1000);
+
+    var now = obj.getTime();
+    var usec;
+
+    timevalref.set_field(0, Math.floor(now / 4294967296000));
+    timevalref.set_field(1, Math.floor(now / 1000) >>>0);
+    usec = Math.floor((now % 1000) * 1000);
+    if (usec < 0)
+        usec = 1000000 + usec;
+    timevalref.set_field(2, usec);
+}
+
+function glk_date_to_simple_time_utc(dateref, factor) {
+    var obj = new Date(0);
+
+    obj.setUTCFullYear(dateref.get_field(0));
+    obj.setUTCMonth(dateref.get_field(1)-1);
+    obj.setUTCDate(dateref.get_field(2));
+    obj.setUTCHours(dateref.get_field(4));
+    obj.setUTCMinutes(dateref.get_field(5));
+    obj.setUTCSeconds(dateref.get_field(6));
+    obj.setUTCMilliseconds(dateref.get_field(7)/1000);
+
+    var now = obj.getTime();
+    return Math.floor(now / (factor * 1000));
+}
+
+function glk_date_to_simple_time_local(dateref, factor) {
+    var obj = new Date(
+        dateref.get_field(0), dateref.get_field(1)-1, dateref.get_field(2),
+        dateref.get_field(4), dateref.get_field(5), dateref.get_field(6), 
+        dateref.get_field(7)/1000);
+
+    var now = obj.getTime();
+    return Math.floor(now / (factor * 1000));
+}
+
 /* End of Glk namespace function. Return the object which will
    become the Glk global. */
 return {
@@ -4655,7 +4795,17 @@ return {
     glk_request_char_event_uni : glk_request_char_event_uni,
     glk_request_line_event_uni : glk_request_line_event_uni,
     glk_set_echo_line_event : glk_set_echo_line_event,
-    glk_set_terminators_line_event : glk_set_terminators_line_event
+    glk_set_terminators_line_event : glk_set_terminators_line_event,
+    glk_current_time : glk_current_time,
+    glk_current_simple_time : glk_current_simple_time,
+    glk_time_to_date_utc : glk_time_to_date_utc,
+    glk_time_to_date_local : glk_time_to_date_local,
+    glk_simple_time_to_date_utc : glk_simple_time_to_date_utc,
+    glk_simple_time_to_date_local : glk_simple_time_to_date_local,
+    glk_date_to_time_utc : glk_date_to_time_utc,
+    glk_date_to_time_local : glk_date_to_time_local,
+    glk_date_to_simple_time_utc : glk_date_to_simple_time_utc,
+    glk_date_to_simple_time_local : glk_date_to_simple_time_local
 };
 
 }();
