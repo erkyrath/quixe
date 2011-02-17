@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 1.1.0.
+Quixe Library: version 1.1.1.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -82,6 +82,9 @@ on the web site), copy play-remote.html.
 
 
 * Version History
+
+- 1.1.1 (February 17, 2011):
+  - Included GlkOte 1.2.3 (support for Glk 0.7.2: date and time functions)
 
 - 1.1.0 (January 22, 2011):
   - The Glulx accelerated-function feature.
