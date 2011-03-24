@@ -92,9 +92,10 @@ var metadata = {}; /* Title, author, etc -- loaded from Blorb */
 function load_run(optobj, image, image_format) {
 
     /* Set the default entries for the interface objects that come from
-       other libraries. */
-    all_options.vm = Quixe;
-    all_options.io = Glk;
+       other libraries. (If no such libraries have been loaded, then
+       these do nothing, but game_options can still supply these entries.) */
+    all_options.vm = window.Quixe;
+    all_options.io = window.Glk;
     
     if (!optobj)
         optobj = window.game_options;
