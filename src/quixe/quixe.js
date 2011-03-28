@@ -530,6 +530,10 @@ function StackFrame(vmfunc) {
         this.locals[form.pos] = 0;
     }
 
+    /* Note: I tried building that array in the VMFunc constructor,
+       so that I could do a fast clone here. Turns out it was
+       actually slower that way. Pity. */
+
     this.framelen = 8 + vmfunc.rawformat.length + vmfunc.locallen;
 
     //qlog("### frame for " + vmfunc.funcaddr.toString(16) + ": framelen " + this.framelen + ", locindex " + qobjdump(this.localsindex) + ", locals " + qobjdump(this.locals));
