@@ -395,9 +395,14 @@ function update() {
         if (win.char_request) {
             obj = { id: win.disprock, type: 'char', gen: win.input_generation };
             if (win.type == Const.wintype_TextGrid) {
-                gli_window_grid_canonicalize(win);
-                obj.xpos = win.cursorx;
-                obj.ypos = win.cursory;
+                if (gli_window_grid_canonicalize(win)) {
+                    obj.xpos = win.gridwidth;
+                    obj.ypos = win.gridheight-1;
+                }
+                else {
+                    obj.xpos = win.cursorx;
+                    obj.ypos = win.cursory;
+                }
             }
         }
         if (win.line_request) {
@@ -416,9 +421,14 @@ function update() {
                 obj.terminators = win.line_input_terminators;
             }
             if (win.type == Const.wintype_TextGrid) {
-                gli_window_grid_canonicalize(win);
-                obj.xpos = win.cursorx;
-                obj.ypos = win.cursory;
+                if (gli_window_grid_canonicalize(win)) {
+                    obj.xpos = win.gridwidth;
+                    obj.ypos = win.gridheight-1;
+                }
+                else {
+                    obj.xpos = win.cursorx;
+                    obj.ypos = win.cursory;
+                }
             }
         }
         if (win.hyperlink_request) {
@@ -2147,6 +2157,9 @@ function gli_window_put_string(win, val) {
 
 /* Canonicalize the cursor position. That is, the cursor may have
    been left outside the window area; wrap it if necessary.
+
+   Returns true if the cursor winds up wrapped outside the window entirely;
+   false if the cursor winds up at a legal printing position.
 */
 function gli_window_grid_canonicalize(win) {
     if (win.cursorx < 0)
@@ -2158,7 +2171,8 @@ function gli_window_grid_canonicalize(win) {
     if (win.cursory < 0)
         win.cursory = 0;
     else if (win.cursory >= win.gridheight)
-        return; /* outside the window */
+        return true; /* outside the window */
+    return false;
 }
 
 /* Take the accumulation of strings (since the last style change) and
