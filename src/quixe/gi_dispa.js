@@ -169,8 +169,8 @@ var proto_map = {
 65 : new FuncSpec(65, "stream_get_rock", new Prototype([arg_class_stream], new ArgRef(arg_int_unsigned, false, true, true))),
 // 66 (0x042): stream_open_file - 4QcIuIu:Qb
 66 : new FuncSpec(66, "stream_open_file", new Prototype([arg_class_fileref, arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_class_stream, false, true, true))),
-// 67 (0x043): stream_open_memory - 4&+#!CnIuIu:Qb
-67 : new FuncSpec(67, "stream_open_memory", new Prototype([new ArgArray(arg_char_native, true, true, true, true), arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_class_stream, false, true, true))),
+// 67 (0x043): stream_open_memory - 4&#!CnIuIu:Qb
+67 : new FuncSpec(67, "stream_open_memory", new Prototype([new ArgArray(arg_char_native, true, true, true, false), arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_class_stream, false, true, true))),
 // 68 (0x044): stream_close - 2Qb<[2IuIu]:
 68 : new FuncSpec(68, "stream_close", new Prototype([arg_class_stream, new ArgRef(new ArgStruct(new Prototype([arg_int_unsigned, arg_int_unsigned], null)), false, true, false)], null)),
 // 69 (0x045): stream_set_position - 3QbIsIu:
@@ -321,8 +321,8 @@ var proto_map = {
 306 : new FuncSpec(306, "get_line_stream_uni", new Prototype([arg_class_stream, new ArgArray(arg_int_unsigned, false, false, true, true)], new ArgRef(arg_int_unsigned, false, true, true))),
 // 312 (0x138): stream_open_file_uni - 4QcIuIu:Qb
 312 : new FuncSpec(312, "stream_open_file_uni", new Prototype([arg_class_fileref, arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_class_stream, false, true, true))),
-// 313 (0x139): stream_open_memory_uni - 4&+#!IuIuIu:Qb
-313 : new FuncSpec(313, "stream_open_memory_uni", new Prototype([new ArgArray(arg_int_unsigned, true, true, true, true), arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_class_stream, false, true, true))),
+// 313 (0x139): stream_open_memory_uni - 4&#!IuIuIu:Qb
+313 : new FuncSpec(313, "stream_open_memory_uni", new Prototype([new ArgArray(arg_int_unsigned, true, true, true, false), arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_class_stream, false, true, true))),
 // 320 (0x140): request_char_event_uni - 1Qa:
 320 : new FuncSpec(320, "request_char_event_uni", new Prototype([arg_class_window], null)),
 // 321 (0x141): request_line_event_uni - 3Qa&+#!IuIu:
