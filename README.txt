@@ -86,6 +86,7 @@ on the web site), copy play-remote.html.
 - ###
   - Ensure that gi_load.js works no matter what order the javascript
     libraries load.
+  - Included GlkOte ### (non-support for Glk 0.7.3: expanded sound functions)
 
 - 1.1.1 (February 17, 2011):
   - Included GlkOte 1.2.3 (support for Glk 0.7.2: date and time functions)

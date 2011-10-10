@@ -1,6 +1,6 @@
 /* GlkAPI -- a Javascript Glk API for IF interfaces
- * GlkOte Library: version 1.2.3.
- * Glk API which this implements: version 0.7.2.
+ * GlkOte Library: version 1.2.3###.
+ * Glk API which this implements: version 0.7.3.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -495,6 +495,8 @@ var Const = {
     gestalt_LineInputEcho : 17,
     gestalt_LineTerminators : 18,
     gestalt_LineTerminatorKey : 19,
+    gestalt_DateTime : 20,
+    gestalt_Sound2 : 21,
 
     keycode_Unknown  : 0xffffffff,
     keycode_Left     : 0xfffffffe,
@@ -533,6 +535,7 @@ var Const = {
     evtype_Redraw : 6,
     evtype_SoundNotify : 7,
     evtype_Hyperlink : 8,
+    evtype_VolumeNotify : 9,
 
     style_Normal : 0,
     style_Emphasized : 1,
@@ -3000,6 +3003,9 @@ function glk_gestalt_ext(sel, val, arr) {
     case 20: // gestalt_DateTime
         return 1;
 
+    case 21: // gestalt_Sound2
+        return 0;
+
     }
 
     return 0;
@@ -4077,6 +4083,26 @@ function glk_schannel_set_volume(schan, vol) {
 function glk_sound_load_hint(sndid, flag) {
 }
 
+function glk_schannel_create_ext(rock, vol) {
+    return null;
+}
+
+function glk_schannel_play_multi(schans, sndids, notify) {
+    throw('glk_schannel_play_multi: invalid schannel');
+}
+
+function glk_schannel_pause(schan) {
+    throw('glk_schannel_pause: invalid schannel');
+}
+
+function glk_schannel_unpause(schan) {
+    throw('glk_schannel_unpause: invalid schannel');
+}
+
+function glk_schannel_set_volume_ext(schan, vol, duration, notify) {
+    throw('glk_schannel_set_volume_ext: invalid schannel');
+}
+
 function glk_set_hyperlink(val) {
     gli_set_hyperlink(gli_currentstr, val);
 }
@@ -4785,6 +4811,11 @@ return {
     glk_schannel_play_ext : glk_schannel_play_ext,
     glk_schannel_stop : glk_schannel_stop,
     glk_schannel_set_volume : glk_schannel_set_volume,
+    glk_schannel_create_ext : glk_schannel_create_ext,
+    glk_schannel_play_multi : glk_schannel_play_multi,
+    glk_schannel_pause : glk_schannel_pause,
+    glk_schannel_unpause : glk_schannel_unpause,
+    glk_schannel_set_volume_ext : glk_schannel_set_volume_ext,
     glk_sound_load_hint : glk_sound_load_hint,
     glk_set_hyperlink : glk_set_hyperlink,
     glk_set_hyperlink_stream : glk_set_hyperlink_stream,
