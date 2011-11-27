@@ -1,5 +1,5 @@
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 1.2.3.
+ * GlkOte Library: version 1.2.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -57,6 +57,8 @@ var resize_timer = null;
 var retry_timer = null;
 var is_ie7 = false;
 var perform_paging = true;
+var detect_external_links = false;
+var regex_external_links = null;
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -140,6 +142,31 @@ function glkote_init(iface) {
     return;
   }
   current_metrics = res;
+
+  detect_external_links = iface.detect_external_links;
+  if (detect_external_links) {
+    regex_external_links = iface.regex_external_links;
+    if (!regex_external_links) {
+      /* Fill in a default regex for matching or finding URLs. */
+      if (detect_external_links == 'search') {
+        /* The searching case is hard. This regex is based on John Gruber's
+           monstrosity, the "web URL only" variant:
+           http://daringfireball.net/2010/07/improved_regex_for_matching_urls
+           I cut it down a bit; it will not recognize bare domain names like
+           "www.eblong.com". I also removed the "(?i)" from the beginning,
+           because Javascript doesn't handle that syntax. (It's supposed to
+           make the regex case-insensitive.) Instead, we use the 'i'
+           second argument to RegExp().
+        */
+        regex_external_links = RegExp('\\b((?:https?://)(?:[^\\s()<>]+|\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\))+(?:\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\)|[^\\s`!()\\[\\]{};:\'".,<>?\u00ab\u00bb\u201c\u201d\u2018\u2019]))', 'i');
+      }
+      else {
+        /* The matching case is much simpler. This matches any string
+           beginning with "http" or "https". */
+        regex_external_links = RegExp('^https?:', 'i');
+      }
+    }
+  }
 
   send_response('init', null, current_metrics);
 }
@@ -637,7 +664,7 @@ function accept_one_content(arg) {
           var el = new Element('span',
             { 'class': 'Style_' + rstyle } );
           if (rlink == undefined) {
-            insert_text(el, rtext);
+            insert_text_detecting(el, rtext);
           }
           else {
             var ael = new Element('a',
@@ -743,7 +770,7 @@ function accept_one_content(arg) {
           rtext = rtext.replace(regex_initial_whitespace, NBSP);
         }
         if (rlink == undefined) {
-          insert_text(el, rtext);
+          insert_text_detecting(el, rtext);
         }
         else {
           var ael = new Element('a',
@@ -1147,6 +1174,63 @@ function last_child_of(obj) {
   if (!ls || !ls.length)
     return null;
   return ls[ls.length-1];
+}
+
+/* Add text to a DOM element. If GlkOte is configured to detect URLs,
+   this does that, converting them into 
+   <a href='...' class='External' target='_blank'> tags.
+*/
+function insert_text_detecting(el, val) {
+  if (!detect_external_links) {
+    var nod = document.createTextNode(val);
+    el.appendChild(nod);
+    return;
+  }
+
+  if (detect_external_links == 'match') {
+    /* For 'match', we test the entire span of text to see if it's a URL.
+       This is simple and fast. */
+    if (regex_external_links.test(val)) {
+      var ael = new Element('a',
+        { 'href': val, 'class': 'External', 'target': '_blank' } );
+      var nod = document.createTextNode(val);
+      ael.appendChild(nod);
+      el.insert(ael);
+      return;
+    }
+    /* If not, fall through. */
+  }
+  else if (detect_external_links == 'search') {
+    /* For 'search', we have to look for a URL within the span -- perhaps
+       multiple URLs. This is more work, and the regex is more complicated
+       too. */
+    while (true) {
+      var match = regex_external_links.exec(val);
+      if (!match)
+        break;
+      /* Add the characters before the URL, if any. */
+      if (match.index > 0) {
+        var prefix = val.substring(0, match.index);
+        var nod = document.createTextNode(prefix);
+        el.appendChild(nod);
+      }
+      /* Add the URL. */
+      var ael = new Element('a',
+        { 'href': match[0], 'class': 'External', 'target': '_blank' } );
+      var nod = document.createTextNode(match[0]);
+      ael.appendChild(nod);
+      el.insert(ael);
+      /* Continue searching after the URL. */
+      val = val.substring(match.index + match[0].length);
+    }
+    if (!val.length)
+      return;
+    /* Add the final string of characters, if there were any. */
+  }
+
+  /* Fall-through case. Just add the text. */
+  var nod = document.createTextNode(val);
+  el.appendChild(nod);
 }
 
 /* Debugging utility: return a string displaying all of an object's
@@ -1750,7 +1834,7 @@ function build_evhan_hyperlink(winid, linkval) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '1.2.2',
+  version:  '1.2.4',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
