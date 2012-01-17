@@ -51,7 +51,9 @@ on the web site), copy play-remote.html.
 - play.html        -- HTML template for a Quixe page
 - play-full.html   -- same thing, but using non-compressed Javascript source
 - play-remote.html -- Quixe page that plays any story via "?story=..."
-- play-remote-full.html -- same thing, but using non-compressed Javascript
+- play-remote-full.html   -- same thing, but using non-compressed Javascript
+- play-remote-onecol.html -- same thing, but the HTML template gives a fixed
+                             column width with a header and footer
 - build.py         -- generates the files in lib
 
 - src -- Javascript source code

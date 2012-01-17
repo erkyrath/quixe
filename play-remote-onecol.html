@@ -1,0 +1,138 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Quixe</title>
+
+<meta name="viewport" content="width=device-width, user-scalable=no">
+
+<link rel="stylesheet" href="media/glkote.css" type="text/css">
+<link rel="stylesheet" href="media/dialog.css" type="text/css">
+
+<style type="text/css">
+
+body {
+  margin: 0px;
+  top: 0px;
+  bottom: 0px;
+  width: 100%;
+  background: #BBB;
+}
+
+#header {
+  position: absolute;
+  width: 100%;
+  top: 0px;
+  height: 72px; /* header height */
+  margin: 0px;
+  background: #CCC;
+}
+
+#subheader {
+  position: relative;
+  width: 600px; /* column width */
+  height: 100%;
+  margin: auto;
+}
+
+#footer {
+  position: absolute;
+  width: 100%;
+  bottom: 0px;
+  height: 48px; /* footer height */
+  margin: 0px;
+  background: #CCC;
+}
+
+.framelabel {
+  /* This class is used for the header and footer text. You can replace it
+     with your own CSS classes. */
+  padding-top: 1em;
+  font-size: 14px;
+  font-style: italic;
+}
+
+#subfooter {
+  position: relative;
+  width: 600px; /* column width */
+  height: 100%;
+  margin: auto;
+}
+
+#column {
+  position: absolute;
+  width: 100%;
+  top: 72px; /* header height */
+  bottom: 48px; /* footer height */
+  margin: 0px;
+}
+
+#subcolumn {
+  position: relative;
+  width: 600px; /* column width */
+  height: 100%;
+  margin: auto;
+}
+
+#gameport {
+  position: absolute;
+  overflow: hidden;
+  background: #888; /* this color shows up only during loading, and 
+    for the space between windows, if the spacing config value is nonzero */
+  margin: auto;
+  top: 0px;
+  bottom: 0px;
+  width: 100%;
+}
+
+</style>
+
+<script src="lib/glkote.min.js" type="text/javascript"></script>
+<script src="lib/quixe.min.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+game_options = {
+  default_story: 'stories/glulxercise.ulx',
+  spacing: 0,
+  use_query_story: true,
+  set_page_title: true
+};
+</script>
+
+</head>
+<body onload="GiLoad.load_run();">
+
+<div id="header"><div id="subheader">
+<div class="framelabel">This is the header. It is fixed at 72 pixels high, 
+in this template. To change the height, edit the two CSS lines labelled 
+"header height" (in this file) from "72px" to whatever value you choose.</div>
+</div></div>
+
+<div id="column"><div id="subcolumn">
+
+<div id="gameport">
+<div id="windowport">
+<noscript><hr>
+<p>You'll need to turn on Javascript in your web browser to play this game.</p>
+<hr></noscript>
+</div>
+<div id="loadingpane">
+<img src="media/waiting.gif" alt="LOADING"><br>
+<em>&nbsp;&nbsp;&nbsp;Loading...</em>
+</div>
+<div id="errorpane" style="display:none;"><div id="errorcontent">...</div></div>
+<div id="layouttestpane">
+This should not be visible
+<div id="layouttest_grid" class="WindowFrame GridWindow"><div id="layouttest_gridline" class="GridLine"><span id="layouttest_gridspan" class="Style_normal">12345678</span></div><div id="layouttest_gridline2" class="GridLine"><span class="Style_normal">12345678</span></div></div>
+<div id="layouttest_buffer" class="WindowFrame BufferWindow"><div id="layouttest_bufferline" class="BufferLine"><span id="layouttest_bufferspan" class="Style_normal">12345678</span></div><div id="layouttest_bufferline2" class="BufferLine"><span class="Style_normal">12345678</span></div></div>
+</div>
+</div>
+
+</div></div>
+
+<div id="footer"><div id="subfooter">
+<div class="framelabel">This is the footer. It is fixed at 48 pixels high.
+To change it, edit the "footer height" lines.</div>
+</div></div>
+
+</body>
+</html>
