@@ -87,6 +87,28 @@ body {
   width: 100%;
 }
 
+@media screen and (max-device-width: 480px) {
+  /* This stanza kicks in on phone-sized mobile browsers (but not tablet-sized
+     ones). It narrows the column, including the header and footer content,
+     to 320px. If you want to support this layout, you'll probably have to
+     add more declarations here to simplify or shrink your header and footer
+     content. */
+  #subcolumn {
+    width: 320px;
+  }
+  #subheader {
+    width: 320px;
+  }
+  #subfooter {
+    width: 320px;
+  }
+  .framelabel {
+    font-size: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
 </style>
 
 <script src="lib/glkote.min.js" type="text/javascript"></script>
