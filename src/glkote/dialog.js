@@ -65,6 +65,9 @@ var is_open = false;
 var dialog_callback = null;
 var will_save; /* is this a save dialog? */
 var confirming; /* are we in a "confirm" sub-dialog? */
+var editing; /* have we flipped to "edit" mode? */
+var editing_dirent; /* null for the edit selection screen, or a dirent to
+                       display */
 var cur_usage; /* a string representing the file's category */
 var cur_usage_name; /* the file's category as a human-readable string */
 var cur_gameid; /* a string representing the game */
@@ -94,28 +97,11 @@ function dialog_open(tosave, usage, gameid, callback) {
     dialog_callback = callback;
     will_save = tosave;
     confirming = false;
+    editing = false;
+    editing_dirent = null;
     cur_usage = usage;
     cur_gameid = gameid;
-
-    /* Pick a human-readable label for the usage. This will be displayed in the
-       dialog prompts. (Possibly pluralized, with an "s".) */
-    switch (cur_usage) {
-    case 'data': 
-        cur_usage_name = 'data file';
-        break;
-    case 'save': 
-        cur_usage_name = 'save file';
-        break;
-    case 'transcript': 
-        cur_usage_name = 'transcript';
-        break;
-    case 'command': 
-        cur_usage_name = 'command script';
-        break;
-    default:
-        cur_usage_name = 'file';
-        break;
-    }
+    cur_usage_name = label_for_usage(cur_usage);
 
     /* Figure out what the root div is called. The dialog box will be
        positioned in this div; also, the div will be greyed out by a 
@@ -163,6 +149,13 @@ function dialog_open(tosave, usage, gameid, callback) {
         (will_save ? evhan_accept_save_button : evhan_accept_load_button));
     dia.insert(form);
 
+    row = new Element('div', { 'class': 'DiaButtonsFloat' });
+    el = new Element('button', { id: dialog_el_id+'_edit', type: 'button' });
+    insert_text(el, 'Edit');
+    el.observe('click', evhan_edit_button);
+    row.insert(el);
+    form.insert(row);
+
     row = new Element('div', { id: dialog_el_id+'_cap', 'class': 'DiaCaption' });
     insert_text(row, 'XXX'); // the caption will be replaced momentarily.
     form.insert(row);
@@ -181,16 +174,32 @@ function dialog_open(tosave, usage, gameid, callback) {
     row.hide();
     form.insert(row);
 
-    row = new Element('div', { 'class': 'DiaButtons' });
-    el = new Element('button', { id: dialog_el_id+'_cancel', type: 'button' });
-    insert_text(el, 'Cancel');
-    el.observe('click', evhan_cancel_button);
-    row.insert(el);
-    el = new Element('button', { id: dialog_el_id+'_accept', type: 'submit' });
-    insert_text(el, (will_save ? 'Save' : 'Load'));
-    el.observe('click', 
-        (will_save ? evhan_accept_save_button : evhan_accept_load_button));
-    row.insert(el);
+    row = new Element('div', { id: dialog_el_id+'_buttonrow', 'class': 'DiaButtons' });
+    {
+        /* Row of buttons */
+        el = new Element('button', { id: dialog_el_id+'_cancel', type: 'button' });
+        insert_text(el, 'Cancel');
+        el.observe('click', evhan_cancel_button);
+        row.insert(el);
+
+        el = new Element('button', { id: dialog_el_id+'_delete', type: 'button' });
+        insert_text(el, 'Delete');
+        el.observe('click', evhan_delete_button);
+        el.hide();
+        row.insert(el);
+
+        el = new Element('button', { id: dialog_el_id+'_display', type: 'button' });
+        insert_text(el, 'Display');
+        el.observe('click', evhan_display_button);
+        el.hide();
+        row.insert(el);
+
+        el = new Element('button', { id: dialog_el_id+'_accept', type: 'submit' });
+        insert_text(el, (will_save ? 'Save' : 'Load'));
+        el.observe('click', 
+            (will_save ? evhan_accept_save_button : evhan_accept_load_button));
+        row.insert(el);
+    }
     form.insert(row);
 
     frame.insert(dia);
@@ -239,6 +248,8 @@ function dialog_close() {
     is_open = false;
     dialog_callback = null;
     cur_filelist = null;
+    editing = false;
+    editing_dirent = null;
 }
 
 /* Set the text caption in the dialog. (There are two, actually, above
@@ -258,6 +269,31 @@ function set_caption(msg, isupper) {
         insert_text(el, msg);
         el.show();
     }
+}
+
+/* Pick a human-readable label for the usage. This will be displayed in the
+   dialog prompts. (Possibly pluralized, with an "s".) 
+*/
+function label_for_usage(val) {
+    switch (val) {
+    case 'data': 
+        return 'data file';
+    case 'save': 
+        return 'save file';
+    case 'transcript': 
+        return 'transcript';
+    case 'command': 
+        return 'command script';
+    default:
+        return 'file';
+    }
+}
+
+/* Decide whether a given file is likely to contain text data. 
+   ### really this should rely on a text/binary metadata field.
+*/
+function usage_is_textual(val) {
+    return (val == 'transcript' || val == 'command');
 }
 
 /* Add text to a DOM element.
@@ -312,11 +348,41 @@ function evhan_select_change() {
     return false;
 }
 
+/* Event handler: The user has changed which entry in the selection box is
+   highlighted. (Also called manually, when we enter edit mode.)
+
+   This is only used in edit mode.
+*/
+function evhan_select_change_editing() {
+    if (!is_open)
+        return false;
+    if (!editing || editing_dirent)
+        return false;
+
+    var selel = $(dialog_el_id+'_select');
+    if (!selel)
+        return false;
+    var pos = selel.selectedIndex;
+    if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
+        return false;
+    var file = cur_filelist[pos];
+    if (!file.dirent || !file_ref_exists(file.dirent))
+        return false;
+
+    butel = $(dialog_el_id+'_delete');
+    butel.disabled = false;
+    butel = $(dialog_el_id+'_display');
+    butel.disabled = !usage_is_textual(file.dirent.usage);
+    //### use binary flag?
+}
+
 /* Event handler: The "Load" button.
 */
 function evhan_accept_load_button(ev) {
     ev.stop();
     if (!is_open)
+        return false;
+    if (editing)
         return false;
 
     //GlkOte.log('### accept load');
@@ -327,7 +393,7 @@ function evhan_accept_load_button(ev) {
     if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
         return false;
     var file = cur_filelist[pos];
-    if (!file_ref_exists(file.dirent))
+    if (!file.dirent || !file_ref_exists(file.dirent))
         return false;
 
     var callback = dialog_callback;
@@ -344,6 +410,8 @@ function evhan_accept_load_button(ev) {
 function evhan_accept_save_button(ev) {
     ev.stop();
     if (!is_open)
+        return false;
+    if (editing)
         return false;
 
     //GlkOte.log('### accept save');
@@ -375,6 +443,144 @@ function evhan_accept_save_button(ev) {
     dialog_close();
     if (callback)
         callback(dirent);
+
+    return false;
+}
+
+/* Event handler: The "Edit" (or "Done") button.
+
+   This toggles edit mode.
+*/
+function evhan_edit_button(ev) {
+    ev.stop();
+    if (!is_open)
+        return false;
+
+    if (!editing) {
+        editing = true;
+        editing_dirent = null;
+
+        if (confirming) {
+            /* Cancel the confirmation, first */
+            confirming = false;
+            set_caption(null, false);
+            var fel = $(dialog_el_id+'_infield');
+            fel.disabled = false;
+            var butel = $(dialog_el_id+'_accept');
+            butel.disabled = false;
+            replace_text(butel, 'Save');
+        }
+
+        var fel = $(dialog_el_id+'_input');
+        if (fel) {
+            fel.hide();
+        }
+
+        var butel = $(dialog_el_id+'_edit');
+        replace_text(butel, 'Done');
+
+        butel = $(dialog_el_id+'_delete');
+        butel.show();
+        butel = $(dialog_el_id+'_display');
+        butel.show();
+        butel = $(dialog_el_id+'_accept');
+        butel.hide();
+
+        evhan_storage_changed();
+        return false;
+    }
+    else if (!editing_dirent) {
+        editing = false;
+        editing_dirent = null;
+
+        var fel = $(dialog_el_id+'_input');
+        if (fel) {
+            fel.show();
+        }
+
+        var butel = $(dialog_el_id+'_edit');
+        replace_text(butel, 'Edit');
+
+        butel = $(dialog_el_id+'_delete');
+        butel.hide();
+        butel = $(dialog_el_id+'_display');
+        butel.hide();
+        butel = $(dialog_el_id+'_accept');
+        butel.show();
+
+        evhan_storage_changed();
+        return false;
+    }
+    else {
+        /* Stop displaying a file, return to normal edit mode. */
+        editing = true;
+        editing_dirent = null;
+
+        $(dialog_el_id+'_buttonrow').show();
+
+        var butel = $(dialog_el_id+'_edit');
+        replace_text(butel, 'Done');
+
+        evhan_storage_changed();
+        return false;
+    }
+}
+
+/* Event handler: The "Delete" button (for edit mode).
+*/
+function evhan_delete_button(ev) {
+    ev.stop();
+    if (!is_open)
+        return false;
+    if (!editing || editing_dirent)
+        return false;
+
+    //GlkOte.log('### delete');
+    var selel = $(dialog_el_id+'_select');
+    if (!selel)
+        return false;
+    var pos = selel.selectedIndex;
+    if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
+        return false;
+    var file = cur_filelist[pos];
+    if (!file.dirent)
+        return false;
+
+    file_remove_ref(file.dirent);
+    /* Force reload of display */
+    evhan_storage_changed();
+
+    return false;
+}
+
+/* Event handler: The "Display" button (for edit mode).
+*/
+function evhan_display_button(ev) {
+    ev.stop();
+    if (!is_open)
+        return false;
+    if (!editing || editing_dirent)
+        return false;
+
+    //GlkOte.log('### display');
+    var selel = $(dialog_el_id+'_select');
+    if (!selel)
+        return false;
+    var pos = selel.selectedIndex;
+    if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
+        return false;
+    var file = cur_filelist[pos];
+    if (!file.dirent || !file_ref_exists(file.dirent))
+        return false;
+
+    $(dialog_el_id+'_buttonrow').hide();
+
+    var butel = $(dialog_el_id+'_edit');
+    replace_text(butel, 'Close');
+
+    editing_dirent = file.dirent;
+    /* Force reload of display */
+    evhan_storage_changed();
 
     return false;
 }
@@ -413,14 +619,16 @@ function evhan_cancel_button(ev) {
    re-check the list of files, because a new one might have been added from
    another browser window.
 
-   This function is also called manually when the dialog box is created,
-   to set up the list of files in the first place.
+   This function is called manually when the dialog box is created,
+   to set up the list of files in the first place. We also call it manually
+   when switching in and out of edit mode -- it's the easiest way to redraw
+   everything.
 */
 function evhan_storage_changed(ev) {
     if (!is_open)
         return false;
 
-    var el, bodyel, ls;
+    var el, bodyel, ls, lastusage;
 
     var changedkey = null;
     if (ev)
@@ -432,6 +640,113 @@ function evhan_storage_changed(ev) {
     bodyel = $(dialog_el_id+'_body');
     if (!bodyel)
         return false;
+
+    if (editing && editing_dirent) {
+        /* If the file was deleted out from under us, return to the editing
+           display. */
+        if (!file_ref_exists(editing_dirent)) {
+            editing_dirent = null;
+            $(dialog_el_id+'_buttonrow').show();
+            var butel = $(dialog_el_id+'_edit');
+            replace_text(butel, 'Done');
+        }
+    }
+
+    /* There are several editing modes, which means several things we might
+       display here. */
+
+    if (editing && editing_dirent) {
+        /* We want to display the selected file's contents. */
+        remove_children(bodyel);
+
+        /* This is an array of character values (as ints) */
+        var dat = file_read(editing_dirent);
+        /* ### This doesn't correctly handle Unicode characters outside the
+           16-bit range. */
+        dat = String.fromCharCode.apply(this, dat);
+
+        var textel = new Element('div', { 'class': 'DiaDisplayText' });
+        var nod = document.createTextNode(dat);
+        textel.appendChild(nod);
+        bodyel.insert(textel);
+
+        set_caption('Displaying file contents...', true);
+        return false;
+    }
+
+    if (editing) {
+        /* We want to display both game-specific files and general ones (but
+           not files specific to other games, i.e., save files for different
+           games). 
+        */
+        ls = files_list(null, cur_gameid);
+        if (cur_gameid != '') {
+            ls = ls.concat(files_list(null, ''));
+        }
+        /* Sort by usage, then date modified */
+        ls.sort(function(f1, f2) {
+                if (f1.dirent.usage != f2.dirent.usage)
+                    return (f1.dirent.usage < f2.dirent.usage);
+                return f2.modified.getTime() - f1.modified.getTime(); 
+            });
+
+        if (ls.length == 0) {
+            remove_children(bodyel);
+            butel = $(dialog_el_id+'_delete');
+            butel.disabled = true;
+            butel = $(dialog_el_id+'_display');
+            butel.disabled = true;
+            set_caption('You have no stored files. Press Done to continue.', true);
+            return false;
+        }
+
+        cur_filelist = [];
+        lastusage = '';
+        for (ix=0; ix<ls.length; ix++) {
+            file = ls[ix];
+            if (file.dirent.usage != lastusage) {
+                lastusage = file.dirent.usage;
+                cur_filelist.push({ label:lastusage });
+            }
+            cur_filelist.push(file);
+        }
+        ls = cur_filelist;
+
+        remove_children(bodyel);
+        
+        var selel = new Element('select', { id: dialog_el_id+'_select', name:'files', size:'5' });
+        var ix, file, datestr;
+        var anyselected = false;
+        for (ix=0; ix<ls.length; ix++) {
+            file = ls[ix];
+            if (!file.dirent) {
+                el = new Element('option', { name:'f'+ix } );
+                el.disabled = true;
+                insert_text(el, '-- ' + label_for_usage(file.label) + 's --');
+                selel.insert(el);
+                continue;
+            }
+
+            el = new Element('option', { name:'f'+ix } );
+            if (!anyselected) {
+                anyselected = true;
+                el.selected = true;
+            }
+            datestr = format_date(file.modified);
+            insert_text(el, file.dirent.filename + ' -- ' + datestr);
+            selel.insert(el);
+        }
+        bodyel.insert(selel);
+
+        selel.onchange = evhan_select_change_editing;
+        evhan_select_change_editing();
+
+        set_caption('All stored files are now visible. You may delete them, and display files containing text. Press Done when finished.', true);
+        return false;
+    }
+
+    /* Basic display mode: the list of available files, plus an input field
+       if this is for saving. */
 
     ls = files_list(cur_usage, cur_gameid);
     /* Sort by date modified */
@@ -592,7 +907,7 @@ function file_remove_ref(ref) {
     localStorage.removeItem(ref.content);
 }
 
-/* Dialog.file_write(ref, content, israw) -- write data to the file
+/* Dialog.file_write(dirent, content, israw) -- write data to the file
  *
  * The "content" argument is stored to the file. If "israw" is true, the
  * content must be a string. Otherwise, the content is converted to JSON (using
@@ -633,7 +948,7 @@ function file_write(dirent, content, israw) {
     return true;
 }
 
-/* Dialog.file_read(ref, israw) -- read data from the file
+/* Dialog.file_read(dirent, israw) -- read data from the file
  *
  * Read the (entire) content of the file. If "israw" is true, this returns the
  * string that was stored. Otherwise, the content is converted from JSON (using
