@@ -50,8 +50,8 @@ Quixe = function() {
    starts up. It must be called before quixe_init().
 
    The first argument is the game file image, encoded as an array of byte
-   values (integers between 0 and 255). It is stashed away for when
-   the game is started up.
+   values (integers between 0 and 255). This may be either an Array or a
+   Uint8Array. It is stashed away for when the game is started up.
 
    The (optional) second object supplies execution options.
 
@@ -60,12 +60,19 @@ Quixe = function() {
    game file, encoded as hexadecimal digits.)
 */
 function quixe_prepare(image, all_options) {
-    game_image = image;
+    /* If the image is a plain Array, but we support Uint8Array, we
+       convert it. */
+    if (has_typedarray && !image.buffer) {
+        game_image = new Uint8Array(image);
+    }
+    else {
+        game_image = image;
+    }
 
-    var ls = game_image.slice(0, 64);
+    var ls = new Array();
     var ix, val;
-    for (ix=0; ix<ls.length; ix++) {
-        val = ls[ix].toString(16);
+    for (ix=0; ix<64; ix++) {
+        val = game_image[ix].toString(16);
         if (val.length < 2)
             val = "0" + val;
         ls[ix] = val;
@@ -210,11 +217,17 @@ function setup_bytestring_table() {
 /* Functions to read values from memory (or other byte-arrays). These must
    always produce unsigned integers.
 
+   We test for Uint8Array support; if present, we use that rather than
+   old-style arrays. All the functions below should work on either,
+   except as noted.
+
    We use arithmetic rather than bitwise operations. *,+ are slightly slower
    than <<,| but *,+ produce positive results, whereas <<,| produces a signed
    result for values over 0x80000000. So we save the cost of the >>>0, which
    is worthwhile.
 */
+
+var has_typedarray = (window.Uint8Array != undefined);
 
 function ByteRead4(arr, addr) {
     return (arr[addr] * 0x1000000) + (arr[addr+1] * 0x10000) 
@@ -237,20 +250,42 @@ function Mem4(addr) {
     return (memmap[addr] * 0x1000000) + (memmap[addr+1] * 0x10000) 
         + (memmap[addr+2] * 0x100) + (memmap[addr+3]);
 }
-function MemW1(addr, val) {
-    // ignore high bytes if necessary
-    memmap[addr] = val & 0xFF;
+
+var MemW1, MemW2, MemW4;
+
+if (!has_typedarray) {
+    /* If memmap is an Array, we have to trim our values to the 0-255 range. */
+    MemW1 = function(addr, val) {
+        // ignore high bytes if necessary
+        memmap[addr] = val & 0xFF;
+    }
+    MemW2 = function(addr, val) {
+        // ignore high bytes if necessary
+        memmap[addr] = (val >> 8) & 0xFF;
+        memmap[addr+1] = val & 0xFF;
+    }
+    MemW4 = function(addr, val) {
+        memmap[addr]   = (val >> 24) & 0xFF;
+        memmap[addr+1] = (val >> 16) & 0xFF;
+        memmap[addr+2] = (val >> 8) & 0xFF;
+        memmap[addr+3] = val & 0xFF;
+    }
 }
-function MemW2(addr, val) {
-    // ignore high bytes if necessary
-    memmap[addr] = (val >> 8) & 0xFF;
-    memmap[addr+1] = val & 0xFF;
-}
-function MemW4(addr, val) {
-    memmap[addr]   = (val >> 24) & 0xFF;
-    memmap[addr+1] = (val >> 16) & 0xFF;
-    memmap[addr+2] = (val >> 8) & 0xFF;
-    memmap[addr+3] = val & 0xFF;
+else {
+    /* If memmap is a Uint8Array, we don't need to trim. */
+    MemW1 = function(addr, val) {
+        memmap[addr] = val;
+    }
+    MemW2 = function(addr, val) {
+        memmap[addr] = (val >> 8);
+        memmap[addr+1] = val;
+    }
+    MemW4 = function(addr, val) {
+        memmap[addr]   = (val >> 24);
+        memmap[addr+1] = (val >> 16);
+        memmap[addr+2] = (val >> 8);
+        memmap[addr+3] = val;
+    }
 }
 
 function BytePushString(arr, str) {
@@ -277,8 +312,57 @@ function ByteWrite4(arr, addr, val) {
     arr[addr+2] = (val >> 8) & 0xFF;
     arr[addr+3] = val & 0xFF;
 }
+
+var ByteSlice, ByteConcat;
+
+/* ByteSlice returns an (unshared) copy of the array. 
+
+   ByteConcat extends the given array with another array. (Do not assume
+   that the result is or is not shared with the original first argument!)
+
+   In both cases, the returned array is Uint8Array if supported, Array if
+   not. The arguments get a little more leeway.
+ */
+if (!has_typedarray) {
+    ByteSlice = function(arr, pos, end) {
+        return arr.slice(pos, end);
+    }
+
+    ByteConcat = function(arr, arr2) {
+        return arr.concat(arr2);
+    }
+}
+else {
+    ByteSlice = function(arr, pos, end) {
+        if (!arr.buffer) {
+            /* Input is a plain Array. */
+            return new Uint8Array(arr);
+        }
+        else {
+            /* Input is a Uint8Array, so we need a two-step process to
+               make an unshared copy. */
+            return new Uint8Array(arr.subarray(pos, end));
+        }
+    }
+
+    ByteConcat = function(arr, arr2) {
+        var res = new Uint8Array(arr.length + arr2.length);
+        res.set(arr); /* copy arr.length values to res */
+        res.set(arr2, arr.length); /* copy arr2.length values to res,
+                                      starting at arr.length */
+        return res;
+    }
+}
+
+/* ByteReadString: take len bytes from the Array or Uint8Array, and
+   pack them into a string. */
 function ByteReadString(arr, addr, len) {
-    return String.fromCharCode.apply(this, arr.slice(addr, addr+len));
+    if (!arr.buffer) {
+        return String.fromCharCode.apply(this, arr.slice(addr, addr+len));
+    }
+    else {
+        return String.fromCharCode.apply(this, arr.subarray(addr, addr+len));
+    }
 }
 
 function QuoteMem1(addr) {
@@ -3227,8 +3311,17 @@ function compile_func(funcaddr) {
 
     /* We also copy the raw format list. This will be handy later on,
        when we need to serialize the stack. Note that it might be
-       padded with extra zeroes to a four-byte boundary. */
-    var rawformat = memmap.slice(rawstart, addr);
+       padded with extra zeroes to a four-byte boundary. 
+       Also note that rawformat will always be a plain Array. */
+    var rawformat;
+    if (!has_typedarray) {
+        rawformat = memmap.slice(rawstart, addr);
+    }
+    else {
+        rawformat = new Array();
+        for (var ix=rawstart; ix<addr; ix++)
+            rawformat.push(memmap[ix]);
+    }
     while (rawformat.length % 4)
         rawformat.push(0);
 
@@ -5028,13 +5121,14 @@ function encode_float(val) {
 /* Parameters set at prepare() time, including the game image and any
    execution options. */
 
-var game_image = null; /* the original game image, as an array of bytes */
+var game_image = null; /* the original game image, as an array of bytes
+   (may be an Array or a Uint8Array, depending on the has_typedarray flag) */
 var game_signature = null; /* string, containing the first 64 bytes of image */
 var opt_rethrow_exceptions = null;
 
 /* The VM state variables */
 
-var memmap; /* array of bytes */
+var memmap; /* array of bytes (Array or Uint8Array) */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
 var vm_started = false; /* Quixe is initialized */
@@ -5170,7 +5264,7 @@ function vm_restart() {
 
     /* Build (or rebuild) main memory array. */
     memmap = null; // garbage-collect old memmap
-    memmap = game_image.slice(0, endgamefile);
+    memmap = ByteSlice(game_image, 0, endgamefile);
     endmem = memmap.length;
     change_memsize(origendmem, false);
     /* endmem is now origendmem */
@@ -5215,7 +5309,7 @@ function compress_bytes(arr) {
     return result;
 }
 
-/* Run-length-decode an array, for Quetzal. */
+/* Run-length-decode an array, for Quetzal. Returns a plain Array. */
 function decompress_bytes(arr) {
     result = [];
     var i = 0;
@@ -5302,9 +5396,9 @@ function vm_save(streamid) {
     
     chunks = {};
     
-    chunks["IFhd"] = game_image.slice(0, 128);
+    chunks["IFhd"] = ByteSlice(game_image, 0, 128);
     
-    chunks["CMem"] = memmap.slice(ramstart);
+    chunks["CMem"] = ByteSlice(memmap, ramstart, memmap.length);
     for (var i = ramstart; i < game_image.length; i++) {
         chunks["CMem"][i - ramstart] ^= game_image[i];
     }
@@ -5403,7 +5497,8 @@ function vm_restore(streamid) {
     
     var ram_xor = decompress_bytes(chunks["CMem"]);
     change_memsize(ramstart + ram_xor.length, false);
-    memmap = game_image.slice(0, ramstart).concat(ram_xor);
+    memmap = ByteSlice(game_image, 0, ramstart);
+    memmap = ByteConcat(memmap, ram_xor);
     for (var i = ramstart; i < game_image.length; i++) {
         memmap[i] ^= game_image[i];
     }
@@ -5467,7 +5562,7 @@ function vm_saveundo() {
     ;;;}
 
     var snapshot = {};
-    snapshot.ram = memmap.slice(ramstart);
+    snapshot.ram = ByteSlice(memmap, ramstart, memmap.length);
     snapshot.endmem = endmem;
     snapshot.pc = pc;
     snapshot.stack = [];
@@ -5495,7 +5590,8 @@ function vm_restoreundo() {
     var snapshot = undostack.pop();
     var protect = copy_protected_range();
 
-    memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
+    memmap = ByteSlice(memmap, 0, ramstart);
+    memmap = ByteConcat(memmap, snapshot.ram);
     endmem = snapshot.endmem;
     stack = snapshot.stack;
     frame = stack[stack.length - 1];
@@ -5530,10 +5626,23 @@ function change_memsize(newlen, internal) {
     if (newlen & 0xFF)
         fatal_error("Can only resize Glulx memory space to a 256-byte boundary.");
 
-    memmap.length = newlen;
-    if (newlen > endmem) {
-        for (lx=endmem; lx<newlen; lx++) {
-            memmap[lx] = 0;
+    if (!has_typedarray) {
+        memmap.length = newlen;
+        if (newlen > endmem) {
+            /* We extended the array; set the new undefineds to zero. */
+            for (lx=endmem; lx<newlen; lx++) {
+                memmap[lx] = 0;
+            }
+        }
+    }
+    else {
+        if (newlen < memmap.length) {
+            memmap = ByteSlice(memmap, 0, newlen);
+        }
+        else {
+            var arr = new Uint8Array(newlen);
+            arr.set(memmap);
+            memmap = arr;
         }
     }
 
@@ -5557,12 +5666,22 @@ function copy_protected_range() {
         end: protectend,
         len: len
     };
-    var arr = memmap.slice(protectstart, protectend);
+    var sliceend = protectend;
+    if (sliceend > memmap.length)
+        sliceend = memmap.length;
+    var arr = ByteSlice(memmap, protectstart, sliceend);
 
     /* It is legal to protect a range that falls outside of memory; the
        extra bits are presumed to be zero. */
-    while (arr.length < len)
-        arr.push(0);
+    if (!has_typedarray) {
+        while (arr.length < len)
+            arr.push(0);
+    }
+    else {
+        var newarr = new Uint8Array(len);
+        newarr.set(arr);
+        arr = newarr;
+    }
     obj.mem = arr;
 
     return obj;
