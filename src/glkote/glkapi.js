@@ -4125,7 +4125,7 @@ function glk_cancel_hyperlink_event(win) {
         throw('glk_cancel_hyperlink_event: invalid window');
     if (win.type == Const.wintype_TextBuffer 
         || win.type == Const.wintype_TextGrid) {
-        win.hyperlink_request = true;
+        win.hyperlink_request = false;
     }
 }
 
