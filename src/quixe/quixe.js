@@ -97,6 +97,7 @@ function quixe_init() {
         execute_loop();
     }
     catch (ex) {
+        qstackdump();
         Glk.fatal_error("Quixe init: " + show_exception(ex));
         if (opt_rethrow_exceptions)
             throw ex;
@@ -113,6 +114,7 @@ function quixe_resume() {
         execute_loop();
     }
     catch (ex) {
+        qstackdump();
         Glk.fatal_error("Quixe run: " + show_exception(ex));
         if (opt_rethrow_exceptions)
             throw ex;
@@ -173,6 +175,21 @@ function qobjdump(obj, depth) {
         proplist.push(key + ":" + val);
     }
     return "{ " + proplist.join(", ") + " }";
+}
+
+/* Print the VM stack as a log message.
+ */
+function qstackdump() {
+    if (!stack || !stack.length)
+        return;
+    var ix;
+    var frm;
+    var ls = [];
+    for (ix=0; ix<stack.length; ix++) {
+        frm = stack[ix];
+        ls.push("0x"+frm.vmfunc.funcaddr.toString(16));
+    }
+    qlog("VM stack dump: " + ls.join(", "));
 }
 
 /* Fast char-to-hex and char-to-quoted-char conversion tables. 
