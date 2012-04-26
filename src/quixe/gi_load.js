@@ -421,7 +421,6 @@ function unpack_blorb(image) {
         var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
         pos += 4;
 
-        console.log("### " + el.usage + " " + el.num + " " + chunktype + " " + chunklen);
         if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
             result = image.slice(pos, pos+chunklen);
         }
