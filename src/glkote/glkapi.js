@@ -1,6 +1,6 @@
 /* GlkAPI -- a Javascript Glk API for IF interfaces
  * GlkOte Library: version 1.2.4###.
- * Glk API which this implements: version 0.7.3.
+ * Glk API which this implements: version 0.7.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -497,6 +497,7 @@ var Const = {
     gestalt_LineTerminatorKey : 19,
     gestalt_DateTime : 20,
     gestalt_Sound2 : 21,
+    gestalt_ResourceStream : 22,
 
     keycode_Unknown  : 0xffffffff,
     keycode_Left     : 0xfffffffe,
@@ -1993,6 +1994,7 @@ function call_may_not_return(id) {
 var strtype_File = 1;
 var strtype_Window = 2;
 var strtype_Memory = 3;
+var strtype_Resource = 4;
 
 /* Beginning of linked list of windows. */
 var gli_windowlist = null;
@@ -2682,6 +2684,85 @@ function gli_get_char(str, want_unicode) {
         return -1;
     
     switch (str.type) {
+    case strtype_Resource:
+        if (str.unicode) {
+            if (str.isbinary) {
+                /* cheap big-endian stream */
+                if (str.bufpos >= str.bufeof)
+                    return -1;
+                ch = str.buf[str.bufpos];
+                str.bufpos++;
+                if (str.bufpos >= str.bufeof)
+                    return -1;
+                ch = (ch << 8) | (str.buf[str.bufpos] & 0xFF);
+                str.bufpos++;
+                if (str.bufpos >= str.bufeof)
+                    return -1;
+                ch = (ch << 8) | (str.buf[str.bufpos] & 0xFF);
+                str.bufpos++;
+                if (str.bufpos >= str.bufeof)
+                    return -1;
+                ch = (ch << 8) | (str.buf[str.bufpos] & 0xFF);
+                str.bufpos++;
+            }
+            else {
+                /* slightly less cheap UTF8 stream */
+                var val0, val1, val2, val3;
+                if (str.bufpos >= str.bufeof)
+                    return -1;
+                val0 = str.buf[str.bufpos];
+                str.bufpos++;
+                if (val0 < 0x80) {
+                    ch = val0;
+                }
+                else {
+                    if (str.bufpos >= str.bufeof)
+                        return -1;
+                    val1 = str.buf[str.bufpos];
+                    str.bufpos++;
+                    if ((val1 & 0xC0) != 0x80)
+                        return -1;
+                    if ((val0 & 0xE0) == 0xC0) {
+                        ch = (val0 & 0x1F) << 6;
+                        ch |= (val1 & 0x3F);
+                    }
+                    else {
+                        if (str.bufpos >= str.bufeof)
+                            return -1;
+                        val2 = str.buf[str.bufpos];
+                        str.bufpos++;
+                        if ((val2 & 0xC0) != 0x80)
+                            return -1;
+                        if ((val0 & 0xF0) == 0xE0) {
+                            ch = (((val0 & 0xF)<<12)  & 0x0000F000);
+                            ch |= (((val1 & 0x3F)<<6) & 0x00000FC0);
+                            ch |= (((val2 & 0x3F))    & 0x0000003F);
+                        }
+                        else if ((val0 & 0xF0) == 0xF0) {
+                            if (str.bufpos >= str.bufeof)
+                                return -1;
+                            val3 = str.buf[str.bufpos];
+                            str.bufpos++;
+                            if ((val3 & 0xC0) != 0x80)
+                                return -1;
+                            ch = (((val0 & 0x7)<<18)   & 0x1C0000);
+                            ch |= (((val1 & 0x3F)<<12) & 0x03F000);
+                            ch |= (((val2 & 0x3F)<<6)  & 0x000FC0);
+                            ch |= (((val3 & 0x3F))     & 0x00003F);
+                        }
+                        else {
+                            return -1;
+                        }
+                    }
+                }
+            }
+            str.readcount++;
+            ch >>>= 0;
+            if (!want_unicode && ch >= 0x100)
+                return 63; // return '?'
+            return ch;
+        }
+        /* non-unicode streams: fall through to memory... */
     case strtype_File:
         /* fall through to memory... */
     case strtype_Memory:
@@ -2709,6 +2790,22 @@ function gli_get_line(str, buf, want_unicode) {
     var gotnewline;
 
     switch (str.type) {
+    case strtype_Resource:
+        if (str.unicode) {
+            if (len == 0)
+                return 0;
+            len -= 1; /* for the terminal null */
+            gotnewline = false;
+            for (lx=0; lx<len && !gotnewline; lx++) {
+                ch = gli_get_char(str, want_unicode);
+                if (ch == -1)
+                    break;
+                buf[lx] = ch;
+                gotnewline = (ch == 10);
+            }
+            return lx;
+        }
+        /* non-unicode streams: fall through to memory... */
     case strtype_File:
         /* fall through to memory... */
     case strtype_Memory:
@@ -2755,6 +2852,17 @@ function gli_get_buffer(str, buf, want_unicode) {
     var lx, ch;
     
     switch (str.type) {
+    case strtype_Resource:
+        if (str.unicode) {
+            for (lx=0; lx<len; lx++) {
+                ch = gli_get_char(str, want_unicode);
+                if (ch == -1)
+                    break;
+                buf[lx] = ch;
+            }
+            return lx;
+        }
+        /* non-unicode streams: fall through to memory... */
     case strtype_File:
         /* fall through to memory... */
     case strtype_Memory:
@@ -2902,8 +3010,8 @@ function glk_gestalt_ext(sel, val, arr) {
     switch (sel) {
 
     case 0: // gestalt_Version
-        /* This implements Glk spec version 0.7.2. */
-        return 0x00000702;
+        /* This implements Glk spec version 0.7.4. */
+        return 0x00000704;
 
     case 1: // gestalt_CharInput
         /* This is not a terrific approximation. Return false for function
@@ -3005,6 +3113,9 @@ function glk_gestalt_ext(sel, val, arr) {
 
     case 21: // gestalt_Sound2
         return 0;
+
+    case 22: // gestalt_ResourceStream
+        return 1;
 
     }
 
@@ -3534,6 +3645,70 @@ function glk_stream_open_memory(buf, fmode, rock) {
     return str;
 }
 
+function glk_stream_open_resource(filenum, rock) {
+    var str;
+
+    var el = GiLoad.find_data_chunk(filenum);
+    if (!el)
+        return null;
+
+    var buf = el.data;
+    var isbinary = (el.type == 'BINA');
+
+    str = gli_new_stream(strtype_Resource,
+        true, 
+        false, 
+        rock);
+    str.unicode = false;
+    str.isbinary = isbinary;
+
+    /* We have been handed an array of bytes. (They're big-endian four-byte
+       chunks, or perhaps a UTF-8 byte sequence, rather than native-endian
+       four-byte integers). We'll have to do the translation in the get()
+       functions. */
+
+    if (buf) {
+        str.buf = buf;
+        str.buflen = buf.length;
+        str.bufpos = 0;
+        str.bufeof = str.buflen;
+    }
+
+    return str;
+}
+
+function glk_stream_open_resource_uni(filenum, rock) {
+    var str;
+
+    var el = GiLoad.find_data_chunk(filenum);
+    if (!el)
+        return null;
+
+    var buf = el.data;
+    var isbinary = (el.type == 'BINA');
+
+    str = gli_new_stream(strtype_Resource,
+        true, 
+        false, 
+        rock);
+    str.unicode = true;
+    str.isbinary = isbinary;
+
+    /* We have been handed an array of bytes. (They're big-endian four-byte
+       chunks, or perhaps a UTF-8 byte sequence, rather than native-endian
+       four-byte integers). We'll have to do the translation in the get()
+       functions. */
+
+    if (buf) {
+        str.buf = buf;
+        str.buflen = buf.length;
+        str.bufpos = 0;
+        str.bufeof = str.buflen;
+    }
+
+    return str;
+}
+
 function glk_stream_close(str, result) {
     if (!str)
         throw('glk_stream_close: invalid stream');
@@ -3561,6 +3736,8 @@ function glk_stream_set_position(str, pos, seekmode) {
     case strtype_File:
         //### check if file has been modified? This is a half-decent time.
         /* fall through to memory... */
+    case strtype_Resource:
+        /* fall through to memory... */
     case strtype_Memory:
         if (seekmode == Const.seekmode_Current) {
             pos = str.bufpos + pos;
@@ -3585,6 +3762,8 @@ function glk_stream_get_position(str) {
 
     switch (str.type) {
     case strtype_File:
+        /* fall through to memory... */
+    case strtype_Resource:
         /* fall through to memory... */
     case strtype_Memory:
         return str.bufpos;
@@ -4850,7 +5029,9 @@ return {
     glk_date_to_time_utc : glk_date_to_time_utc,
     glk_date_to_time_local : glk_date_to_time_local,
     glk_date_to_simple_time_utc : glk_date_to_simple_time_utc,
-    glk_date_to_simple_time_local : glk_date_to_simple_time_local
+    glk_date_to_simple_time_local : glk_date_to_simple_time_local,
+    glk_stream_open_resource : glk_stream_open_resource,
+    glk_stream_open_resource_uni : glk_stream_open_resource_uni
 };
 
 }();
