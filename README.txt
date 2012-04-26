@@ -88,7 +88,8 @@ on the web site), copy play-remote.html.
 - ###
   - Ensure that gi_load.js works no matter what order the javascript
     libraries load.
-  - Included GlkOte ### (non-support for Glk 0.7.3: expanded sound functions)
+  - Included GlkOte ### (non-support for Glk 0.7.3: expanded sound functions;
+    support for Glk 0.7.4: resource streams)
   - Fixed a bug in glk_cancel_hyperlink_event().
 
 - 1.1.1 (February 17, 2011):
