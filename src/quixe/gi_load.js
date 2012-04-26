@@ -60,6 +60,12 @@
  *   library, such as gameport, windowport, spacing, ...
  *   And also the interpreter options used by the Quixe library, such as
  *   rethrow_exceptions, ...
+ *
+ * GiLoad.find_data_chunk(NUM) -- this finds the Data chunk of the
+ *   given number from the blorb file. The returned object looks like
+ *   { data:[...], type:"..." } (where the type is TEXT or BINA).
+ *   If there was no such chunk, or if the game was loaded from a non-
+ *   blorb file, this returns undefined.
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -84,6 +90,7 @@ var all_options = {
 
 var gameurl = null;  /* The URL we are loading. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
+var datachunks = {}; /* Indexed by filenum -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -338,16 +345,27 @@ function absolutize(url) {
     return div.firstChild.href;
 }
 
+/* Return the Data chunk with the given number, or undefined if there
+   is no such chunk. (This is used by the glk_stream_open_resource()
+   functions.)
+*/
+function find_data_chunk(val) {
+    return datachunks[val];
+}
+
 /* Look through a Blorb file (provided as a byte array) and return the
    Glulx game file chunk (ditto). If no such chunk is found, returns 
    null.
 
-   This also loads the IFID metadata into the metadata object.
+   This also loads the IFID metadata into the metadata object, and
+   caches DATA chunks where we can reach them later.
 */
 function unpack_blorb(image) {
     var len = image.length;
-    var pos = 12;
+    var ix;
+    var rindex = [];
     var result = null;
+    var pos = 12;
 
     while (pos < len) {
         var chunktype = String.fromCharCode(image[pos+0], image[pos+1], image[pos+2], image[pos+3]);
@@ -355,8 +373,19 @@ function unpack_blorb(image) {
         var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
         pos += 4;
 
-        if (chunktype == "GLUL") {
-            result = image.slice(pos, pos+chunklen);
+        if (chunktype == "RIdx") {
+            var npos = pos;
+            var numchunks = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
+            npos += 4;
+            for (ix=0; ix<numchunks; ix++) {
+                var chunkusage = String.fromCharCode(image[npos+0], image[npos+1], image[npos+2], image[npos+3]);
+                npos += 4;
+                var chunknum = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
+                npos += 4;
+                var chunkpos = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
+                npos += 4;
+                rindex.push( { usage:chunkusage, num:chunknum, pos:chunkpos } );
+            }
         }
         if (chunktype == "IFmd") {
             var arr = image.slice(pos, pos+chunklen);
@@ -368,7 +397,7 @@ function unpack_blorb(image) {
             var met = new Element('metadata').update(dat);
             if (met.down('bibliographic')) {
                 var els = met.down('bibliographic').childElements();
-                var el, ix;
+                var el;
                 for (ix=0; ix<els.length; ix++) {
                     el = els[ix];
                     if (el.tagName.toLowerCase() == 'xtitle')
@@ -382,6 +411,23 @@ function unpack_blorb(image) {
         pos += chunklen;
         if (pos & 1)
             pos++;
+    }
+
+    for (ix=0; ix<rindex.length; ix++) {
+        var el = rindex[ix];
+        pos = el.pos;
+        var chunktype = String.fromCharCode(image[pos+0], image[pos+1], image[pos+2], image[pos+3]);
+        pos += 4;
+        var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
+        pos += 4;
+
+        console.log("### " + el.usage + " " + el.num + " " + chunktype + " " + chunklen);
+        if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
+            result = image.slice(pos, pos+chunklen);
+        }
+        if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
+            datachunks[el.num] = { data:image.slice(pos, pos+chunklen), type:chunktype };
+        }
     }
 
     return result;
@@ -492,7 +538,8 @@ function start_game(image) {
 /* End of GiLoad namespace function. Return the object which will
    become the GiLoad global. */
 return {
-    load_run: load_run
+    load_run: load_run,
+    find_data_chunk: find_data_chunk
 };
 
 }();
