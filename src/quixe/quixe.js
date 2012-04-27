@@ -75,6 +75,10 @@ function quixe_prepare(image, all_options) {
     if (all_options) {
         opt_rethrow_exceptions = all_options.rethrow_exceptions;
     }
+
+    if (all_options && all_options.debug_info_data_chunk) {
+        parse_inform_debug_data(all_options.debug_info_data_chunk);
+    }
 }
 
 /* This is called by the page (or the page's display library) when it
@@ -182,12 +186,16 @@ function qobjdump(obj, depth) {
 function qstackdump() {
     if (!stack || !stack.length)
         return;
-    var ix;
+    var ix, val, debugfunc;
     var frm;
     var ls = [];
     for (ix=0; ix<stack.length; ix++) {
         frm = stack[ix];
-        ls.push("0x"+frm.vmfunc.funcaddr.toString(16));
+        val = "0x"+frm.vmfunc.funcaddr.toString(16);
+        debugfunc = debuginfo.functionmap[frm.vmfunc.funcaddr];
+        if (debugfunc)
+            val = val + (" \"" + debugfunc.name + "\"");
+        ls.push(val);
     }
     qlog("VM stack dump: " + ls.join(", "));
 }
@@ -5807,6 +5815,179 @@ function assert_heap_valid() {
         fatal_error("Heap inconsistency: overrun at end of heap");
 }
 
+var debuginfo = {
+    map: {},
+    functions: [],
+    functionmap: {}
+};
+
+function quixe_get_debuginfo() {
+    return debuginfo;
+}
+
+function parse_inform_debug_data(datachunknum) {
+    var el = GiLoad.find_data_chunk(datachunknum);
+    if (!el)
+        return;
+    var buf = el.data;
+    var done;
+    var pos, oldpos;
+    
+    if (!(buf[0] == 0xDE && buf[1] == 0xBF && buf[2] == 0 && buf[3] == 0))
+        return;
+    
+    var informversion = (buf[4]<<8) | (buf[5]);
+    pos = 6;
+    done = false;
+
+    while (!done) {
+        var rectype = buf[pos++];
+
+        switch (rectype) {
+            case 0:
+            case undefined:
+                done = true;
+                break;
+
+            case 1: /* file */
+                var filenum = buf[pos++];
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var includename = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var filename = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 2: /* class */
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var classname = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                var linestart = buf.slice(pos, pos+4);
+                pos += 4;
+                var lineend = buf.slice(pos, pos+4);
+                pos += 4;
+                break;
+
+            case 3: /* object */
+                var objnum = (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var objname = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                var linestart = buf.slice(pos, pos+4);
+                pos += 4;
+                var lineend = buf.slice(pos, pos+4);
+                pos += 4;
+                break;
+
+            case 4: /* global */
+                var num = (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 5: /* attribute */
+                var num = (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 6: /* property */
+                var num = (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 7: /* fake action */
+                var num = (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 8: /* action */
+                var num = (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 9: /* header */
+                pos += 64;
+                break;
+
+            case 10: /* sequence point */
+                var funcnum = (buf[pos++]<<8) | (buf[pos++]);
+                var seqcount = (buf[pos++]<<8) | (buf[pos++]);
+                pos += seqcount * 6;
+                break;
+
+            case 11: /* function */
+                var funcnum = (buf[pos++]<<8) | (buf[pos++]);
+                var line = buf.slice(pos, pos+4);
+                pos += 4;
+                var funcaddr = (buf[pos++]<<16) | (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var funcname = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                var locals = [];
+                while (buf[pos]) {
+                    oldpos = pos; while (buf[pos]) { pos++ };
+                    var locname = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                    pos++;
+                    locals.push(locname);
+                }
+                pos++;
+                debuginfo.functions.push({ 
+                    num:funcnum, name:funcname, addr:funcaddr,
+                    locals:locals });
+                break;
+
+            case 12: /* array */
+                var arrayaddr = (buf[pos++]<<8) | (buf[pos++]);
+                oldpos = pos; while (buf[pos]) { pos++ };
+                var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                pos++;
+                break;
+
+            case 13: /* map */
+                while (buf[pos]) {
+                    oldpos = pos; while (buf[pos]) { pos++ };
+                    var name = String.fromCharCode.apply(this, buf.slice(oldpos, pos));
+                    pos++;
+                    var addr = (buf[pos++]<<16) | (buf[pos++]<<8) | (buf[pos++]);
+                    debuginfo.map[name] = addr;
+                }
+                pos++;
+                break;
+
+            case 14: /* function end */
+                var funcnum = (buf[pos++]<<8) | (buf[pos++]);
+                var line = buf.slice(pos, pos+4);
+                pos += 4;
+                var endaddr = (buf[pos++]<<16) | (buf[pos++]<<8) | (buf[pos++]);
+                break;                
+
+            default:
+                qlog("Unknown record type in debug data: " + rectype);
+                done = true;
+                break;
+        }
+    }
+
+    var funcbase = debuginfo.map["code area"];
+    if (funcbase) {
+        var ix;
+        for (ix=0; ix<debuginfo.functions.length; ix++) {
+            var func = debuginfo.functions[ix];
+            debuginfo.functionmap[funcbase+func.addr] = func;
+        }
+    }
+}
+
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
    or the game ends, this calls Glk.update() and exits.
 */
@@ -5876,6 +6057,7 @@ return {
     resume: quixe_resume,
     get_signature: quixe_get_signature,
     get_statistics: quixe_get_statistics,
+    get_debuginfo: quixe_get_debuginfo,
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
