@@ -91,6 +91,7 @@ on the web site), copy play-remote.html.
   - Included GlkOte ### (non-support for Glk 0.7.3: expanded sound functions;
     support for Glk 0.7.4: resource streams)
   - Fixed a bug in glk_cancel_hyperlink_event().
+  - Fixed a bug where strings in RAM were being incorrectly cached.
 
 - 1.1.1 (February 17, 2011):
   - Included GlkOte 1.2.3 (support for Glk 0.7.2: date and time functions)
