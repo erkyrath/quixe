@@ -4199,7 +4199,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         else
             addrkey = addr+"/"+inmiddle+"/"+bitnum;
 
-        if (vmstring_table !== undefined) {
+        if (vmstring_table !== undefined && addr < ramstart) {
             strop = vmstring_table[addrkey];
             if (strop === undefined) {
                 strop = compile_string(iosysmode, addr, inmiddle, bitnum);
