@@ -333,6 +333,9 @@ function glkote_update(arg) {
   if (arg.input != null)
     accept_inputset(arg.input);
 
+  if (arg.specialinput != null)
+    accept_specialinput(arg.specialinput);
+
   /* Any buffer windows that have changed need to be scrolled down.
      Then, we take the opportunity to update topunseen. (If a buffer
      window hasn't changed, topunseen hasn't changed.) */
@@ -403,9 +406,10 @@ function glkote_update(arg) {
      momentarily.) */
   readjust_paging_focus(false);
 
-  /* Disable everything, if that was requested. */
+  /* Disable everything, if that was requested (or if this is a special
+     input cycle). */
   disabled = false;
-  if (arg.disable) {
+  if (arg.disable || arg.specialinput) {
     disabled = true;
     windowdic.values().each(function(win) {
       if (win.inputel) {
@@ -990,6 +994,27 @@ function accept_inputset(arg) {
   });
 }
 
+function accept_specialinput(arg) {
+  if (arg.type == 'fileref_prompt') {
+    var replyfunc = function(ref) {
+      send_response('specialresponse', null, 'fileref_prompt', ref);
+    };
+    try {
+      var writable = (arg.filemode != 'read');
+      Dialog.open(writable, arg.filetype, arg.gameid, replyfunc);
+    }
+    catch (ex) {
+      GlkOte.log('Unable to open file dialog: ' + ex);
+      /* Return a failure. But we don't want to call send_response before
+         glkote_update has finished, so we defer the reply slightly. */
+      replyfunc.defer(null);
+    }
+  }
+  else {
+    glkote_error('Request for unknown special input type: ' + arg.type);
+  }
+}
+
 /* Return the vertical offset (relative to the parent) of the top of the 
    last child of the parent.
 */
@@ -1295,7 +1320,7 @@ function submit_line_input(win, inputel, termkey) {
    is why most of the invocations pass three arguments instead of four.
 */
 function send_response(type, win, val, val2) {
-  if (disabled)
+  if (disabled && type != 'specialresponse')
     return;
 
   var winid = 0;
@@ -1320,11 +1345,15 @@ function send_response(type, win, val, val2) {
   else if (type == 'external') {
     res.value = val;
   }
+  else if (type == 'specialresponse') {
+    res.response = val;
+    res.value = val2;
+  }
   else if (type == 'init' || type == 'arrange') {
     res.metrics = val;
   }
 
-  if (!(type == 'init' || type == 'refresh')) {
+  if (!(type == 'init' || type == 'refresh' || type == 'specialresponse')) {
     windowdic.values().each(function(win) {
       var savepartial = (type != 'line' && type != 'char') 
                         || (win.id != winid);

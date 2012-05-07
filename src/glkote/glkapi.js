@@ -52,6 +52,8 @@ var VM = null;
 
 var has_exited = false;
 var ui_disabled = false;
+var ui_specialinput = null;
+var ui_specialcallback = null;
 var event_generation = 0;
 var current_partial_inputs = null;
 var current_partial_outputs = null;
@@ -136,6 +138,12 @@ function accept_ui_event(obj) {
         if (gli_rootwin)
             gli_window_rearrange(gli_rootwin, box);
         handle_arrange_input();
+        break;
+
+    case 'specialresponse':
+        if (obj.response == 'fileref_prompt') {
+            gli_fileref_create_by_prompt_callback(obj);
+        }
         break;
     }
 }
@@ -443,6 +451,11 @@ function update() {
     dataobj.windows = winarray;
     dataobj.content = contentarray;
     dataobj.input = inputarray;
+
+    if (ui_specialinput) {
+        //qlog("### special input: " + ui_specialinput.type);
+        dataobj.specialinput = ui_specialinput;
+    }
 
     if (ui_disabled) {
         //qlog("### disabling ui");
@@ -1976,7 +1989,8 @@ function RefStruct(numels) {
 }
 
 /* Dummy return value, which means that the Glk call is still in progress,
-   or will never return at all. This is used by glk_exit() and glk_select().
+   or will never return at all. This is used by glk_exit(), glk_select(),
+   and glk_fileref_create_by_prompt().
 */
 var DidNotReturn = { dummy: 'Glk call has not yet returned' };
 
@@ -3794,44 +3808,65 @@ function glk_fileref_create_by_name(usage, filename, rock) {
 }
 
 function glk_fileref_create_by_prompt(usage, fmode, rock) {
-    var writable = (fmode != Const.filemode_Read);
+    var modename;
+
     var filetype = (usage & Const.fileusage_TypeMask);
     var filetypename = FileTypeMap[filetype];
     if (!filetypename) {
         filetypename = 'xxx';
     }
 
-    /* Set up a callback closure, which hangs on to the usage and rock
-       values from this context. This will be called when the Dialog
-       operation is completed. */
-    var callback = function(ref) {
-        if (gli_selectref)
-            return;
-        ui_disabled = false;
-        event_generation += 1;
-        var fref = null;
-        if (ref) {
-            fref = gli_new_fileref(ref.filename, usage, rock, ref);
-        }
-        if (window.GiDispa)
-            GiDispa.prepare_resume(fref);
-        VM.resume();
+    switch (fmode) {
+        case Const.filemode_Write:
+            modename = 'write';
+            break;
+        case Const.filemode_ReadWrite:
+            modename = 'readwrite';
+            break;
+        case Const.filemode_WriteAppend:
+            modename = 'writeappend';
+            break;
+        case Const.filemode_Read:
+        default:
+            modename = 'read';
+            break;
     }
 
-    try {
-        var gameid = '';
-        if (filetype == Const.fileusage_SavedGame)
-            gameid = VM.get_signature();
-        Dialog.open(writable, filetypename, gameid, callback);
-    }
-    catch (ex) {
-        GlkOte.log('Unable to select file: ' + ex);
-        return null;
-    }
+    var special = {
+        type: 'fileref_prompt',
+        filetype: filetypename,
+        filemode: modename
+    };
+    var callback = {
+        usage: usage,
+        rock: rock
+    };
 
-    ui_disabled = true;
+    if (filetype == Const.fileusage_SavedGame)
+        special.gameid = VM.get_signature();
+
+    ui_specialinput = special;
+    ui_specialcallback = callback;
     gli_selectref = null;
     return DidNotReturn;
+}
+
+function gli_fileref_create_by_prompt_callback(obj) {
+    var ref = obj.value;
+    var usage = ui_specialcallback.usage;
+    var rock = ui_specialcallback.rock;
+
+    var fref = null;
+    if (ref) {
+        fref = gli_new_fileref(ref.filename, usage, rock, ref);
+    }
+
+    ui_specialinput = null;
+    ui_specialcallback = null;
+
+    if (window.GiDispa)
+        GiDispa.prepare_resume(fref);
+    VM.resume();
 }
 
 function glk_fileref_destroy(fref) {
