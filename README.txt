@@ -85,10 +85,10 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- ###
+- 1.2.0 (May 7, 2012)
   - Ensure that gi_load.js works no matter what order the javascript
     libraries load.
-  - Included GlkOte ### (non-support for Glk 0.7.3: expanded sound functions;
+  - Included GlkOte 1.3.0 (non-support for Glk 0.7.3: expanded sound functions;
     support for Glk 0.7.4: resource streams)
   - Fixed a bug in glk_cancel_hyperlink_event().
   - Fixed a bug where strings in RAM were being incorrectly cached.
