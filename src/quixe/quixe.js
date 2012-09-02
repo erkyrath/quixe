@@ -5435,9 +5435,11 @@ function vm_restore(streamid) {
     }
     if (!chunks["QFun"]) {
         qlog("vm_restore failed: missing required QFun chunk");
+        return false;
     }
     if (!chunks["Stks"]) {
         qlog("vm_restore failed: missing required Stks chunk");
+        return false;
     }
     
     // The point of no return.    
