@@ -5446,6 +5446,9 @@ function vm_restore(streamid) {
         return false;
     }
     var chunks = unpack_iff_chunks(quetzal.slice(4));
+
+    // Unpack the chunks map into the VM state. (This is destructive to
+    // the contents of chunks.)
     
     if (!chunks["IFhd"]) {
         qlog("vm_restore failed: missing required IFhd chunk");
@@ -5466,7 +5469,7 @@ function vm_restore(streamid) {
         return false;
     }
     
-    // The point of no return.    
+    // The point of no return.
     var protect = copy_protected_range();
     heap_clear();
     
@@ -5499,18 +5502,29 @@ function vm_restore(streamid) {
         stack[i].depth = i;
     }
     frame = stack[stack.length - 1];
-    
-    if (chunks["MAll"]) {
-        heapstart = ByteRead4(chunks["MAll"], 0);
-        var numblocks = ByteRead4(chunks["MAll"], 4);
-        var heapend = heapstart;
+
+    var heapchunk = chunks["MAll"];
+    if (heapchunk) {
+        heapstart = ByteRead4(heapchunk, 0);
+        var numblocks = ByteRead4(heapchunk, 4);
+
         for (var i = 0; i < numblocks; i++) {
-            var addr = ByteRead4(chunks["MAll"], 8 + 4*i);
-            var size = ByteRead4(chunks["MAll"], 12 + 4*i);
+            var addr = ByteRead4(heapchunk, 8 + 8*i);
+            var size = ByteRead4(heapchunk, 12 + 8*i);
+            usedlist.push(new HeapBlock(addr, size));
+        }
+
+        // This list may be out-of-order. Sort it by address.
+        usedlist.sort(function(blk1, blk2) {return blk1.addr - blk2.addr;});
+
+        // Create freelist blocks to fill in the gaps.
+        var heapend = heapstart;
+        for (var i = 0; i < usedlist.length; i++) {
+            var addr = usedlist[i].addr;
+            var size = usedlist[i].size;
             if (addr < heapend || (addr + size) > endmem) {
                 fatal_error("vm_restore failed: corrupt dynamic heap");
             }
-            usedlist.push(new HeapBlock(addr, size));
             if (addr > heapend) {
                 freelist.push(new HeapBlock(heapend, addr - heapend));
             }
@@ -5520,6 +5534,8 @@ function vm_restore(streamid) {
             freelist.push(new HeapBlock(heapend, endmem - heapend));
         }
     }
+
+    ;;;assert_heap_valid(); //assert
     
     paste_protected_range(protect);
     return true;
@@ -5577,6 +5593,7 @@ function vm_restoreundo() {
     ;;;if (memmap.length != endmem) {
     ;;;    fatal_error("Memory length was incorrect after undo."); //assert
     ;;;}
+    ;;;assert_heap_valid(); //assert
 
     return true;
 }
@@ -5819,7 +5836,8 @@ function heap_free(addr) {
    call it in debug assertions.
 */
 function assert_heap_valid() {
-    if (!heap_is_active()) {        
+    //qlog("### heap check: " + usedlist.length + " used, " + freelist.length + " free");
+    if (!heap_is_active()) {
         if (heapstart != 0)
             fatal_error("Heap inconsistency: heapstart nonzero");
 
@@ -5841,11 +5859,11 @@ function assert_heap_valid() {
         var u = usedlist[upos];
         var f = freelist[fpos];
         if (u && u.addr == addr) {
-            //qlog("###"+u.addr+" ("+u.size+" alloc)");
+            //qlog("###..."+u.addr+" ("+u.size+" alloc)");
             addr += u.size;
             upos++;
         } else if (f && f.addr == addr) {
-            //qlog("###"+f.addr+" ("+f.size+" free)");
+            //qlog("###..."+f.addr+" ("+f.size+" free)");
             addr += f.size;
             fpos++;
         } else {
