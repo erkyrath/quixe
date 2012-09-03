@@ -209,6 +209,11 @@ function qstackdump() {
     var ls = [];
     for (ix=0; ix<stack.length; ix++) {
         frm = stack[ix];
+        if (!frm.vmfunc.funcaddr) {
+            // Can't get information from a ghost vmfunc.
+            ls.push("(anonymous)");
+            continue;
+        }
         val = "0x"+frm.vmfunc.funcaddr.toString(16);
         debugfunc = debuginfo.functionmap[frm.vmfunc.funcaddr];
         if (debugfunc)
@@ -496,9 +501,16 @@ function make_code(val, arg) {
    add it to the permanent vmfunc_table.
 */
 function VMFunc(funcaddr, startpc, localsformat, rawformat) {
-    this.funcaddr = funcaddr;
-    this.startpc = startpc;
-    this.functype = Mem1(funcaddr); /* 0xC0 or 0xC1 */
+    if (!funcaddr) {
+        this.funcaddr = null;
+        this.startpc = null;
+        this.functype = null;
+    }
+    else {
+        this.funcaddr = funcaddr;
+        this.startpc = startpc;
+        this.functype = Mem1(funcaddr); /* 0xC0 or 0xC1 */
+    }
 
     /* Addresses of all known (or predicted) paths for this function. */
     this.pathaddrs = {};
@@ -552,6 +564,10 @@ function VMFunc(funcaddr, startpc, localsformat, rawformat) {
 /* One stack frame on the execution stack. This includes local variables
    and the value stack. It does not contain the spec-defined byte sequence
    for the stack frame; we generate that at save time.
+
+   If we're deserializing a saved game, the vmfunc isn't a "real" vmfunc,
+   but a ghost built from the saved stack frame. In particular, 
+   vmfunc.funcaddr and vmfunc.startpc are null.
 */
 function StackFrame(vmfunc) {
     var ix;
@@ -638,7 +654,7 @@ function push_serialized_stackframe(frame, arr) {
 /* Pop a stack frame from the end of the given byte array.
    Returns a deserialized StackFrame object, or undefined on failure.
  */
-function pop_deserialized_stackframe(arr, vmfunc) {
+function pop_deserialized_stackframe(arr) {
     // The last 4 bytes should be the frame pointer.
     var frameptr = ByteRead4(arr, arr.length - 4);
     if (frameptr < 0 || frameptr >= arr.length) {
@@ -647,20 +663,37 @@ function pop_deserialized_stackframe(arr, vmfunc) {
     }
     arr = arr.splice(frameptr, arr.length);
     
-    // Frame length and locals format, which we don't actually need.
-    // But as a sanity check, compare them against the compiled func.
+    // Frame length and locals format. We'll need this to build a fake
+    // stack frame.
     var framelen = ByteRead4(arr, 0);
     var localspos = ByteRead4(arr, 4);
-    if (localspos != (8 + vmfunc.rawformat.length)) {
-        qlog("LocalsPos in save file (" + localspos + ")" +
-            " doesn't match game image (" + (8 + vmfunc.rawformat.length) + ")");
-        return undefined;
+
+    var rawformat = arr.slice(8, localspos);
+
+    /* Go through the function's locals-format list, and construct a
+       slightly nicer description of the locals. (An array of [size, num].) */
+    var localsformat = [];
+    var addr = 8;
+    while (1) {
+        /* Grab two bytes from the locals-format list. These are 
+           unsigned (0..255 range). */
+        var loctype = ByteRead1(arr, addr);
+        addr++;
+        var locnum = ByteRead1(arr, addr);
+        addr++;
+
+        if (loctype == 0) {
+            break;
+        }
+        if (loctype != 1 && loctype != 2 && loctype != 4) {
+            fatal_error("Invalid local variable size in function header.", loctype);
+        }
+        
+        localsformat.push({ size:loctype, count:locnum });
     }
-    if (framelen != (localspos + vmfunc.locallen)) {
-        qlog("FrameLen in save file (" + framelen + ")" +
-            " doesn't match game image (" + (localspos + vmfunc.locallen) + ")");
-        return undefined;
-    }
+
+    // Build the fake VMFunc that will serve this stack frame.
+    var vmfunc = new VMFunc(null, null, localsformat, rawformat);
     
     // Build an empty frame.
     var frame = new StackFrame(vmfunc);
@@ -5353,15 +5386,6 @@ function vm_save(streamid) {
     }
     chunks["CMem"] = compress_bytes(chunks["CMem"]);
     
-    // Non-standard extension to Quetzal: we need the function address for each
-    // stack frame in order to rebuild the corresponding VMFunc objects when
-    // restoring. This shouldn't prevent anyone else from reading our files
-    // (not that we can easily export them right now anyway).
-    chunks["QFun"] = [];
-    for (var i = 0; i < stack.length; i++) {
-        BytePush4(chunks["QFun"], stack[i].vmfunc.funcaddr);        
-    }
-    
     chunks["Stks"] = [];
     for (var i = 0; i < stack.length; i++) {
         push_serialized_stackframe(stack[i], chunks["Stks"]);
@@ -5433,10 +5457,6 @@ function vm_restore(streamid) {
         qlog("vm_restore failed: missing required CMem chunk");
         return false;
     }
-    if (!chunks["QFun"]) {
-        qlog("vm_restore failed: missing required QFun chunk");
-        return false;
-    }
     if (!chunks["Stks"]) {
         qlog("vm_restore failed: missing required Stks chunk");
         return false;
@@ -5452,22 +5472,11 @@ function vm_restore(streamid) {
     for (var i = ramstart; i < game_image.length; i++) {
         memmap[i] ^= game_image[i];
     }
-    
-    var vmfuncs = [];
-    for (var pos = 0; pos < chunks["QFun"].length; pos += 4) {
-        var addr = ByteRead4(chunks["QFun"], pos);
-        var vmfunc = vmfunc_table[addr];
-        if (vmfunc === undefined) {
-            vmfunc = compile_func(addr);
-            if (addr < ramstart)
-                vmfunc_table[addr] = vmfunc;
-        }
-        vmfuncs.push(vmfunc);
-    }
-    
+
+    var stackchunk = chunks["Stks"];
     stack = [];
-    for (var i = vmfuncs.length - 1; i >= 0; i--) {
-        frame = pop_deserialized_stackframe(chunks["Stks"], vmfuncs[i]);
+    while (stackchunk.length) {
+        frame = pop_deserialized_stackframe(stackchunk);
         if (!frame) {
             fatal_error("vm_restore failed: bad stack frame");
         }
