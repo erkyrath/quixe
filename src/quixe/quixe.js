@@ -5473,6 +5473,9 @@ function vm_restore(streamid) {
     var newendmem = ByteRead4(chunks["CMem"], 0);
     var ram_xor = chunks["CMem"].slice(4);
     ram_xor = decompress_bytes(ram_xor);
+    // The trailing zeroes may have been snipped; add them in.
+    while (ram_xor.length < newendmem - ramstart)
+        ram_xor.push(0);
     change_memsize(newendmem, false);
     memmap = game_image.slice(0, ramstart).concat(ram_xor);
     for (var i = ramstart; i < game_image.length; i++) {
