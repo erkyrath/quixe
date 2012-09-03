@@ -427,6 +427,9 @@ function unpack_blorb(image) {
         if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
             datachunks[el.num] = { data:image.slice(pos, pos+chunklen), type:chunktype };
         }
+        if (el.usage == "Data" && (chunktype == "FORM")) {
+            datachunks[el.num] = { data:image.slice(pos-8, pos+chunklen), type:"BINA" };
+        }
     }
 
     return result;
