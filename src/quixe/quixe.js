@@ -5380,11 +5380,15 @@ function vm_save(streamid) {
     
     chunks["IFhd"] = game_image.slice(0, 128);
     
-    chunks["CMem"] = memmap.slice(ramstart);
+    var cmem = memmap.slice(ramstart);
     for (var i = ramstart; i < game_image.length; i++) {
-        chunks["CMem"][i - ramstart] ^= game_image[i];
+        cmem[i - ramstart] ^= game_image[i];
     }
-    chunks["CMem"] = compress_bytes(chunks["CMem"]);
+    cmem = compress_bytes(cmem);
+    cmem.splice(0, 0, 0,0,0,0); // prepend four zeroes
+    // Write in the endmem value
+    ByteWrite4(cmem, 0, endmem);
+    chunks["CMem"] = cmem;
     
     chunks["Stks"] = [];
     for (var i = 0; i < stack.length; i++) {
@@ -5466,12 +5470,18 @@ function vm_restore(streamid) {
     var protect = copy_protected_range();
     heap_clear();
     
-    var ram_xor = decompress_bytes(chunks["CMem"]);
-    change_memsize(ramstart + ram_xor.length, false);
+    var newendmem = ByteRead4(chunks["CMem"], 0);
+    var ram_xor = chunks["CMem"].slice(4);
+    ram_xor = decompress_bytes(ram_xor);
+    change_memsize(newendmem, false);
     memmap = game_image.slice(0, ramstart).concat(ram_xor);
     for (var i = ramstart; i < game_image.length; i++) {
         memmap[i] ^= game_image[i];
     }
+
+    ;;;if (memmap.length != endmem) {
+    ;;;    fatal_error("Memory length was incorrect after restore."); //assert
+    ;;;}
 
     var stackchunk = chunks["Stks"];
     stack = [];
