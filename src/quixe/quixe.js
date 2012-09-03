@@ -5504,7 +5504,7 @@ function vm_restore(streamid) {
     frame = stack[stack.length - 1];
 
     var heapchunk = chunks["MAll"];
-    if (heapchunk) {
+    if (heapchunk && heapchunk.length >= 8) {
         heapstart = ByteRead4(heapchunk, 0);
         var numblocks = ByteRead4(heapchunk, 4);
 
@@ -5836,7 +5836,7 @@ function heap_free(addr) {
    call it in debug assertions.
 */
 function assert_heap_valid() {
-    //qlog("### heap check: " + usedlist.length + " used, " + freelist.length + " free");
+    //qlog("### heap check: heapstart " + heapstart + ", " + usedlist.length + " used, " + freelist.length + " free");
     if (!heap_is_active()) {
         if (heapstart != 0)
             fatal_error("Heap inconsistency: heapstart nonzero");
