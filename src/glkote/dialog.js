@@ -1064,14 +1064,19 @@ else {
 */
 
 var localStorage = null;
-if (window.localStorage != null) {
-    /* This is the API object for HTML5 browser storage. */
-    localStorage = window.localStorage;
+try {
+    /* Accessing window.localStorage might throw a security exception. */
+    if (window.localStorage != null) {
+        /* This is the API object for HTML5 browser storage. */
+        localStorage = window.localStorage;
+    }
+    else if (window.globalStorage != null) {
+        /* This is a non-standard API used in Firefox 3.0 (but not 3.5). */
+        localStorage = window.globalStorage[location.hostname];
+    }
 }
-else if (window.globalStorage != null) {
-    /* This is a non-standard API used in Firefox 3.0 (but not 3.5). */
-    localStorage = window.globalStorage[location.hostname];
-}
+catch (ex) { }
+
 if (localStorage == null) {
     /* This browser doesn't support storage at all. We'll whip up a
        simple implementation. It will only last as long as the window
