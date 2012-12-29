@@ -90,6 +90,8 @@ on the web site), copy play-remote.html.
     CMem chunk had the wrong format, and a non-standard QFun chunk was
     stored.) This means that saved games from old versions will not load.
   - Fixed bugs restoring a saved-game file with an active heap.
+  - Fixed a bug preventing the game from running if you have Firefox's
+    cookies disabled. (Now it will run, but external files will be transient.)
   - Updated the Blorb-resource functions to understand FORM chunks
     (Glk 0.7.4 amendment).
 
