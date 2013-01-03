@@ -2,7 +2,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
  * 
- * This Javascript library is copyright 2010-2012 by Andrew Plotkin. You may
+ * This Javascript library is copyright 2010-2013 by Andrew Plotkin. You may
  * copy and distribute it freely, by any means and under any conditions,
  * as long as the code and documentation is not changed. You may also
  * incorporate this code into your own program and distribute that, or

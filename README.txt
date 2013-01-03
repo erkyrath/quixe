@@ -134,8 +134,8 @@ on the web site), copy play-remote.html.
 
 * Permissions
 
-The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010 by
-Andrew Plotkin. You may copy and distribute them freely, by any means
+The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010-3
+by Andrew Plotkin. You may copy and distribute them freely, by any means
 and under any conditions, as long as the code and documentation is not
 changed. You may also incorporate this code into your own program and
 distribute that, or modify this code and use and distribute the
