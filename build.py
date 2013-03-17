@@ -15,8 +15,10 @@ regex_debug = re.compile(';;;.+$', re.M)
 
 def compress_source(target, srcls):
     print 'Writing', target
-    proc = subprocess.Popen(['java', '-jar', 'tools/yuicompressor-2.4.2.jar', '--type', 'js', '-o', target],
-                            stdin=subprocess.PIPE)
+    targetfl = open(target, 'w')
+    proc = subprocess.Popen(['python', 'tools/rjsmin.py'],
+                            stdin=subprocess.PIPE,
+                            stdout=targetfl)
     for src in srcls:
         fl = open(src)
         dat = fl.read()
@@ -27,6 +29,7 @@ def compress_source(target, srcls):
     ret = proc.wait()
     if (ret):
         raise Exception('Process result code %d' % (ret,))
+    targetfl.close()
 
 compress_source(
     'lib/glkote.min.js', [

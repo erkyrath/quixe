@@ -64,7 +64,7 @@ on the web site), copy play-remote.html.
 
 - lib -- compressed Javascript source code
   (each file contains several files from the src directory, run through
-  yuicompressor)
+  rjsmin.py)
   - glkote.min.js -- prototype and glkote files
   - quixe.min.js  -- quixe files
 
@@ -79,7 +79,7 @@ on the web site), copy play-remote.html.
   - glulxercise.ulx.js -- Glulxercise VM unit test
 
 - tools -- random associated scripts and tools
-  - yuicompressor-2.4.2.jar -- Javascript compressor
+  - rjsmin.py -- Javascript compressor
   - game2js.py -- convert game files to base64 for easier loading
 
 
@@ -150,12 +150,7 @@ This package includes the Prototype JavaScript framework, version 1.6.1
 Prototype is freely distributable under the terms of an MIT-style license.
 For details, see the Prototype web site: <http://www.prototypejs.org/>
 
-The build script uses the YUI Compressor, version 2.4.2 (which is included
-as a build tool). The YUI Compressor was written and is maintained by:
-Julien Lecomte <jlecomte@yahoo-inc.com>
-Copyright (c) 2007-2009, Yahoo! Inc. All rights reserved.
-All code specific to YUI Compressor is issued under a BSD license.
-YUI Compressor extends and implements code from Mozilla's Rhino project.
-Rhino is issued under the Mozilla Public License (MPL), and MPL applies
-to the Rhino source and binaries that are distributed with YUI Compressor.
-For source and other details: <http://developer.yahoo.com/yui/compressor/>
+The build script uses rJSmin, version 1.0.6 (which is included
+as a build tool). rJSmin was written and is maintained by Andre Malo,
+and is freely distributable under the Apache License, Version 2.0.
+For details, see the rJSmin web site: <http://opensource.perlig.de/rjsmin/>
