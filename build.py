@@ -3,7 +3,7 @@
 # Quixe build script.
 #
 # This packs together all the Javascript source into two files, using
-# yuicompressor. As a special bonus, lines (or part-lines) beginning with
+# rjsmin. As a special bonus, lines (or part-lines) beginning with
 # ';;;' are stripped out. We use this to get rid of debugging log statements
 # and assertions.
 
