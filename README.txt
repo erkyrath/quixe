@@ -85,7 +85,7 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- 1.3.1 (###)
+- 1.3.1 (March 27, 2014)
     Added acceleration functions 8 through 13, which work correctly when
     NUM_ATTR_BYTES is changed.
 
