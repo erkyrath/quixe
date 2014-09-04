@@ -72,6 +72,10 @@
   white-space: pre; /* required for spaces to work right */
 }
 
+.GraphicsWindow {
+  overflow: hidden;
+}
+
 .InvisibleCursor {
   /* This provides the padding below the last line of text (and the input
      prompt). Without this, they'd be flush against the bottom of the

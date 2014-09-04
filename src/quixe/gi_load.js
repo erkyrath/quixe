@@ -421,14 +421,25 @@ function unpack_blorb(image) {
         var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
         pos += 4;
 
+        console.log(chunktype, el);
         if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
             result = image.slice(pos, pos+chunklen);
         }
-        if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
+        else if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
             datachunks[el.num] = { data:image.slice(pos, pos+chunklen), type:chunktype };
         }
-        if (el.usage == "Data" && (chunktype == "FORM")) {
+        else if (el.usage == "Data" && (chunktype == "FORM")) {
             datachunks[el.num] = { data:image.slice(pos-8, pos+chunklen), type:"BINA" };
+        }
+        else if (el.usage == "Pict" && (chunktype == "JPEG" || chunktype == "PNG ")) {
+            var img = new Image();
+            var encoded_data = encode_base64(image.slice(pos, pos+chunklen));
+            var mimetype = chunktype.toLowerCase();
+            while (mimetype[mimetype.length - 1] == " ") {
+                mimetype = mimetype.slice(0, -1);
+            }
+            img.src = "data:image/" + chunktype.toLowerCase() + ";base64," + encoded_data;
+            datachunks[el.num] = { data:img, type:chunktype };
         }
     }
 
@@ -460,6 +471,17 @@ if (window.atob) {
         
         return image;
     }
+    encode_base64 = function(image) {
+        // There's a limit on how much can be piped into .apply() at a time, so
+        // do this in chunks
+        var blocks = [];
+        for (var i = 0, l = image.length; i < l; i += 256) {
+            blocks.push(String.fromCharCode.apply(String, image.slice(i, i + 256)));
+        }
+
+        return btoa(blocks.join(''));
+    }
+    // TODO ie version
 }
 else {
     /* No atob() in Internet Explorer, so we have to invent our own.
