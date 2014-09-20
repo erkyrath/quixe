@@ -1,7 +1,7 @@
 /* GiDispa -- a GlkAPI dispatch layer for Quixe
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
- * 
+ *
  * This Javascript library is copyright 2010-2015 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
@@ -24,7 +24,7 @@ GiDispa = function() {
 var VM = null;
 
 /* Set the VM interface object. This is called by the Glk library, before
-   the VM starts running. 
+   the VM starts running.
 */
 function set_vm(vm_api) {
     VM = vm_api;
@@ -56,11 +56,11 @@ function Prototype(args, retarg) {
     this.args = args;
     this.retarg = retarg;
 }
-function ArgString() { 
+function ArgString() {
     this.macro = 'Byte';
     this.refsize = 1;
 }
-function ArgUnicode() { 
+function ArgUnicode() {
     this.macro = 'Word';
     this.refsize = 4;
 }
@@ -402,7 +402,7 @@ function convert_arg(arg, passin, val) {
     return '???';
 }
 
-/* Convert one simple value (int, char, string, class) from a Glk library 
+/* Convert one simple value (int, char, string, class) from a Glk library
    value into a Glulx value (32-bit unsigned integer).
 */
 function unconvert_arg(arg, val) {
@@ -506,7 +506,7 @@ function build_function(func) {
         else if (arg instanceof ArgRef) {
             refarg = arg.arg;
             out.push('if (callargs['+argpos+'] == 0) {');
-            if (arg.nonnull) 
+            if (arg.nonnull)
                 out.push('  throw("glk '+func.name+': null argument");');
             else
                 out.push('  '+tmpvar+' = null;');
@@ -667,7 +667,7 @@ function build_function(func) {
             throw('buildfunc: unsupported arg type: ' + func.name);
         }
     }
-    
+
     /* Discard any argument arrays. (Retained ones have already been
        added to retained_arrays.) */
     if (arraycount != 0)
@@ -706,7 +706,7 @@ var function_map = {};
 
 /* Given a Glk selector number, return the dispatch function for it.
 
-   The function, when called, should be passed exactly one argument: 
+   The function, when called, should be passed exactly one argument:
    an array of Glulx values, taken straight from the VM. It will return
    a Glulx value (zero, if the Glk call does not return a value).
 
@@ -867,7 +867,7 @@ var class_map = {};
 var last_used_id;
 
 /* Note a newly-created Glk object. The clas argument must be one of
-   the type name strings: "window", "stream", etc. 
+   the type name strings: "window", "stream", etc.
 
    This is called by the Glk library. The object's disprock field is
    set to a 32-bit number.
@@ -886,7 +886,7 @@ function class_register(clas, obj) {
 function class_unregister(clas, obj) {
     if (!obj.disprock || class_map[clas][obj.disprock] === undefined)
         throw('class_unregister: object is not registered');
-    
+
     delete class_map[clas][obj.disprock];
     obj.disprock = undefined;
 }

@@ -1,7 +1,7 @@
 /* GiLoad -- a game-file loader for Quixe
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
- * 
+ *
  * This Javascript library is copyright 2010-2015 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
@@ -14,7 +14,7 @@
  *
  * When you are putting together a Quixe installation page, you call
  * GiLoad.load_run() to get the game started. You should do this in the
- * document's "onload" handler, or later. (If you call it before "onload" 
+ * document's "onload" handler, or later. (If you call it before "onload"
  * time, it may not work.)
  *
  * You can do this in a couple of different ways:
@@ -103,7 +103,7 @@ function load_run(optobj, image, image_format) {
        these do nothing, but game_options can still supply these entries.) */
     all_options.vm = window.Quixe;
     all_options.io = window.Glk;
-    
+
     if (!optobj)
         optobj = window.game_options;
     if (optobj)
@@ -120,7 +120,7 @@ function load_run(optobj, image, image_format) {
     }
 
     if (!gameurl && image) {
-        /* The story data is already loaded -- it's not an a URL at all. 
+        /* The story data is already loaded -- it's not an a URL at all.
            Decode it, and then fire it off. */
         GlkOte.log('### trying pre-loaded load (' + image_format + ')...');
         switch (image_format) {
@@ -200,7 +200,7 @@ function load_run(optobj, image, image_format) {
            a global function processBase64Zcode() with base64 data
            as the argument. */
         GlkOte.log('### trying old-fashioned load...');
-        window.processBase64Zcode = function(val) { 
+        window.processBase64Zcode = function(val) {
             start_game(decode_base64(val));
         };
         jQuery.ajax(gameurl, {
@@ -219,7 +219,7 @@ function load_run(optobj, image, image_format) {
            tag; that will force it to load, and invoke a processBase64Zcode()
            function as above. */
         GlkOte.log('### trying script load...');
-        window.processBase64Zcode = function(val) { 
+        window.processBase64Zcode = function(val) {
             start_game(decode_base64(val));
         };
         var headls = $('head');
@@ -227,7 +227,7 @@ function load_run(optobj, image, image_format) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
-        var script = $('<script>', 
+        var script = $('<script>',
             { src:gameurl, 'type':"text/javascript" });
         /* jQuery is now sensitive about this, and will not allow it as
           a Chrome work-around. We use a raw DOM method instead. */
@@ -300,7 +300,7 @@ function load_run(optobj, image, image_format) {
            but we'll have to insert a <script> tag to do it. */
         var fullurl = all_options.proxy_url + '?encode=base64&callback=processBase64Zcode&url=' + absgameurl;
         GlkOte.log('### trying proxy-script load... (' + fullurl + ')');
-        window.processBase64Zcode = function(val) { 
+        window.processBase64Zcode = function(val) {
             start_game(decode_base64(val));
         };
         var headls = $('head');
@@ -308,7 +308,7 @@ function load_run(optobj, image, image_format) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
-        var script = $('<script>', 
+        var script = $('<script>',
             { src:fullurl, 'type':"text/javascript" });
         headls.append(script);
         return;
@@ -332,11 +332,11 @@ function get_query_params() {
         for (var ix = 0; ix < args.length; ix++) {
             var pair = args[ix].split('=');
             var name = decodeURIComponent(pair[0]);
-            
+
             var value = (pair.length==2)
                 ? decodeURIComponent(pair[1])
                 : name;
-            
+
             map[name] = value;
         }
     }
@@ -344,7 +344,7 @@ function get_query_params() {
     return map;
 }
 
-/* I learned this terrible trick for turning a relative URL absolute. 
+/* I learned this terrible trick for turning a relative URL absolute.
    It's supposed to work on all browsers, if you don't go mad.
    (This uses DOM methods rather than jQuery.)
 */
@@ -372,7 +372,7 @@ function find_data_chunk(val) {
 }
 
 /* Look through a Blorb file (provided as a byte array) and return the
-   Glulx game file chunk (ditto). If no such chunk is found, returns 
+   Glulx game file chunk (ditto). If no such chunk is found, returns
    null.
 
    This also loads the IFID metadata into the metadata object, and
@@ -458,17 +458,17 @@ function decode_raw_text(str) {
 
 /* Convert a base64 string into an array of numeric byte values. Some
    browsers supply an atob() function that does this; on others, we
-   have to implement decode_base64() ourselves. 
+   have to implement decode_base64() ourselves.
 */
 if (window.atob) {
     decode_base64 = function(base64data) {
         var data = atob(base64data);
         var image = Array(data.length);
         var ix;
-        
+
         for (ix=0; ix<data.length; ix++)
             image[ix] = data.charCodeAt(ix);
-        
+
         return image;
     }
 }
@@ -483,7 +483,7 @@ else {
                 out[b64encoder.charAt(ix)] = ix;
             return out;
         })();
-        
+
     decode_base64 = function(base64data) {
         var out = [];
         var c1, c2, c3, e1, e2, e3, e4;
@@ -533,7 +533,7 @@ function start_game(image) {
         var title = null;
         if (metadata)
             title = metadata.title;
-        if (!title && gameurl) 
+        if (!title && gameurl)
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
         if (!title)
             title = 'Game';
