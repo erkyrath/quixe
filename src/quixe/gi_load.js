@@ -91,6 +91,8 @@ var all_options = {
 var gameurl = null;  /* The URL we are loading. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
 var datachunks = {}; /* Indexed by filenum -- loaded from Blorb */
+var pictchunks = {}; /* Indexed by filenum -- loaded from Blorb */
+var sndchunks = {}; /* Indexed by filenum -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -353,6 +355,16 @@ function find_data_chunk(val) {
     return datachunks[val];
 }
 
+/* Similar for picture and sound chunks.
+*/
+function find_picture_chunk(val) {
+    return pictchunks[val];
+}
+
+function find_sound_chunk(val) {
+    return sndchunks[val];
+}
+
 /* Look through a Blorb file (provided as a byte array) and return the
    Glulx game file chunk (ditto). If no such chunk is found, returns 
    null.
@@ -421,7 +433,6 @@ function unpack_blorb(image) {
         var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
         pos += 4;
 
-        console.log(chunktype, el);
         if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
             result = image.slice(pos, pos+chunklen);
         }
@@ -431,6 +442,10 @@ function unpack_blorb(image) {
         else if (el.usage == "Data" && (chunktype == "FORM")) {
             datachunks[el.num] = { data:image.slice(pos-8, pos+chunklen), type:"BINA" };
         }
+        else if (el.usage == "Snd " && (chunktype == "FORM")) {
+            var bytes = image.slice(pos-8, pos+chunklen);
+            sndchunks[el.num] = { track: parse_audio_track(bytes) };
+        }
         else if (el.usage == "Pict" && (chunktype == "JPEG" || chunktype == "PNG ")) {
             var img = new Image();
             var encoded_data = encode_base64(image.slice(pos, pos+chunklen));
@@ -439,12 +454,141 @@ function unpack_blorb(image) {
                 mimetype = mimetype.slice(0, -1);
             }
             img.src = "data:image/" + chunktype.toLowerCase() + ";base64," + encoded_data;
-            datachunks[el.num] = { data:img, type:chunktype };
+            pictchunks[el.num] = { image: img, type: chunktype, height: img.height, width: img.width };
         }
     }
 
     return result;
 }
+
+
+var AudioContext = window.AudioContext || window.webkitAudioContext;
+var audio_context;
+if (AudioContext) {
+    audio_context = new AudioContext();
+}
+
+function parse_audio_track(bytes) {
+    // TODO support vorbis if browser understands it -- trick is that the
+    // vorbis decoding api is async and i don't know how to block the overall
+    // load
+    // TODO vendor the audiofile library
+    var aiff = new AIFFDecoder().decode(encode_raw_text(bytes));
+    var buffer = audio_context.createBuffer(aiff.channels.length, aiff.length, aiff.sampleRate);
+    for (var channel = 0; channel < aiff.channels.length; channel++) {
+        var channel_data = buffer.getChannelData(channel);
+        channel_data.set(aiff.channels[channel]);
+    }
+
+    return buffer;
+}
+
+function AudioChannel() {
+    this.gain_node = audio_context.createGain();
+    this.gain_node.connect(audio_context.destination);
+    this.set_volume(1.0);
+
+    this.source = null;
+    this.start_time = null;
+    this.remaining_loops = null;
+    this.paused = false;
+    this.paused_at = 0;
+}
+
+AudioChannel.prototype.play = function(track, times) {
+    this.track = track;
+    this.paused_at = 0;
+    this.start_time = null;
+
+    if (! this.paused) {
+        this._play(track, times, 0);
+    }
+};
+
+AudioChannel.prototype._play = function(track, times, offset) {
+    this.stop();
+
+    if (times == 0) return;
+
+    this.source = audio_context.createBufferSource();
+    this.source.connect(this.gain_node);
+
+    this.source.buffer = track;
+
+    this.stop_timeout = null;
+    if (times < 0) {
+        this.source.loop = true;
+    }
+    else if (times > 1) {
+        this.source.loop = true;
+        this._stop_in(track.duration * times);
+        this.remaining_loops = times - 1;
+        this.source.addEventListener('ended', this._on_ended.bind(this));
+    }
+
+    this.start_time = audio_context.currentTime - offset;
+    this.source.start(0, offset % track.duration);
+};
+
+AudioChannel.prototype._clear_stop = function() {
+    if (! this.stop_timeout) return;
+
+    window.clearTimeout(this.stop_timeout);
+    this.stop_timeout = null;
+};
+
+AudioChannel.prototype._stop_in = function(time) {
+    this._clear_stop();
+
+    this.stop_begin = audio_context.currentTime;
+    this.stop_after = time;
+    this.stop_timeout = window.setTimeout(this.stop.bind(this), time);
+};
+
+AudioChannel.prototype._on_ended = function() {
+    this.play(this.track, this.remaining_loops);
+};
+
+AudioChannel.prototype.set_volume = function(volume) {
+    this.gain_node.gain.value = volume;
+};
+
+AudioChannel.prototype.stop = function() {
+    if (! this.source) {
+        return;
+    }
+
+    this.source.stop();
+    this.source = null;
+    this.track = null;
+};
+
+AudioChannel.prototype.pause = function() {
+    if (this.paused) return;
+    this.paused = true;
+
+    this._clear_stop();
+    if (this.source) {
+        this.paused_at = audio_context.currentTime - this.start_time;
+        this.source.stop();
+
+        this.stop_after -= audio_context.currentTime - this.stop_begin;
+    }
+    else {
+        this.paused_at = 0;
+    }
+};
+
+AudioChannel.prototype.unpause = function() {
+    if (! this.paused) return;
+    this.paused = false;
+
+    // TODO this is totally wrong, finish please
+    if (this.track)
+        this.play(this.track);
+    if (this.stop_after)
+        this._stop_in(this.stop_after);
+};
 
 /* Convert a byte string into an array of numeric byte values. */
 function decode_raw_text(str) {
@@ -454,6 +598,16 @@ function decode_raw_text(str) {
         arr[ix] = str.charCodeAt(ix) & 0xFF;
     }
     return arr;
+}
+
+function encode_raw_text(bytes) {
+    // There's a limit on how much can be piped into .apply() at a time, so
+    // do this in chunks
+    var blocks = [];
+    for (var i = 0, l = bytes.length; i < l; i += 256) {
+        blocks.push(String.fromCharCode.apply(String, bytes.slice(i, i + 256)));
+    }
+    return blocks.join('');
 }
 
 /* Convert a base64 string into an array of numeric byte values. Some
@@ -563,7 +717,10 @@ function start_game(image) {
    become the GiLoad global. */
 return {
     load_run: load_run,
-    find_data_chunk: find_data_chunk
+    find_data_chunk: find_data_chunk,
+    find_picture_chunk: find_picture_chunk,
+    find_sound_chunk: find_sound_chunk,
+    AudioChannel: AudioChannel,
 };
 
 }();
