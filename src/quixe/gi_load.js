@@ -453,8 +453,15 @@ function unpack_blorb(image) {
             while (mimetype[mimetype.length - 1] == " ") {
                 mimetype = mimetype.slice(0, -1);
             }
+            /* Need a second function to avoid the closure-in-loop problem */
+            img.onload = (function(img, num) {
+                return function() {
+                    pictchunks[num].width = img.width;
+                    pictchunks[num].height = img.height;
+                };
+            })(img, el.num);
             img.src = "data:image/" + chunktype.toLowerCase() + ";base64," + encoded_data;
-            pictchunks[el.num] = { image: img, type: chunktype, height: img.height, width: img.width };
+            pictchunks[el.num] = { image: img, type: chunktype };
         }
     }
 
