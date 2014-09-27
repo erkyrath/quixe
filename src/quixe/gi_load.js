@@ -468,7 +468,9 @@ function unpack_blorb(image) {
     return result;
 }
 
-
+/* This won't be the same AudioContext as the one glkote uses, but we need one
+   to create a web audio buffer in the first place.  Luckily it seems we can
+   use a buffer with a different AudioContext. */
 var AudioContext = window.AudioContext || window.webkitAudioContext;
 var audio_context;
 if (AudioContext) {
@@ -476,10 +478,12 @@ if (AudioContext) {
 }
 
 function parse_audio_track(bytes) {
+    if (! audio_context)
+        return null;
+
     // TODO support vorbis if browser understands it -- trick is that the
     // vorbis decoding api is async and i don't know how to block the overall
     // load
-    // TODO vendor the audiofile library
     var aiff = new AIFFDecoder().decode(encode_raw_text(bytes));
     var buffer = audio_context.createBuffer(aiff.channels.length, aiff.length, aiff.sampleRate);
     for (var channel = 0; channel < aiff.channels.length; channel++) {
@@ -489,113 +493,6 @@ function parse_audio_track(bytes) {
 
     return buffer;
 }
-
-function AudioChannel() {
-    this.gain_node = audio_context.createGain();
-    this.gain_node.connect(audio_context.destination);
-    this.set_volume(1.0);
-
-    this.source = null;
-    this.start_time = null;
-    this.remaining_loops = null;
-    this.paused = false;
-    this.paused_at = 0;
-}
-
-AudioChannel.prototype.play = function(track, times) {
-    this.track = track;
-    this.paused_at = 0;
-    this.start_time = null;
-
-    if (! this.paused) {
-        this._play(track, times, 0);
-    }
-};
-
-AudioChannel.prototype._play = function(track, times, offset) {
-    this.stop();
-
-    if (times == 0) return;
-
-    this.source = audio_context.createBufferSource();
-    this.source.connect(this.gain_node);
-
-    this.source.buffer = track;
-
-    this.stop_timeout = null;
-    if (times < 0) {
-        this.source.loop = true;
-    }
-    else if (times > 1) {
-        this.source.loop = true;
-        this._stop_in(track.duration * times);
-        this.remaining_loops = times - 1;
-        this.source.addEventListener('ended', this._on_ended.bind(this));
-    }
-
-    this.start_time = audio_context.currentTime - offset;
-    this.source.start(0, offset % track.duration);
-};
-
-AudioChannel.prototype._clear_stop = function() {
-    if (! this.stop_timeout) return;
-
-    window.clearTimeout(this.stop_timeout);
-    this.stop_timeout = null;
-};
-
-AudioChannel.prototype._stop_in = function(time) {
-    this._clear_stop();
-
-    this.stop_begin = audio_context.currentTime;
-    this.stop_after = time;
-    this.stop_timeout = window.setTimeout(this.stop.bind(this), time);
-};
-
-AudioChannel.prototype._on_ended = function() {
-    this.play(this.track, this.remaining_loops);
-};
-
-AudioChannel.prototype.set_volume = function(volume) {
-    this.gain_node.gain.value = volume;
-};
-
-AudioChannel.prototype.stop = function() {
-    if (! this.source) {
-        return;
-    }
-
-    this.source.stop();
-    this.source = null;
-    this.track = null;
-};
-
-AudioChannel.prototype.pause = function() {
-    if (this.paused) return;
-    this.paused = true;
-
-    this._clear_stop();
-    if (this.source) {
-        this.paused_at = audio_context.currentTime - this.start_time;
-        this.source.stop();
-
-        this.stop_after -= audio_context.currentTime - this.stop_begin;
-    }
-    else {
-        this.paused_at = 0;
-    }
-};
-
-AudioChannel.prototype.unpause = function() {
-    if (! this.paused) return;
-    this.paused = false;
-
-    // TODO this is totally wrong, finish please
-    if (this.track)
-        this.play(this.track);
-    if (this.stop_after)
-        this._stop_in(this.stop_after);
-};
 
 /* Convert a byte string into an array of numeric byte values. */
 function decode_raw_text(str) {
@@ -727,7 +624,6 @@ return {
     find_data_chunk: find_data_chunk,
     find_picture_chunk: find_picture_chunk,
     find_sound_chunk: find_sound_chunk,
-    AudioChannel: AudioChannel,
 };
 
 }();
