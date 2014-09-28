@@ -516,8 +516,9 @@ function encode_raw_text(bytes) {
 
 /* Convert a base64 string into an array of numeric byte values. Some
    browsers supply an atob() function that does this; on others, we
-   have to implement decode_base64() ourselves. 
+   have to implement it ourselves.
 */
+var decode_base64, encode_base64;
 if (window.atob) {
     decode_base64 = function(base64data) {
         var data = atob(base64data);
@@ -530,8 +531,8 @@ if (window.atob) {
         return image;
     }
     encode_base64 = function(image) {
-        // There's a limit on how much can be piped into .apply() at a time, so
-        // do this in chunks
+        /* There's a limit on how much can be piped into .apply() at a time, so
+           do this in chunks */
         var blocks = [];
         for (var i = 0, l = image.length; i < l; i += 256) {
             blocks.push(String.fromCharCode.apply(String, image.slice(i, i + 256)));
@@ -539,13 +540,12 @@ if (window.atob) {
 
         return btoa(blocks.join(''));
     }
-    // TODO ie version
 }
 else {
     /* No atob() in Internet Explorer, so we have to invent our own.
        This implementation is adapted from Parchment. */
+    var b64encoder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     var b64decoder = (function() {
-            var b64encoder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
             var out = [];
             var ix;
             for (ix=0; ix<b64encoder.length; ix++)
@@ -572,7 +572,23 @@ else {
         if (e3 == 64)
             out.pop();
         return out;
-    }
+    };
+
+    encode_base64 = function(bytes) {
+        var out = [];
+        var c1, c2, c3, e1, e2, e3, e4;
+        for (var i = 0, l = bytes.length; i < l; i += 3) {
+            c1 = bytes[i];
+            c2 = bytes[i + 1] || 0;
+            c3 = bytes[i + 2] || 0;
+            e1 = b64encoder.charAt(c1 >> 2);
+            e2 = b64encoder.charAt(((c1 & 0x03) << 4) + (c2 >> 4));
+            e3 = b64encoder.charAt(((c2 & 0x0f) << 2) + (c3 >> 6));
+            e4 = b64encoder.charAt(c3 & 0x3f);
+            out.push(e1, e2, e3, e4);
+        }
+        return out.join('');
+    };
 }
 
 /* Start the game (after de-blorbing, if necessary).
