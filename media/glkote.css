@@ -57,6 +57,36 @@
   padding: 6px 10px 6px 10px;
 }
 
+.BufferWindow img.image-floated-left {
+  display: block;
+  float: left;
+}
+.BufferWindow img.image-floated-right {
+  display: block;
+  float: right;
+}
+
+.BufferWindow img.image-inline-top {
+  vertical-align: top;
+}
+.BufferWindow img.image-inline-middle {
+  vertical-align: middle;
+}
+.BufferWindow img.image-inline-bottom {
+  vertical-align: bottom;
+}
+
+.float-clear {
+  /* Special "clear floats" token.  This isn't supposed to break the text when
+   * there's nothing to clear, but alas, CSS clear only works on blocks.
+   * Hopefully nobody wants to clear except at the start of a line anyway.
+   */
+  display: block;
+  height: 0;
+  width: 0;
+  clear: both;
+}
+
 .BufferLine {
 }
 
@@ -70,6 +100,10 @@
 
 .GridLine {
   white-space: pre; /* required for spaces to work right */
+}
+
+.GraphicsWindow {
+  overflow: hidden;
 }
 
 .InvisibleCursor {

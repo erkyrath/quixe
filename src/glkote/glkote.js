@@ -59,6 +59,7 @@ var is_ie7 = false;
 var perform_paging = true;
 var detect_external_links = false;
 var regex_external_links = null;
+var capabilities = null;
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -168,7 +169,14 @@ function glkote_init(iface) {
     }
   }
 
-  send_response('init', null, current_metrics);
+  /* Detect capabilities that depend on the client.  The Glk API might not
+     actually be in this browser, so it can't do this. */
+  capabilities = {};
+  var extra = { capabilities: capabilities };
+  capabilities.canvas = !!window.CanvasRenderingContext2D;
+  capabilities.audio = !!AudioContext;
+
+  send_response('init', null, current_metrics, extra);
 }
 
 /* Work out various pixel measurements used to compute window sizes:
@@ -336,6 +344,9 @@ function glkote_update(arg) {
   if (arg.specialinput != null)
     accept_specialinput(arg.specialinput);
 
+  if (arg.sound != null)
+    accept_sound(arg.sound);
+
   /* Any buffer windows that have changed need to be scrolled down.
      Then, we take the opportunity to update topunseen. (If a buffer
      window hasn't changed, topunseen hasn't changed.) */
@@ -486,6 +497,8 @@ function accept_one_window(arg) {
       typeclass = 'GridWindow';
     if (win.type == 'buffer')
       typeclass = 'BufferWindow';
+    if (win.type == 'graphics')
+      typeclass = 'GraphicsWindow';
     var rockclass = 'WindowRock_' + arg.rock;
     frameel = new Element('div',
       { id: 'window'+arg.id,
@@ -542,6 +555,28 @@ function accept_one_window(arg) {
 
   if (win.type == 'buffer') {
     /* Don't need anything? */
+  }
+
+  if (win.type == 'graphics' && capabilities.canvas) {
+    win.frameel.backgroundColor = arg.bgcolor;
+
+    /* Size changes clear the canvas, so we need to create a new one from
+       scratch either way. */
+    var canvas = win.canvas;
+    if (!canvas || canvas.width !== arg.width || canvas.height !== arg.height) {
+      var newcanvas = win.canvas = new Element('canvas');
+      newcanvas.width = arg.width;
+      newcanvas.height = arg.height;
+      var ctx = newcanvas.getContext("2d");
+      ctx.fillStyle = arg.bgcolor;
+      ctx.fillRect(0, 0, newcanvas.width, newcanvas.height);
+
+      if (canvas) {
+          ctx.drawImage(canvas, 0, 0);
+      }
+
+      win.frameel.update(newcanvas);
+    }
   }
 
   /* The trick is that left/right/top/bottom are measured to the outside
@@ -755,6 +790,27 @@ function accept_one_content(arg) {
          into a NBSP. */
       for (sx=0; sx<content.length; sx++) {
         var rdesc = content[sx];
+        // Special non-text tokens
+        if (rdesc.image) {
+          var el = rdesc.image.cloneNode();
+          if (rdesc.width) {
+            el.style.width = rdesc.width + "px";
+            el.style.height = rdesc.height + "px";
+          }
+          if (rdesc.floated) {
+            el.addClassName("image-floated-" + rdesc.floated);
+          }
+          if (rdesc.align) {
+            el.addClassName("image-inline-" + rdesc.align);
+          }
+          divel.insert(el);
+          continue;
+        }
+        if (rdesc.clear) {
+          var el = new Element('span', { 'class': 'float-clear' });
+          divel.insert(el);
+          continue;
+        }
         var rstyle, rtext, rlink;
         if (rdesc.length === undefined) {
           rstyle = rdesc.style;
@@ -767,8 +823,14 @@ function accept_one_content(arg) {
           rtext = content[sx];
           rlink = undefined;
         }
-        var el = new Element('span',
-          { 'class': 'Style_' + rstyle } );
+        var el = new Element('span');
+        if (rstyle === 'blockquote') {
+          /* Blockquote only makes sense applied to a whole paragraph */
+          divel.addClassName('Style_' + rstyle);
+        }
+        else {
+          el.addClassName('Style_' + rstyle);
+        }
         rtext = rtext.replace(regex_long_whitespace, func_long_whitespace);
         if (divel.endswhite) {
           rtext = rtext.replace(regex_initial_whitespace, NBSP);
@@ -840,6 +902,37 @@ function accept_one_content(arg) {
             left: '0px', top: '0px', width: width+'px' });
           cursel.insert(inputel);
         }
+      }
+    }
+  }
+
+  if (win.type == 'graphics' && capabilities.canvas) {
+    win.needscroll = false;
+    var ctx = win.canvas.getContext("2d");
+    ctx.fillStyle = arg.bgcolor;
+    // Keep the background updated so any new space is filled by it between a
+    // resize and a redraw
+    win.frameel.style.backgroundColor = arg.bgcolor;
+
+    for (var i = 0, l = arg.drawstack.length; i < l; i++) {
+      var drawcmd = arg.drawstack[i];
+
+      if (drawcmd.image) {
+        if (drawcmd.width) {
+          ctx.drawImage(drawcmd.image, drawcmd.x, drawcmd.y,
+            draw_cmd.width, draw_cmd.height);
+        }
+        else {
+          ctx.drawImage(drawcmd.image, drawcmd.x, drawcmd.y);
+        }
+      }
+      else if (drawcmd.color) {
+        ctx.fillStyle = drawcmd.color;
+        ctx.fillRect(drawcmd.x, drawcmd.y, drawcmd.width, drawcmd.height);
+      }
+      else if (drawcmd.clear) {
+        ctx.fillStyle = arg.bgcolor;
+        ctx.fillRect(0, 0, win.canvas.width, win.canvas.height);
       }
     }
   }
@@ -1074,6 +1167,174 @@ function readjust_paging_focus(canfocus) {
       }
     }
   }
+}
+
+/* Glk's idea of an "audio channel" -- an audio object that plays exactly one
+   source at a time -- as an actual object. The Glk API sends us update
+   messages that are merely method names and arguments. */
+/* An "audio context" is a DOM object that supports arbitrary audio processing.
+   We only want (or need) one of them. */
+var AudioContext = window.AudioContext || window.webkitAudioContext;
+var audio_context;
+if (AudioContext) {
+    audio_context = new AudioContext();
+}
+var audio_channels = {};
+
+function AudioChannel(identifier) {
+    this.identifier = identifier;
+    audio_channels[identifier] = this;
+
+    this.gain_node = audio_context.createGain();
+    this.gain_node.connect(audio_context.destination);
+    this.set_volume(1.0);
+
+    this.source = null;
+    this.start_time = null;
+
+    // "Stop in X" state tracking, for looping n times only
+    this.stop_timer = null;
+    this.stop_total_time = null;
+
+    // Pause state tracking
+    this.paused = false;
+    this.resume_track = null;
+    this.resume_offset = 0;
+    this.resume_loop = null;
+}
+
+AudioChannel.prototype.play = function(track, times) {
+    this.stop();
+
+    var offset = 0;
+    var loop;
+
+    if (times < 0) {
+        loop = true;
+    }
+    else if (times === 0) {
+        return;
+    }
+    else if (times === 1) {
+        loop = false;
+    }
+    else {
+        loop = times;
+    }
+
+    if (this.paused) {
+        // Set us up to be unpaused correctly later
+        this.resume_track = track;
+        this.resume_offset = offset;
+        this.resume_loop = loop;
+    }
+    else {
+        // Play immediately
+        this._play(track, offset, loop);
+    }
+};
+
+AudioChannel.prototype._play = function(track, offset, loop) {
+    this.stop();
+
+    this.resume_track = null;
+    this.resume_offset = 0;
+    this.resume_loop = null;
+
+    this.source = audio_context.createBufferSource();
+    this.source.connect(this.gain_node);
+    this.source.buffer = track;
+
+    if (loop !== false) {
+        this.source.loop = true;
+        if (loop !== true) {
+            this._stop_in(track.duration * loop);
+        }
+    }
+
+    this.start_time = audio_context.currentTime - offset;
+    this.source.start(0, offset % track.duration);
+};
+
+AudioChannel.prototype._clear_stop = function() {
+    if (! this.stop_timer) return;
+
+    window.clearTimeout(this.stop_timer);
+    this.stop_timer = null;
+};
+
+AudioChannel.prototype._stop_in = function(time) {
+    this._clear_stop();
+
+    this.stop_timer = window.setTimeout(this.stop.bind(this), time * 1000);
+    this.stop_total_time = time;
+};
+
+AudioChannel.prototype.set_volume = function(volume, duration) {
+    /* Thankfully, ramping the volume isn't affected by pause or stop. */
+    this.gain_node.gain.cancelScheduledValues(audio_context.currenTime);
+    this.gain_node.gain.linearRampToValueAtTime(volume, duration || 0);
+};
+
+AudioChannel.prototype.stop = function() {
+    this._clear_stop();
+    if (this.source) {
+        this.source.stop();
+        this.source = null;
+    }
+};
+
+AudioChannel.prototype.pause = function() {
+    if (this.paused) return;
+    this.paused = true;
+
+    if (this.source) {
+        var time_since_start = audio_context.currentTime - this.start_time;
+        this.resume_track = this.source.buffer;
+        this.resume_offset = time_since_start;
+
+        if (this.stop_timer) {
+            this.resume_loop = this.stop_total_time - time_since_start;
+        }
+        else {
+            this.resume_loop = this.source.loop;
+        }
+    }
+    else {
+        this.resume_track = null;
+        this.resume_offset = 0;
+        this.resume_loop = null;
+    }
+
+    this.stop();
+};
+
+AudioChannel.prototype.unpause = function() {
+    if (! this.paused) return;
+    this.paused = false;
+
+    if (this.resume_track) {
+        this._play(this.resume_track, this.resume_offset, this.resume_loop);
+    }
+};
+
+function accept_sound(sound_commands) {
+    /* Sound commands are arrays of [channel_id, method, arguments...] */
+    for (var i = 0, l = sound_commands.length; i < l; i++) {
+        var channel_id = sound_commands[i][0];
+        var method = sound_commands[i][1];
+        var args = sound_commands[i].slice(2);
+
+        /* Special case for creating a channel.  Can't call a method on it if
+           it doesn't exist yet. */
+        if (method === 'create') {
+            new AudioChannel(args[0]);
+        }
+        else {
+            var channel = audio_channels[channel_id];
+            channel[method].apply(channel, args);
+        }
+    }
 }
 
 /* Return the game interface object that was provided to init(). Call
@@ -1351,6 +1612,7 @@ function send_response(type, win, val, val2) {
   }
   else if (type == 'init' || type == 'arrange') {
     res.metrics = val;
+    res.extra = val2;
   }
 
   if (!(type == 'init' || type == 'refresh' || type == 'specialresponse')) {

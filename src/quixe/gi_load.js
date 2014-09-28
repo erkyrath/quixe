@@ -91,6 +91,8 @@ var all_options = {
 var gameurl = null;  /* The URL we are loading. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
 var datachunks = {}; /* Indexed by filenum -- loaded from Blorb */
+var pictchunks = {}; /* Indexed by filenum -- loaded from Blorb */
+var sndchunks = {}; /* Indexed by filenum -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -353,6 +355,16 @@ function find_data_chunk(val) {
     return datachunks[val];
 }
 
+/* Similar for picture and sound chunks.
+*/
+function find_picture_chunk(val) {
+    return pictchunks[val];
+}
+
+function find_sound_chunk(val) {
+    return sndchunks[val];
+}
+
 /* Look through a Blorb file (provided as a byte array) and return the
    Glulx game file chunk (ditto). If no such chunk is found, returns 
    null.
@@ -424,15 +436,62 @@ function unpack_blorb(image) {
         if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
             result = image.slice(pos, pos+chunklen);
         }
-        if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
+        else if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
             datachunks[el.num] = { data:image.slice(pos, pos+chunklen), type:chunktype };
         }
-        if (el.usage == "Data" && (chunktype == "FORM")) {
+        else if (el.usage == "Data" && (chunktype == "FORM")) {
             datachunks[el.num] = { data:image.slice(pos-8, pos+chunklen), type:"BINA" };
+        }
+        else if (el.usage == "Snd " && (chunktype == "FORM")) {
+            var bytes = image.slice(pos-8, pos+chunklen);
+            sndchunks[el.num] = { track: parse_audio_track(bytes) };
+        }
+        else if (el.usage == "Pict" && (chunktype == "JPEG" || chunktype == "PNG ")) {
+            var img = new Image();
+            var encoded_data = encode_base64(image.slice(pos, pos+chunklen));
+            var mimetype = chunktype.toLowerCase();
+            while (mimetype[mimetype.length - 1] == " ") {
+                mimetype = mimetype.slice(0, -1);
+            }
+            /* Need a second function to avoid the closure-in-loop problem */
+            img.onload = (function(img, num) {
+                return function() {
+                    pictchunks[num].width = img.width;
+                    pictchunks[num].height = img.height;
+                };
+            })(img, el.num);
+            img.src = "data:image/" + chunktype.toLowerCase() + ";base64," + encoded_data;
+            pictchunks[el.num] = { image: img, type: chunktype };
         }
     }
 
     return result;
+}
+
+/* This won't be the same AudioContext as the one glkote uses, but we need one
+   to create a web audio buffer in the first place.  Luckily it seems we can
+   use a buffer with a different AudioContext. */
+var AudioContext = window.AudioContext || window.webkitAudioContext;
+var audio_context;
+if (AudioContext) {
+    audio_context = new AudioContext();
+}
+
+function parse_audio_track(bytes) {
+    if (! audio_context)
+        return null;
+
+    // TODO support vorbis if browser understands it -- trick is that the
+    // vorbis decoding api is async and i don't know how to block the overall
+    // load
+    var aiff = new AIFFDecoder().decode(encode_raw_text(bytes));
+    var buffer = audio_context.createBuffer(aiff.channels.length, aiff.length, aiff.sampleRate);
+    for (var channel = 0; channel < aiff.channels.length; channel++) {
+        var channel_data = buffer.getChannelData(channel);
+        channel_data.set(aiff.channels[channel]);
+    }
+
+    return buffer;
 }
 
 /* Convert a byte string into an array of numeric byte values. */
@@ -445,10 +504,21 @@ function decode_raw_text(str) {
     return arr;
 }
 
+function encode_raw_text(bytes) {
+    // There's a limit on how much can be piped into .apply() at a time, so
+    // do this in chunks
+    var blocks = [];
+    for (var i = 0, l = bytes.length; i < l; i += 256) {
+        blocks.push(String.fromCharCode.apply(String, bytes.slice(i, i + 256)));
+    }
+    return blocks.join('');
+}
+
 /* Convert a base64 string into an array of numeric byte values. Some
    browsers supply an atob() function that does this; on others, we
-   have to implement decode_base64() ourselves. 
+   have to implement it ourselves.
 */
+var decode_base64, encode_base64;
 if (window.atob) {
     decode_base64 = function(base64data) {
         var data = atob(base64data);
@@ -460,12 +530,22 @@ if (window.atob) {
         
         return image;
     }
+    encode_base64 = function(image) {
+        /* There's a limit on how much can be piped into .apply() at a time, so
+           do this in chunks */
+        var blocks = [];
+        for (var i = 0, l = image.length; i < l; i += 256) {
+            blocks.push(String.fromCharCode.apply(String, image.slice(i, i + 256)));
+        }
+
+        return btoa(blocks.join(''));
+    }
 }
 else {
     /* No atob() in Internet Explorer, so we have to invent our own.
        This implementation is adapted from Parchment. */
+    var b64encoder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     var b64decoder = (function() {
-            var b64encoder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
             var out = [];
             var ix;
             for (ix=0; ix<b64encoder.length; ix++)
@@ -492,7 +572,23 @@ else {
         if (e3 == 64)
             out.pop();
         return out;
-    }
+    };
+
+    encode_base64 = function(bytes) {
+        var out = [];
+        var c1, c2, c3, e1, e2, e3, e4;
+        for (var i = 0, l = bytes.length; i < l; i += 3) {
+            c1 = bytes[i];
+            c2 = bytes[i + 1] || 0;
+            c3 = bytes[i + 2] || 0;
+            e1 = b64encoder.charAt(c1 >> 2);
+            e2 = b64encoder.charAt(((c1 & 0x03) << 4) + (c2 >> 4));
+            e3 = b64encoder.charAt(((c2 & 0x0f) << 2) + (c3 >> 6));
+            e4 = b64encoder.charAt(c3 & 0x3f);
+            out.push(e1, e2, e3, e4);
+        }
+        return out.join('');
+    };
 }
 
 /* Start the game (after de-blorbing, if necessary).
@@ -541,7 +637,9 @@ function start_game(image) {
    become the GiLoad global. */
 return {
     load_run: load_run,
-    find_data_chunk: find_data_chunk
+    find_data_chunk: find_data_chunk,
+    find_picture_chunk: find_picture_chunk,
+    find_sound_chunk: find_sound_chunk,
 };
 
 }();
