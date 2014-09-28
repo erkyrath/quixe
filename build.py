@@ -34,6 +34,7 @@ def compress_source(target, srcls):
 compress_source(
     'lib/glkote.min.js', [
         'src/prototype-1.6.1.js',
+        'src/audiofile.js',
         'src/glkote/glkote.js',
         'src/glkote/dialog.js',
         'src/glkote/glkapi.js',

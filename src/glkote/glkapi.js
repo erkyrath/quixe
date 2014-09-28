@@ -57,6 +57,9 @@ var ui_specialcallback = null;
 var event_generation = 0;
 var current_partial_inputs = null;
 var current_partial_outputs = null;
+/* What the DOM side claims to be able to do.
+   Current known keys: canvas */
+var client_capabilities = null;
 
 /* Initialize the library, initialize the VM, and set it running. (It will 
    run until the first glk_select() or glk_exit() call.)
@@ -106,6 +109,10 @@ function accept_ui_event(obj) {
     switch (obj.type) {
     case 'init':
         content_metrics = obj.metrics;
+        if (obj.extra)
+            client_capabilities = obj.extra.capabilities;
+        else
+            client_capabilities = {};
         VM.init();
         break;
 
@@ -325,6 +332,9 @@ function update() {
                 obj.gridwidth = win.gridwidth;
                 obj.gridheight = win.gridheight;
                 break;
+            case Const.wintype_Graphics:
+                obj.type = 'graphics';
+                break;
             }
 
             obj.left = win.bbox.left;
@@ -391,6 +401,13 @@ function update() {
             }
             useobj = obj.lines.length;
             break;
+
+        case Const.wintype_Graphics:
+            obj.bgcolor = decode_color(win.bgcolor);
+            obj.drawstack = win.drawstack;
+            useobj = obj.drawstack.length;
+            win.drawstack = [];
+            break;
         }
 
         if (useobj)
@@ -448,9 +465,20 @@ function update() {
             inputarray.push(obj);
     }
 
+    var soundarray = [];
+    for (var i = 0, l = gli_schannellist.length; i < l; i++) {
+        var schan = gli_schannellist[i];
+        if (schan.destroyed)
+            continue;
+
+        soundarray = soundarray.concat(schan.pending_updates);
+        schan.pending_updates = [];
+    }
+
     dataobj.windows = winarray;
     dataobj.content = contentarray;
     dataobj.input = inputarray;
+    dataobj.sound = soundarray;
 
     if (ui_specialinput) {
         //qlog("### special input: " + ui_specialinput.type);
@@ -618,7 +646,13 @@ var Const = {
       stylehint_just_LeftFlush : 0,
       stylehint_just_LeftRight : 1,
       stylehint_just_Centered : 2,
-      stylehint_just_RightFlush : 3
+      stylehint_just_RightFlush : 3,
+
+    imagealign_InlineUp : 1,
+    imagealign_InlineDown : 2,
+    imagealign_InlineCenter : 3,
+    imagealign_MarginLeft : 4,
+    imagealign_MarginRight : 5
 };
 
 var KeystrokeNameMap = {
@@ -2022,8 +2056,8 @@ var content_metrics = null;
 var gli_streamlist = null;
 /* Beginning of linked list of filerefs. */
 var gli_filereflist = null;
-/* Beginning of linked list of schannels. */
-var gli_schannellist = null;
+/* List of schannels. */
+var gli_schannellist = [];
 
 /* The current output stream. */
 var gli_currentstr = null;
@@ -2364,17 +2398,25 @@ function gli_window_rearrange(win, box) {
         }
         else if (win.pair_division == Const.winmethod_Fixed) {
             split = 0;
-            if (win.pair_key && win.pair_key.type == Const.wintype_TextBuffer) {
+            if (!win.pair_key) {
+            }
+            else if (win.pair_key.type == Const.wintype_TextBuffer) {
                 if (!win.pair_vertical) 
                     split = (win.pair_size * content_metrics.buffercharheight + content_metrics.buffermarginy);
                 else
                     split = (win.pair_size * content_metrics.buffercharwidth + content_metrics.buffermarginx);
             }
-            if (win.pair_key && win.pair_key.type == Const.wintype_TextGrid) {
+            else if (win.pair_key.type == Const.wintype_TextGrid) {
                 if (!win.pair_vertical) 
                     split = (win.pair_size * content_metrics.gridcharheight + content_metrics.gridmarginy);
                 else
                     split = (win.pair_size * content_metrics.gridcharwidth + content_metrics.gridmarginx);
+            }
+            else if (win.pair_key.type == Const.wintype_Graphics) {
+                split = win.pair_size;
+            }
+            else {
+                throw('gli_window_rearrange: unsupported window type for fixed sizing');
             }
             split = Math.ceil(split);
         }
@@ -3071,16 +3113,23 @@ function glk_gestalt_ext(sel, val, arr) {
         return 1;
 
     case 6: // gestalt_Graphics
-        return 0;
+        return 1;
 
     case 7: // gestalt_DrawImage
-        return 0;
+        /* We can draw images in text windows anytime (that's just <img>), but
+           graphics windows require canvas support */
+        if (val === Const.wintype_Graphics)
+            return client_capabilities.canvas ? 1 : 0;
+        else if (val === Const.wintype_TextBuffer)
+            return 1;
+        else
+            return 0;
 
     case 8: // gestalt_Sound
-        return 0;
+        return client_capabilities.audio ? 1 : 0;
 
     case 9: // gestalt_SoundVolume
-        return 0;
+        return client_capabilities.audio ? 1 : 0;
 
     case 10: // gestalt_SoundNotify
         return 0;
@@ -3095,10 +3144,11 @@ function glk_gestalt_ext(sel, val, arr) {
             return 0;
 
     case 13: // gestalt_SoundMusic
+        /* No MOD support.  Yet? */
         return 0;
 
     case 14: // gestalt_GraphicsTransparency
-        return 0;
+        return 1;
 
     case 15: // gestalt_Unicode
         return 1;
@@ -3126,6 +3176,7 @@ function glk_gestalt_ext(sel, val, arr) {
         return 1;
 
     case 21: // gestalt_Sound2
+        /* Returning 1 guarantees ALL sound support, which we don't have. */
         return 0;
 
     case 22: // gestalt_ResourceStream
@@ -3225,6 +3276,10 @@ function glk_window_open(splitwin, method, size, wintype, rock) {
         newwin.lines = [];
         newwin.cursorx = 0;
         newwin.cursory = 0;
+        break;
+    case Const.wintype_Graphics:
+        newwin.bgcolor = 0xffffff;
+        newwin.drawstack = [];
         break;
     case Const.wintype_Blank:
         break;
@@ -3379,6 +3434,10 @@ function glk_window_get_size(win, widthref, heightref) {
         hgt = Math.max(0, Math.floor((boxheight-content_metrics.buffermarginy) / content_metrics.buffercharheight));        
         break;
 
+    case Const.wintype_Graphics:
+        wid = win.bbox.right - win.bbox.left;
+        hgt = win.bbox.bottom - win.bbox.top;
+        break;
     }
 
     if (widthref)
@@ -3497,6 +3556,9 @@ function glk_window_clear(win) {
                 lineobj.hyperlinks[cx] = 0;
             }
         }
+        break;
+    case Const.wintype_Graphics:
+        win.drawstack = [{clear: true}];
         break;
     }
 }
@@ -4204,54 +4266,158 @@ function glk_request_timer_events(msec) {
     }
 }
 
-/* Graphics functions are not currently supported. */
-
 function glk_image_get_info(imgid, widthref, heightref) {
+    var chunk = GiLoad.find_picture_chunk(imgid);
+    if (!chunk)
+        return 0;
+
     if (widthref)
-        widthref.set_value(0);
+        widthref.set_value(chunk.width);
     if (heightref)
-        heightref.set_value(0);
-    return 0;
+        heightref.set_value(chunk.height);
+
+    return 1;
 }
 
 function glk_image_draw(win, imgid, val1, val2) {
-    if (!win)
-        throw('glk_image_draw: invalid window');
-    return 0;
+    return glk_image_draw_scaled(win, imgid, val1, val2, null, null);
+}
+
+function _append_to_window_content(win, item) {
+    if (!win.content || !win.content.length) {
+        win.content = [{}];
+    }
+    var last_row = win.content[win.content.length - 1];
+    if (!last_row.content) {
+        last_row.content = [];
+    }
+
+    last_row.content.push(item);
 }
 
 function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
     if (!win)
-        throw('glk_image_draw_scaled: invalid window');
-    return 0;
+        throw('glk_image_draw: invalid window');
+
+    if (win.type == Const.wintype_Graphics && ! client_capabilities.canvas)
+        return 0;
+
+    var chunk = GiLoad.find_picture_chunk(imgid);
+    if (!chunk)
+        return 0;
+
+    if (win.type == Const.wintype_Graphics) {
+        win.drawstack.push({image: chunk.image, x: val1, y: val2, width: width, height: height});
+    }
+    else if (win.type == Const.wintype_TextBuffer) {
+        gli_window_buffer_deaccumulate(win);
+        // TODO this is a no-op if we're not at the start of a paragraph and val1 is a float
+        var special_token = {image: chunk.image, width: width, height: height};
+        if (val1 == Const.imagealign_InlineUp) {
+            special_token.align = "top";
+        }
+        else if (val1 == Const.imagealign_InlineDown) {
+            special_token.align = "bottom";
+        }
+        else if (val1 == Const.imagealign_InlineCenter) {
+            special_token.align = "middle";
+        }
+        else if (val1 == Const.imagealign_MarginLeft) {
+            special_token.floated = "left";
+        }
+        else if (val1 == Const.imagealign_MarginRight) {
+            special_token.floated = "right";
+        }
+
+        _append_to_window_content(win, special_token);
+    }
+    else {
+        throw('glk_image_draw: invalid window type');
+    }
+
+    return 1;
 }
 
 function glk_window_flow_break(win) {
     if (!win)
         throw('glk_window_flow_break: invalid window');
+
+    if (win.type == Const.wintype_TextBuffer) {
+        gli_window_buffer_deaccumulate(win);
+        _append_to_window_content(win, { clear: true });
+    }
 }
 
 function glk_window_erase_rect(win, left, top, width, height) {
-    if (!win)
-        throw('glk_window_erase_rect: invalid window');
+    glk_window_fill_rect(win, win.bgcolor, left, top, width, height);
+}
+
+function decode_color(color) {
+    var a = (color & 0xff000000) >> 24;
+    if (a)
+        throw('invalid color');
+
+    return "#" + ("000000" + color.toString(16)).slice(-6);
 }
 
 function glk_window_fill_rect(win, color, left, top, width, height) {
     if (!win)
         throw('glk_window_fill_rect: invalid window');
+    if (win.type != Const.wintype_Graphics)
+        throw('glk_window_fill_rect: invalid window type');
+
+    win.drawstack.push({color: decode_color(color), x: left, y: top, width: width, height: height});
 }
 
 function glk_window_set_background_color(win, color) {
     if (!win)
         throw('glk_window_set_background_color: invalid window');
+    if (win.type != Const.wintype_Graphics)
+        throw('glk_window_fill_rect: invalid window type');
+
+    win.bgcolor = color;
 }
 
+/*** Glk sound functions ***/
+
+function SoundChannel(rock) {
+    this.rock = rock;
+    this.index = gli_schannellist.length;
+    this.destroyed = false;
+    this.pending_updates = [];
+
+    gli_schannellist.push(this);
+    if (window.GiDispa)
+        GiDispa.class_register('schannel', this);
+    else
+        this.disprock = gli_api_display_rocks++;
+
+    this.queue(['create', this.disprock]);
+}
+
+SoundChannel.prototype.destroy = function() {
+    this.queue(['stop']);
+    this.queue(['destroy']);
+    this.destroyed = true;
+};
+
+/* Queue a command to be passed to glkote.  Commands are just arrays of
+   [channel_ident, method, arguments...], where the identifier is opaque and
+   the method is called on a glkote AudioChannel. */
+SoundChannel.prototype.queue = function(method_and_arguments) {
+    if (this.destroyed)
+        throw('invalid schannel');
+    this.pending_updates.push([this.disprock].concat(method_and_arguments));
+};
 
 function glk_schannel_iterate(schan, rockref) {
-    if (!schan)
-        schan = gli_schannellist;
-    else
-        schan = schan.next;
+    var index = schan ? schan.index + 1 : 0;
+    while (index < gli_schannellist.length && gli_schannellist[index].destroyed) {
+        index++;
+    }
+    schan = gli_schannellist[index];
+    if (! schan || schan.destroyed)
+        return null;
 
     if (schan) {
         if (rockref)
@@ -4265,56 +4431,116 @@ function glk_schannel_iterate(schan, rockref) {
 }
 
 function glk_schannel_get_rock(schan) {
-    if (!schan)
+    if (!schan || schan.destroyed)
         throw('glk_schannel_get_rock: invalid schannel');
     return schan.rock;
 }
 
 function glk_schannel_create(rock) {
-    return null;
-}
-
-function glk_schannel_destroy(schan) {
-    throw('glk_schannel_destroy: invalid schannel');
-}
-
-function glk_schannel_play(schan, sndid) {
-    throw('glk_schannel_play: invalid schannel');
-}
-
-function glk_schannel_play_ext(schan, sndid, repeats, notify) {
-    throw('glk_schannel_play_ext: invalid schannel');
-}
-
-function glk_schannel_stop(schan) {
-    throw('glk_schannel_stop: invalid schannel');
-}
-
-function glk_schannel_set_volume(schan, vol) {
-    throw('glk_schannel_set_volume: invalid schannel');
-}
-
-function glk_sound_load_hint(sndid, flag) {
+    return glk_schannel_create_ext(rock, 0x10000);
 }
 
 function glk_schannel_create_ext(rock, vol) {
+    var schan = new SoundChannel(rock);
+    schan.queue(['set_volume', vol / 0x10000]);
+    return schan;
+}
+
+function glk_schannel_destroy(schan) {
+    if (! schan || schan.destroyed)
+        throw('glk_schannel_destroy: invalid schannel');
+
+    schan.destroy();
+    return null;
+}
+
+function glk_schannel_play(schan, sndid) {
+    return glk_schannel_play_ext(schan, sndid, 1, 0);
+}
+
+function glk_schannel_play_ext(schan, sndid, repeats, notify) {
+    if (! schan || schan.destroyed)
+        throw('glk_schannel_play_ext: invalid schannel');
+
+    var chunk = GiLoad.find_sound_chunk(sndid);
+    if (! chunk)
+        return 0;
+
+    if (repeats == 0xffffffff) {
+        repeats = -1;
+    }
+    // TODO ideally the api would know as little as possible about resources
+    // early on -- only whether they exist, and sizes of images -- and would
+    // just pass ids out to glkote
+    schan.queue(['play', chunk.track, repeats]);
+    // TODO notify
+    // TODO there's no way to know for sure here whether playing the sound
+    // actually succeeded -- e.g. not all browsers support vorbis, or the sound
+    // might be corrupt -- but the api isn't supposed to know about the browser
+    return 1;
+}
+
+function glk_schannel_stop(schan) {
+    if (! schan || schan.destroyed)
+        throw('glk_schannel_stop: invalid schannel');
+
+    schan.queue(['stop']);
+}
+
+function glk_schannel_set_volume(schan, vol) {
+    if (! schan || schan.destroyed)
+        throw('glk_schannel_pause: invalid schannel');
+
+    schan.queue(['set_volume', vol / 0x10000]);
+}
+
+function glk_sound_load_hint(sndid, flag) {
     return null;
 }
 
 function glk_schannel_play_multi(schans, sndids, notify) {
-    throw('glk_schannel_play_multi: invalid schannel');
+    var retval = 0;
+    for (var i = 0, l = schans.length; i < l; i++) {
+        var schan = schans[i];
+        var sndid = sndids[i];
+
+        if (! schan || schan.destroyed)
+            throw('glk_schannel_play_multi: invalid schannel');
+
+        var chunk = GiLoad.find_sound_chunk(sndid);
+        if (! chunk)
+            continue;
+
+        schan.queue(['play', chunk.track, 1]);
+        retval += 1;
+    }
+
+    return retval;
 }
 
 function glk_schannel_pause(schan) {
-    throw('glk_schannel_pause: invalid schannel');
+    if (! schan || ! gli_schannellist[schan.index])
+        throw('glk_schannel_pause: invalid schannel');
+
+    schan.queue(['pause']);
+    return null;
 }
 
 function glk_schannel_unpause(schan) {
-    throw('glk_schannel_unpause: invalid schannel');
+    if (! schan || ! gli_schannellist[schan.index])
+        throw('glk_schannel_unpause: invalid schannel');
+
+    schan.queue(['unpause']);
+    return null;
 }
 
 function glk_schannel_set_volume_ext(schan, vol, duration, notify) {
-    throw('glk_schannel_set_volume_ext: invalid schannel');
+    if (! schan || ! gli_schannellist[schan.index])
+        throw('glk_schannel_set_volume_ext: invalid schannel');
+
+    schan.queue(['set_volume', vol / 0x10000, duration / 1000]);
+    // TODO notify
+    return null;
 }
 
 function glk_set_hyperlink(val) {
