@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 1.3.1.
+Quixe Library: version 2.0.0.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -144,16 +144,12 @@ on the web site), copy play-remote.html.
 
 * Permissions
 
-The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010-3
-by Andrew Plotkin. You may copy and distribute them freely, by any means
-and under any conditions, as long as the code and documentation is not
-changed. You may also incorporate this code into your own program and
-distribute that, or modify this code and use and distribute the
-modified version, as long as you retain a notice in your program or
-documentation which mentions my name and the URL shown above.
+The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010-15
+by Andrew Plotkin. They are distributed under the MIT license; see the
+"LICENSE" file.
 
 This package includes the GlkOte, GlkAPI, and Dialog libraries, also
-copyright by Andrew Plotkin under the same terms.
+copyright by Andrew Plotkin under the MIT license.
 
 This package includes the jQuery JavaScript framework, version 1.11.2
 Copyright 2005, 2014 jQuery Foundation, Inc. and other contributors
