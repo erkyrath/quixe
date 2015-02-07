@@ -2,13 +2,8 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010 by Andrew Plotkin. You may
- * copy and distribute it freely, by any means and under any conditions,
- * as long as the code and documentation is not changed. You may also
- * incorporate this code into your own program and distribute that, or
- * modify this code and use and distribute the modified version, as long
- * as you retain a notice in your program or documentation which mentions
- * my name and the URL shown above.
+ * This Javascript library is copyright 2010-15 by Andrew Plotkin.
+ * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a "file" for saving
  * or loading data. The web page must have a <div> with id "windowport" (this
@@ -115,94 +110,94 @@ function dialog_open(tosave, usage, gameid, callback) {
     if (iface && iface.windowport)
         root_el_id = iface.windowport;
 
-    var rootel = $(root_el_id);
-    if (!rootel)
+    var rootel = $('#'+root_el_id);
+    if (!rootel.length)
         throw 'Dialog: unable to find root element #' + root_el_id + '.';
 
     /* Create the grey-out screen. */
-    var screen = $(dialog_el_id+'_screen');
-    if (!screen) {
-        screen = new Element('div',
+    var screen = $('#'+dialog_el_id+'_screen');
+    if (!screen.length) {
+        screen = $('<div>',
             { id: dialog_el_id+'_screen' });
-        rootel.insert(screen);
+        rootel.append(screen);
     }
 
     /* And now, a lot of DOM creation for the dialog box. */
 
-    var frame = $(dialog_el_id+'_frame');
-    if (!frame) {
-        frame = new Element('div',
+    var frame = $('#'+dialog_el_id+'_frame');
+    if (!frame.length) {
+        frame = $('<div>',
             { id: dialog_el_id+'_frame' });
-        rootel.insert(frame);
+        rootel.append(frame);
     }
 
-    var dia = $(dialog_el_id);
-    if (dia)
+    var dia = $('#'+dialog_el_id);
+    if (dia.length)
         dia.remove();
 
-    dia = new Element('div', { id: dialog_el_id });
+    dia = $('<div>', { id: dialog_el_id });
 
     var form, el, row;
 
-    form = new Element('form');
-    form.observe('submit', 
+    form = $('<form>');
+    form.on('submit', 
         (will_save ? evhan_accept_save_button : evhan_accept_load_button));
-    dia.insert(form);
+    dia.append(form);
 
-    row = new Element('div', { 'class': 'DiaButtonsFloat' });
-    el = new Element('button', { id: dialog_el_id+'_edit', type: 'button' });
-    insert_text(el, 'Edit');
-    el.observe('click', evhan_edit_button);
-    row.insert(el);
-    form.insert(row);
+    row = $('<div>', { 'class': 'DiaButtonsFloat' });
+    el = $('<button>', { id: dialog_el_id+'_edit', type: 'button' });
+    el.append('Edit');
+    el.on('click', evhan_edit_button);
+    row.append(el);
+    form.append(row);
 
-    row = new Element('div', { id: dialog_el_id+'_cap', 'class': 'DiaCaption' });
-    insert_text(row, 'XXX'); // the caption will be replaced momentarily.
-    form.insert(row);
+    row = $('<div>', { id: dialog_el_id+'_cap', 'class': 'DiaCaption' });
+    row.append('XXX'); // the caption will be replaced momentarily.
+    form.append(row);
 
     if (will_save) {
-        row = new Element('div', { id: dialog_el_id+'_input', 'class': 'DiaInput' });
-        form.insert(row);
-        el = new Element('input', { id: dialog_el_id+'_infield', type: 'text', name: 'filename' });
-        row.insert(el);
+        row = $('<div>', { id: dialog_el_id+'_input', 'class': 'DiaInput' });
+        form.append(row);
+        el = $('<input>', { id: dialog_el_id+'_infield', type: 'text', name: 'filename' });
+        row.append(el);
     }
 
-    row = new Element('div', { id: dialog_el_id+'_body', 'class': 'DiaBody' });
-    form.insert(row);
+    row = $('<div>', { id: dialog_el_id+'_body', 'class': 'DiaBody' });
+    form.append(row);
 
-    row = new Element('div', { id: dialog_el_id+'_cap2', 'class': 'DiaCaption' });
+    row = $('<div>', { id: dialog_el_id+'_cap2', 'class': 'DiaCaption' });
     row.hide();
-    form.insert(row);
+    form.append(row);
 
-    row = new Element('div', { id: dialog_el_id+'_buttonrow', 'class': 'DiaButtons' });
+    row = $('<div>', { id: dialog_el_id+'_buttonrow', 'class': 'DiaButtons' });
     {
         /* Row of buttons */
-        el = new Element('button', { id: dialog_el_id+'_cancel', type: 'button' });
-        insert_text(el, 'Cancel');
-        el.observe('click', evhan_cancel_button);
-        row.insert(el);
+        el = $('<button>', { id: dialog_el_id+'_cancel', type: 'button' });
+        el.append('Cancel');
+        el.on('click', evhan_cancel_button);
+        row.append(el);
 
-        el = new Element('button', { id: dialog_el_id+'_delete', type: 'button' });
-        insert_text(el, 'Delete');
-        el.observe('click', evhan_delete_button);
+        el = $('<button>', { id: dialog_el_id+'_delete', type: 'button' });
+        el.append('Delete');
+        el.on('click', evhan_delete_button);
         el.hide();
-        row.insert(el);
+        row.append(el);
 
-        el = new Element('button', { id: dialog_el_id+'_display', type: 'button' });
-        insert_text(el, 'Display');
-        el.observe('click', evhan_display_button);
+        el = $('<button>', { id: dialog_el_id+'_display', type: 'button' });
+        el.append('Display');
+        el.on('click', evhan_display_button);
         el.hide();
-        row.insert(el);
+        row.append(el);
 
-        el = new Element('button', { id: dialog_el_id+'_accept', type: 'submit' });
-        insert_text(el, (will_save ? 'Save' : 'Load'));
-        el.observe('click', 
+        el = $('<button>', { id: dialog_el_id+'_accept', type: 'submit' });
+        el.append(will_save ? 'Save' : 'Load');
+        el.on('click', 
             (will_save ? evhan_accept_save_button : evhan_accept_load_button));
-        row.insert(el);
+        row.append(el);
     }
-    form.insert(row);
+    form.append(row);
 
-    frame.insert(dia);
+    frame.append(dia);
     is_open = true;
 
     evhan_storage_changed();
@@ -217,32 +212,32 @@ function dialog_open(tosave, usage, gameid, callback) {
     var focusfunc;
     if (will_save) {
         focusfunc = function() {
-            var el = $(dialog_el_id+'_infield');
-            if (el) 
+            var el = $('#'+dialog_el_id+'_infield');
+            if (el.length) 
                 el.focus();
         };
     }
     else {
         focusfunc = function() {
-            var el = $(dialog_el_id+'_select');
-            if (el) 
+            var el = $('#'+dialog_el_id+'_select');
+            if (el.length) 
                 el.focus();
         };
     }
-    focusfunc.defer();
+    defer_func(focusfunc);
 }
 
 /* Close the dialog and remove the grey-out screen.
 */
 function dialog_close() {
-    var dia = $(dialog_el_id);
-    if (dia)
+    var dia = $('#'+dialog_el_id);
+    if (dia.length)
         dia.remove();
-    var frame = $(dialog_el_id+'_frame');
-    if (frame)
+    var frame = $('#'+dialog_el_id+'_frame');
+    if (frame.length)
         frame.remove();
-    var screen = $(dialog_el_id+'_screen');
-    if (screen)
+    var screen = $('#'+dialog_el_id+'_screen');
+    if (screen.length)
         screen.remove();
 
     is_open = false;
@@ -257,16 +252,15 @@ function dialog_close() {
 */
 function set_caption(msg, isupper) {
     var elid = (isupper ? dialog_el_id+'_cap' : dialog_el_id+'_cap2');
-    var el = $(elid);
-    if (!el)
+    var el = $('#'+elid);
+    if (!el.length)
         return;
 
     if (!msg) {
         el.hide();
     }
     else {
-        remove_children(el);
-        insert_text(el, msg);
+        el.text(msg);
         el.show();
     }
 }
@@ -296,29 +290,10 @@ function usage_is_textual(val) {
     return (val == 'transcript' || val == 'command');
 }
 
-/* Add text to a DOM element.
-*/
-function insert_text(el, val) {
-    var nod = document.createTextNode(val);
-    el.appendChild(nod);
-}
-
-/* Remove all children of a DOM element.
-*/
-function remove_children(parent) {
-    var obj, ls;
-    ls = parent.childNodes;
-    while (ls.length > 0) {
-        obj = ls.item(0);
-        parent.removeChild(obj);
-    }
-}
-
-/* Replace the text in a DOM element.
-*/
-function replace_text(el, val) {
-    remove_children(el);
-    insert_text(el, val);
+/* Run a function (no arguments) "soon". */
+function defer_func(func)
+{
+  return window.setTimeout(func, 0.01*1000);
 }
 
 /* Event handler: The user has changed which entry in the selection box is
@@ -334,17 +309,17 @@ function evhan_select_change() {
         return false;
 
     //GlkOte.log('### select changed');
-    var selel = $(dialog_el_id+'_select');
-    if (!selel)
+    var selel = $('#'+dialog_el_id+'_select');
+    if (!selel.length)
         return false;
-    var pos = selel.selectedIndex;
+    var pos = selel.prop('selectedIndex');
     if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
         return false;
     var file = cur_filelist[pos];
-    var fel = $(dialog_el_id+'_infield');
-    if (!fel)
+    var fel = $('#'+dialog_el_id+'_infield');
+    if (!fel.length)
         return false;
-    fel.value = file.dirent.filename;
+    fel.val(file.dirent.filename);
     return false;
 }
 
@@ -359,41 +334,45 @@ function evhan_select_change_editing() {
     if (!editing || editing_dirent)
         return false;
 
-    var selel = $(dialog_el_id+'_select');
-    if (!selel)
+    var butel = $('#'+dialog_el_id+'_delete');
+    butel.prop('disabled', true);
+    butel = $('#'+dialog_el_id+'_display');
+    butel.prop('disabled', true);
+
+    var selel = $('#'+dialog_el_id+'_select');
+    if (!selel.length)
         return false;
-    var pos = selel.selectedIndex;
+    var pos = selel.prop('selectedIndex');
     if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
         return false;
     var file = cur_filelist[pos];
-    if (!file.dirent || !file_ref_exists(file.dirent))
+    if (!file || !file.dirent || !file_ref_exists(file.dirent))
         return false;
 
-    butel = $(dialog_el_id+'_delete');
-    butel.disabled = false;
-    butel = $(dialog_el_id+'_display');
-    butel.disabled = !usage_is_textual(file.dirent.usage);
-    //### use binary flag?
+    butel = $('#'+dialog_el_id+'_delete');
+    butel.prop('disabled', false);
+    butel = $('#'+dialog_el_id+'_display');
+    butel.prop('disabled', false);
 }
 
 /* Event handler: The "Load" button.
 */
 function evhan_accept_load_button(ev) {
-    ev.stop();
+    ev.preventDefault();
     if (!is_open)
         return false;
     if (editing)
         return false;
 
     //GlkOte.log('### accept load');
-    var selel = $(dialog_el_id+'_select');
-    if (!selel)
+    var selel = $('#'+dialog_el_id+'_select');
+    if (!selel.length)
         return false;
-    var pos = selel.selectedIndex;
+    var pos = selel.prop('selectedIndex');
     if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
         return false;
     var file = cur_filelist[pos];
-    if (!file.dirent || !file_ref_exists(file.dirent))
+    if (!file || !file.dirent || !file_ref_exists(file.dirent))
         return false;
 
     var callback = dialog_callback;
@@ -408,19 +387,19 @@ function evhan_accept_load_button(ev) {
 /* Event handler: The "Save" or "Replace" button.
 */
 function evhan_accept_save_button(ev) {
-    ev.stop();
+    ev.preventDefault();
     if (!is_open)
         return false;
     if (editing)
         return false;
 
     //GlkOte.log('### accept save');
-    var fel = $(dialog_el_id+'_infield');
-    if (!fel)
+    var fel = $('#'+dialog_el_id+'_infield');
+    if (!fel.length)
         return false;
-    var filename = fel.value;
-    filename = filename.strip(); // prototype-ism
-    if (!filename)
+    var filename = fel.val();
+    filename = jQuery.trim(filename);
+    if (!filename.length)
         return false;
     var dirent = file_construct_ref(filename, cur_usage, cur_gameid);
 
@@ -432,9 +411,9 @@ function evhan_accept_save_button(ev) {
         confirming = true;
         set_caption('You already have a ' + cur_usage_name + ' "' 
             + dirent.filename + '". Do you want to replace it?', false);
-        fel.disabled = true;
-        var butel = $(dialog_el_id+'_accept');
-        replace_text(butel, 'Replace');
+        fel.prop('disabled', true);
+        var butel = $('#'+dialog_el_id+'_accept');
+        butel.text('Replace');
         return false;
     }
 
@@ -452,7 +431,7 @@ function evhan_accept_save_button(ev) {
    This toggles edit mode.
 */
 function evhan_edit_button(ev) {
-    ev.stop();
+    ev.preventDefault();
     if (!is_open)
         return false;
 
@@ -464,26 +443,26 @@ function evhan_edit_button(ev) {
             /* Cancel the confirmation, first */
             confirming = false;
             set_caption(null, false);
-            var fel = $(dialog_el_id+'_infield');
-            fel.disabled = false;
-            var butel = $(dialog_el_id+'_accept');
-            butel.disabled = false;
-            replace_text(butel, 'Save');
+            var fel = $('#'+dialog_el_id+'_infield');
+            fel.prop('disabled', false);
+            var butel = $('#'+dialog_el_id+'_accept');
+            butel.prop('disabled', false);
+            butel.text('Save');
         }
 
-        var fel = $(dialog_el_id+'_input');
-        if (fel) {
+        var fel = $('#'+dialog_el_id+'_input');
+        if (fel.length) {
             fel.hide();
         }
 
-        var butel = $(dialog_el_id+'_edit');
-        replace_text(butel, 'Done');
+        var butel = $('#'+dialog_el_id+'_edit');
+        butel.text('Done');
 
-        butel = $(dialog_el_id+'_delete');
+        butel = $('#'+dialog_el_id+'_delete');
         butel.show();
-        butel = $(dialog_el_id+'_display');
+        butel = $('#'+dialog_el_id+'_display');
         butel.show();
-        butel = $(dialog_el_id+'_accept');
+        butel = $('#'+dialog_el_id+'_accept');
         butel.hide();
 
         evhan_storage_changed();
@@ -493,19 +472,19 @@ function evhan_edit_button(ev) {
         editing = false;
         editing_dirent = null;
 
-        var fel = $(dialog_el_id+'_input');
-        if (fel) {
+        var fel = $('#'+dialog_el_id+'_input');
+        if (fel.length) {
             fel.show();
         }
 
-        var butel = $(dialog_el_id+'_edit');
-        replace_text(butel, 'Edit');
+        var butel = $('#'+dialog_el_id+'_edit');
+        butel.text('Edit');
 
-        butel = $(dialog_el_id+'_delete');
+        butel = $('#'+dialog_el_id+'_delete');
         butel.hide();
-        butel = $(dialog_el_id+'_display');
+        butel = $('#'+dialog_el_id+'_display');
         butel.hide();
-        butel = $(dialog_el_id+'_accept');
+        butel = $('#'+dialog_el_id+'_accept');
         butel.show();
 
         evhan_storage_changed();
@@ -516,10 +495,10 @@ function evhan_edit_button(ev) {
         editing = true;
         editing_dirent = null;
 
-        $(dialog_el_id+'_buttonrow').show();
+        $('#'+dialog_el_id+'_buttonrow').show();
 
-        var butel = $(dialog_el_id+'_edit');
-        replace_text(butel, 'Done');
+        var butel = $('#'+dialog_el_id+'_edit');
+        butel.text('Done');
 
         evhan_storage_changed();
         return false;
@@ -529,21 +508,21 @@ function evhan_edit_button(ev) {
 /* Event handler: The "Delete" button (for edit mode).
 */
 function evhan_delete_button(ev) {
-    ev.stop();
+    ev.preventDefault();
     if (!is_open)
         return false;
     if (!editing || editing_dirent)
         return false;
 
     //GlkOte.log('### delete');
-    var selel = $(dialog_el_id+'_select');
-    if (!selel)
+    var selel = $('#'+dialog_el_id+'_select');
+    if (!selel.length)
         return false;
-    var pos = selel.selectedIndex;
+    var pos = selel.prop('selectedIndex');
     if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
         return false;
     var file = cur_filelist[pos];
-    if (!file.dirent)
+    if (!file || !file.dirent)
         return false;
 
     file_remove_ref(file.dirent);
@@ -556,27 +535,27 @@ function evhan_delete_button(ev) {
 /* Event handler: The "Display" button (for edit mode).
 */
 function evhan_display_button(ev) {
-    ev.stop();
+    ev.preventDefault();
     if (!is_open)
         return false;
     if (!editing || editing_dirent)
         return false;
 
     //GlkOte.log('### display');
-    var selel = $(dialog_el_id+'_select');
-    if (!selel)
+    var selel = $('#'+dialog_el_id+'_select');
+    if (!selel.length)
         return false;
-    var pos = selel.selectedIndex;
+    var pos = selel.prop('selectedIndex');
     if (!cur_filelist || pos < 0 || pos >= cur_filelist.length)
         return false;
     var file = cur_filelist[pos];
-    if (!file.dirent || !file_ref_exists(file.dirent))
+    if (!file || !file.dirent || !file_ref_exists(file.dirent))
         return false;
 
-    $(dialog_el_id+'_buttonrow').hide();
+    $('#'+dialog_el_id+'_buttonrow').hide();
 
-    var butel = $(dialog_el_id+'_edit');
-    replace_text(butel, 'Close');
+    var butel = $('#'+dialog_el_id+'_edit');
+    butel.text('Close');
 
     editing_dirent = file.dirent;
     /* Force reload of display */
@@ -591,18 +570,18 @@ function evhan_display_button(ev) {
    "do you want to replace that?" query.
 */
 function evhan_cancel_button(ev) {
-    ev.stop();
+    ev.preventDefault();
     if (!is_open)
         return false;
 
     if (confirming) {
         confirming = false;
         set_caption(null, false);
-        var fel = $(dialog_el_id+'_infield');
-        fel.disabled = false;
-        var butel = $(dialog_el_id+'_accept');
-        butel.disabled = false;
-        replace_text(butel, 'Save');
+        var fel = $('#'+dialog_el_id+'_infield');
+        fel.prop('disabled', false);
+        var butel = $('#'+dialog_el_id+'_accept');
+        butel.prop('disabled', false);
+        butel.text('Save');
         return false;
     }
 
@@ -628,7 +607,7 @@ function evhan_storage_changed(ev) {
     if (!is_open)
         return false;
 
-    var el, bodyel, ls, lastusage;
+    var el, bodyel, butel, ls, lastusage;
 
     var changedkey = null;
     if (ev)
@@ -637,8 +616,8 @@ function evhan_storage_changed(ev) {
     /* We could use the changedkey to decide whether it's worth redrawing 
        the field here. */
 
-    bodyel = $(dialog_el_id+'_body');
-    if (!bodyel)
+    bodyel = $('#'+dialog_el_id+'_body');
+    if (!bodyel.length)
         return false;
 
     if (editing && editing_dirent) {
@@ -646,9 +625,9 @@ function evhan_storage_changed(ev) {
            display. */
         if (!file_ref_exists(editing_dirent)) {
             editing_dirent = null;
-            $(dialog_el_id+'_buttonrow').show();
-            var butel = $(dialog_el_id+'_edit');
-            replace_text(butel, 'Done');
+            $('#'+dialog_el_id+'_buttonrow').show();
+            butel = $('#'+dialog_el_id+'_edit');
+            butel.text('Done');
         }
     }
 
@@ -657,20 +636,32 @@ function evhan_storage_changed(ev) {
 
     if (editing && editing_dirent) {
         /* We want to display the selected file's contents. */
-        remove_children(bodyel);
+        bodyel.empty();
 
-        /* This is an array of character values (as ints) */
+        /* ### Make the unjustified assumption that this is an array of
+           character values (as ints). */
         var dat = file_read(editing_dirent);
         /* ### This doesn't correctly handle Unicode characters outside the
            16-bit range. */
         dat = String.fromCharCode.apply(this, dat);
+          
+        //### use binary flag?
+        if (usage_is_textual(editing_dirent.usage)) {
+          var textel = $('<div>', { 'class': 'DiaDisplayText' });
+          textel.text(dat);
+          bodyel.append(textel);
+          set_caption('Displaying file contents...', true);
+        }
+        else {
+          var b64dat = window.btoa(dat);
+          /*### the download link should really be the filename, escaped
+            for attribute safety, with the proper file suffix attached. */
+          var linkel = $('<a>', { 'href': 'data:application/octet-stream;base64,'+b64dat, 'target': '_blank', 'download': 'data' });
+          linkel.text(editing_dirent.filename);
+          bodyel.append(linkel);
+          set_caption('Use "Save As" option in your browser to download this link.', true);
+        }
 
-        var textel = new Element('div', { 'class': 'DiaDisplayText' });
-        var nod = document.createTextNode(dat);
-        textel.appendChild(nod);
-        bodyel.insert(textel);
-
-        set_caption('Displaying file contents...', true);
         return false;
     }
 
@@ -691,11 +682,11 @@ function evhan_storage_changed(ev) {
             });
 
         if (ls.length == 0) {
-            remove_children(bodyel);
-            butel = $(dialog_el_id+'_delete');
-            butel.disabled = true;
-            butel = $(dialog_el_id+'_display');
-            butel.disabled = true;
+            bodyel.empty();
+            butel = $('#'+dialog_el_id+'_delete');
+            butel.prop('disabled', true);
+            butel = $('#'+dialog_el_id+'_display');
+            butel.prop('disabled', true);
             set_caption('You have no stored files. Press Done to continue.', true);
             return false;
         }
@@ -712,33 +703,34 @@ function evhan_storage_changed(ev) {
         }
         ls = cur_filelist;
 
-        remove_children(bodyel);
+        bodyel.empty();
         
-        var selel = new Element('select', { id: dialog_el_id+'_select', name:'files', size:'5' });
+        var selel = $('<select>', { id: dialog_el_id+'_select', name:'files' });
+        selel.prop('size', '5'); /* firefox doesn't like this being set in the constructor */
         var ix, file, datestr;
         var anyselected = false;
         for (ix=0; ix<ls.length; ix++) {
             file = ls[ix];
             if (!file.dirent) {
-                el = new Element('option', { name:'f'+ix } );
-                el.disabled = true;
-                insert_text(el, '-- ' + label_for_usage(file.label) + 's --');
-                selel.insert(el);
+                el = $('<option>', { name:'f'+ix } );
+                el.prop('disabled', true);
+                el.text('-- ' + label_for_usage(file.label) + 's --');
+                selel.append(el);
                 continue;
             }
 
-            el = new Element('option', { name:'f'+ix } );
+            el = $('<option>', { name:'f'+ix } );
             if (!anyselected) {
                 anyselected = true;
                 el.selected = true;
             }
             datestr = format_date(file.modified);
-            insert_text(el, file.dirent.filename + ' -- ' + datestr);
-            selel.insert(el);
+            el.text(file.dirent.filename + ' -- ' + datestr);
+            selel.append(el);
         }
-        bodyel.insert(selel);
+        bodyel.append(selel);
 
-        selel.onchange = evhan_select_change_editing;
+        selel.on('change', evhan_select_change_editing);
         evhan_select_change_editing();
 
         set_caption('All stored files are now visible. You may delete them, and display files containing text. Press Done when finished.', true);
@@ -756,43 +748,44 @@ function evhan_storage_changed(ev) {
     /* Adjust the contents of the selection box. */
     
     if (ls.length == 0) {
-        remove_children(bodyel);
+        bodyel.empty();
     }
     else {
-        remove_children(bodyel);
+        bodyel.empty();
         
-        var selel = new Element('select', { id: dialog_el_id+'_select', name:'files', size:'5' });
+        var selel = $('<select>', { id: dialog_el_id+'_select', name:'files' });
+        selel.prop('size', '5'); /* firefox doesn't like this being set in the constructor */
         var ix, file, datestr;
         for (ix=0; ix<ls.length; ix++) {
             file = ls[ix];
-            el = new Element('option', { name:'f'+ix } );
+            el = $('<option>', { name:'f'+ix } );
             if (ix == 0)
                 el.selected = true;
             datestr = format_date(file.modified);
-            insert_text(el, file.dirent.filename + ' -- ' + datestr);
-            selel.insert(el);
+            el.text(file.dirent.filename + ' -- ' + datestr);
+            selel.append(el);
         }
-        bodyel.insert(selel);
+        bodyel.append(selel);
 
         if (will_save)
-            selel.onchange = evhan_select_change;
+            selel.on('change', evhan_select_change);
     }
 
     if (will_save) {
         set_caption('Name this ' + cur_usage_name + '.', true);
-        el = $(dialog_el_id+'_accept');
-        el.disabled = false;
+        el = $('#'+dialog_el_id+'_accept');
+        el.prop('disabled', false);
     }
     else {
         if (ls.length == 0) {
             set_caption('You have no ' + cur_usage_name + 's for this game.', true);
-            el = $(dialog_el_id+'_accept');
-            el.disabled = true;
+            el = $('#'+dialog_el_id+'_accept');
+            el.prop('disabled', true);
         }
         else {
             set_caption('Select a ' + cur_usage_name + ' to load.', true);
-            el = $(dialog_el_id+'_accept');
-            el.disabled = false;
+            el = $('#'+dialog_el_id+'_accept');
+            el.prop('disabled', false);
         }
     }
 }
@@ -821,7 +814,7 @@ function file_construct_ref(filename, usage, gameid) {
    this returns null.
 */
 function file_decode_ref(dirkey) {
-    if (!dirkey.startsWith('dirent:'))
+    if (dirkey.slice(0,7) != 'dirent:')
         return null;
 
     var oldpos = 7;
@@ -1041,8 +1034,11 @@ function format_date(date) {
    JSON.stringify() and JSON.parse(), except not all browsers support those.
 */
 
+var encode_array = null;
+var decode_array = null;
+
 if (window.JSON) {
-    function encode_array(arr) {
+    encode_array = function(arr) {
         var res = JSON.stringify(arr);
         var len = res.length;
         /* Safari's JSON quotes arrays for some reason; we need to strip
@@ -1051,12 +1047,12 @@ if (window.JSON) {
             res = res.slice(1, len-1);
         return res;
     }
-    function decode_array(val) { return JSON.parse(val); }
+    decode_array = function(val) { return JSON.parse(val); }
 }
 else {
     /* Not-very-safe substitutes for JSON in old browsers. */
-    function encode_array(arr) { return '[' + arr + ']'; }
-    function decode_array(val) { return eval(val); }
+    encode_array = function(arr) { return '[' + arr + ']'; }
+    decode_array = function(val) { return eval(val); }
 }
 
 /* Locate the storage object, and set up the storage event handler, at load
@@ -1113,7 +1109,7 @@ if (localStorage == null) {
     }
 }
 
-Event.observe(window, 'storage', evhan_storage_changed); // prototype-ism
+$(window).on('storage', evhan_storage_changed);
 
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */

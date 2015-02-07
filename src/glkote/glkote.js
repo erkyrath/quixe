@@ -1,15 +1,10 @@
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 1.3.1.
+ * GlkOte Library: version 2.0.0.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2008-13 by Andrew Plotkin. You may
- * copy and distribute it freely, by any means and under any conditions,
- * as long as the code and documentation is not changed. You may also
- * incorporate this code into your own program and distribute that, or
- * modify this code and use and distribute the modified version, as long
- * as you retain a notice in your program or documentation which mentions
- * my name and the URL shown above.
+ * This Javascript library is copyright 2008-15 by Andrew Plotkin.
+ * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * GlkOte is a tool for creating interactive fiction -- and other text-based
  * applications -- on a web page. It is a Javascript library which handles
@@ -55,7 +50,6 @@ var last_known_paging = 0;
 var windows_paging_count = 0;
 var resize_timer = null;
 var retry_timer = null;
-var is_ie7 = false;
 var perform_paging = true;
 var detect_external_links = false;
 var regex_external_links = null;
@@ -66,15 +60,35 @@ var NBSP = "\xa0";
 /* Number of paragraphs to retain in a buffer window's scrollback. */
 var max_buffer_length = 200;
 
+/* Some constants for key event native values. (Not including function 
+   keys.) */
+var key_codes = {
+  KEY_BACKSPACE: 8,
+  KEY_TAB:       9,
+  KEY_RETURN:   13,
+  KEY_ESC:      27,
+  KEY_LEFT:     37,
+  KEY_UP:       38,
+  KEY_RIGHT:    39,
+  KEY_DOWN:     40,
+  KEY_DELETE:   46,
+  KEY_HOME:     36,
+  KEY_END:      35,
+  KEY_PAGEUP:   33,
+  KEY_PAGEDOWN: 34,
+  KEY_INSERT:   45
+};
+
 /* All the keys that can be used as line input terminators, and their
    native values. */
 var terminator_key_names = {
-    escape : Event.KEY_ESC,
+    escape : key_codes.KEY_ESC,
     func1 : 112, func2 : 113, func3 : 114, func4 : 115, func5 : 116, 
     func6 : 117, func7 : 118, func8 : 119, func9 : 120, func10 : 121, 
     func11 : 122, func12 : 123
 };
-/* The inverse of the above. Set up at init time. */
+/* The inverse of the above. Maps native values to Glk key names. Set up at
+   init time. */
 var terminator_key_values = {};
 
 /* This function becomes GlkOte.init(). The document calls this to begin
@@ -94,14 +108,14 @@ function glkote_init(iface) {
   }
   game_interface = iface;
 
-  if (!window.Prototype) {
-    glkote_error('The Prototype library has not been loaded.');
+  if (!window.jQuery || !$.fn.jquery) {
+    glkote_error('The jQuery library has not been loaded.');
     return;
   }
 
-  var version = Prototype.Version.split('.');
-  if (version.length < 2 || (version[0] == 1 && version[1] < 6)) {
-    glkote_error('This version of the Prototype library is too old. (Version ' + Prototype.Version + ' found; 1.6.0 required.)');
+  var version = $.fn.jquery.split('.');
+  if (version.length < 2 || version[0] < 1 || (version[0] == 1 && version[1] < 9)) {
+    glkote_error('This version of the jQuery library is too old. (Version ' + $.fn.jquery + ' found; 1.9.0 required.)');
     return;
   }
 
@@ -110,34 +124,33 @@ function glkote_init(iface) {
     terminator_key_values[terminator_key_names[val]] = val;
   }
 
-  if (Prototype.Browser.MobileSafari) {
+  if (false) {
+    /* ### test for mobile browser? "'ontouchstart' in document.documentElement"? */
     /* Paging doesn't make sense for iphone/android, because you can't
        get keystroke events from a window. */
     perform_paging = false;
   }
-  if (Prototype.Browser.IE) {
-    is_ie7 = window.XMLHttpRequest != null;
-  }
 
-  windowdic = new Hash();
+  /* Object mapping window ID (strings) to window description objects. */
+  windowdic = {};
 
   if (iface.windowport)
       windowport_id = iface.windowport;
   if (iface.gameport)
       gameport_id = iface.gameport;
 
-  var el = $(windowport_id);
-  if (!el) {
+  var el = $('#'+windowport_id);
+  if (!el.length) {
     glkote_error('Cannot find windowport element #'+windowport_id+' in this document.');
     return;
   }
-  el.update();
-  if (!Prototype.Browser.MobileSafari) 
-    Event.observe(document, 'keypress', evhan_doc_keypress);
-  Event.observe(window, 'resize', evhan_doc_resize);
+  el.empty();
+  if (perform_paging)
+    $(document).on('keypress', evhan_doc_keypress);
+  $(window).on('resize', evhan_doc_resize);
 
   var res = measure_window();
-  if (Object.isString(res)) {
+  if (jQuery.type(res) === 'string') {
     glkote_error(res);
     return;
   }
@@ -190,47 +203,57 @@ function measure_window() {
      is true on all browsers but IE7. Fortunately, on IE7 it's
      the windowport size that's wrong -- gameport is the size
      we're interested in. */
-  el = $(gameport_id);
-  if (!el)
+  el = $('#'+gameport_id);
+  if (!el.length)
     return 'Cannot find gameport element #'+gameport_id+' in this document.';
 
-  var portsize = el.getDimensions();
-  metrics.width  = portsize.width;
-  metrics.height = portsize.height;
+  /* Exclude padding and border. */
+  metrics.width  = el.width();
+  metrics.height = el.height();
 
-  el = $('layouttest_grid');
-  if (!el)
+  el = $('#layouttest_grid');
+  if (!el.length)
     return 'Cannot find layouttest_grid element for window measurement.';
 
-  winsize = el.getDimensions();
-  spansize = $('layouttest_gridspan').getDimensions();
-  line1size = $('layouttest_gridline').getDimensions();
-  line2size = $('layouttest_gridline2').getDimensions();
+  /* Here we will include padding and border. */
+  winsize = { width:el.outerWidth(), height:el.outerHeight() };
+  el = $('#layouttest_gridspan');
+  spansize = { width:el.outerWidth(), height:el.outerHeight() };
+  el = $('#layouttest_gridline');
+  line1size = { width:el.outerWidth(), height:el.outerHeight() };
+  el = $('#layouttest_gridline2');
+  line2size = { width:el.outerWidth(), height:el.outerHeight() };
 
-  metrics.gridcharheight = ($('layouttest_gridline2').positionedOffset().top
-    - $('layouttest_gridline').positionedOffset().top);
-  metrics.gridcharwidth = (spansize.width / 8);
+  metrics.gridcharheight = ($('#layouttest_gridline2').position().top
+    - $('#layouttest_gridline').position().top);
+  metrics.gridcharwidth = ($('#layouttest_gridspan').width() / 8);
   /* Yes, we can wind up with a non-integer charwidth value. */
 
-  /* these values include both sides (left+right, top+bottom) */
+  /* Find the total margin around the character grid (out to the window's
+     padding/border). These values include both sides (left+right,
+     top+bottom). */
   metrics.gridmarginx = winsize.width - spansize.width;
   metrics.gridmarginy = winsize.height - (line1size.height + line2size.height);
 
-  el = $('layouttest_buffer');
-  if (!el)
-    return 'Cannot find layouttest_grid element for window measurement.';
+  el = $('#layouttest_buffer');
+  if (!el.length)
+    return 'Cannot find layouttest_buffer element for window measurement.';
 
-  winsize = el.getDimensions();
-  spansize = $('layouttest_bufferspan').getDimensions();
-  line1size = $('layouttest_bufferline').getDimensions();
-  line2size = $('layouttest_bufferline2').getDimensions();
+  /* Here we will include padding and border. */
+  winsize = { width:el.outerWidth(), height:el.outerHeight() };
+  el = $('#layouttest_bufferspan');
+  spansize = { width:el.outerWidth(), height:el.outerHeight() };
+  el = $('#layouttest_bufferline');
+  line1size = { width:el.outerWidth(), height:el.outerHeight() };
+  el = $('#layouttest_bufferline2');
+  line2size = { width:el.outerWidth(), height:el.outerHeight() };
 
-  metrics.buffercharheight = ($('layouttest_bufferline2').positionedOffset().top
-    - $('layouttest_bufferline').positionedOffset().top);
-  metrics.buffercharwidth = (spansize.width / 8);
+  metrics.buffercharheight = ($('#layouttest_bufferline2').position().top
+    - $('#layouttest_bufferline').position().top);
+  metrics.buffercharwidth = ($('#layouttest_bufferspan').width() / 8);
   /* Yes, we can wind up with a non-integer charwidth value. */
 
-  /* these values include both sides (left+right, top+bottom) */
+  /* Again, these values include both sides (left+right, top+bottom). */
   metrics.buffermarginx = winsize.width - spansize.width;
   metrics.buffermarginy = winsize.height - (line1size.height + line2size.height);
 
@@ -287,7 +310,7 @@ function glkote_update(arg) {
     if (!retry_timer) {
       glkote_log('Event has timed out; will retry...');
       show_loading();
-      retry_timer = retry_update.delay(2);
+      retry_timer = delay_func(2, retry_update);
     }
     else {
       glkote_log('Event has timed out, but a retry is already queued!');
@@ -314,9 +337,9 @@ function glkote_update(arg) {
 
   /* Un-disable the UI, if it was previously disabled. */
   if (disabled) {
-    windowdic.values().each(function(win) {
+    $.each(windowdic, function(winid, win) {
       if (win.inputel) {
-        win.inputel.disabled = false;
+        win.inputel.prop('disabled', false);
       }
     });
     disabled = false;
@@ -340,7 +363,7 @@ function glkote_update(arg) {
      Then, we take the opportunity to update topunseen. (If a buffer
      window hasn't changed, topunseen hasn't changed.) */
 
-  windowdic.values().each(function(win) {
+  $.each(windowdic, function(winid, win) {
     if (win.type == 'buffer' && win.needscroll) {
       /* needscroll is true if the window has accumulated any content or
          an input field in this update cycle. needspaging is true if
@@ -355,24 +378,25 @@ function glkote_update(arg) {
         var frameel = win.frameel;
 
         if (!perform_paging) {
-          /* Scroll all the way down. */
-          frameel.scrollTop = frameel.scrollHeight;
+          /* Scroll all the way down. Note that scrollHeight is not a jQuery
+             property; we have to go to the raw DOM to get it. */
+          frameel.scrollTop(frameel.get(0).scrollHeight);
           win.needspaging = false;
         }
         else {
           /* Scroll the unseen content to the top. */
-          frameel.scrollTop = win.topunseen - current_metrics.buffercharheight;
+          frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
           /* Compute the new topunseen value. */
-          var frameheight = frameel.getHeight();
+          var frameheight = frameel.outerHeight();
           var realbottom = last_line_top_offset(frameel);
-          var newtopunseen = frameel.scrollTop + frameheight;
+          var newtopunseen = frameel.scrollTop() + frameheight;
           if (newtopunseen > realbottom)
             newtopunseen = realbottom;
           if (win.topunseen < newtopunseen)
             win.topunseen = newtopunseen;
           /* The scroll-down has not touched needspaging, because it is
              currently false. Let's see if it should be true. */
-          if (frameel.scrollTop + frameheight >= frameel.scrollHeight) {
+          if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
             win.needspaging = false;
           }
           else {
@@ -381,21 +405,21 @@ function glkote_update(arg) {
         }
 
         /* Add or remove the more prompt, based on the new needspaging flag. */
-        var moreel = $('win'+win.id+'_moreprompt');
+        var moreel = $('#win'+win.id+'_moreprompt');
         if (!win.needspaging) {
-          if (moreel)
+          if (moreel.length)
             moreel.remove();
         }
         else {
-          if (!moreel) {
-            moreel = new Element('div',
+          if (!moreel.length) {
+            moreel = $('<div>',
               { id: 'win'+win.id+'_moreprompt', 'class': 'MorePrompt' } );
-            insert_text(moreel, 'More');
+            moreel.append('More');
             /* 20 pixels is a cheap approximation of a scrollbar-width. */
             var morex = win.coords.right + 20;
             var morey = win.coords.bottom;
-            moreel.setStyle({ bottom:morey+'px', right:morex+'px' });
-            $(windowport_id).insert(moreel);
+            moreel.css({ bottom:morey+'px', right:morex+'px' });
+            $('#'+windowport_id).append(moreel);
           }
         }
       }
@@ -411,9 +435,9 @@ function glkote_update(arg) {
   disabled = false;
   if (arg.disable || arg.specialinput) {
     disabled = true;
-    windowdic.values().each(function(win) {
+    $.each(windowdic, function(winid, win) {
       if (win.inputel) {
-        win.inputel.disabled = true;
+        win.inputel.prop('disabled', true);
       }
     });
   }
@@ -425,7 +449,7 @@ function glkote_update(arg) {
 
   var newinputwin = 0;
   if (!disabled && !windows_paging_count) {
-    windowdic.values().each(function(win) {
+    $.each(windowdic, function(winid, win) {
       if (win.input) {
         if (!newinputwin || win.id == last_known_focus)
           newinputwin = win.id;
@@ -439,12 +463,12 @@ function glkote_update(arg) {
        giving it the focus right away. So we defer the call until
        after the javascript context has yielded control to the browser. */
     var focusfunc = function() {
-      var win = windowdic.get(newinputwin);
+      var win = windowdic[newinputwin];
       if (win.inputel) {
         win.inputel.focus();
       }
     };
-    focusfunc.defer();
+    defer_func(focusfunc);
   }
 
   /* Done with the update. Exit and wait for the next input event. */
@@ -458,12 +482,15 @@ function glkote_update(arg) {
    an empty argument object (which would mean "close all windows").
 */
 function accept_windowset(arg) {
-  windowdic.values().each(function(win) { win.inplace = false; });
-  arg.map(accept_one_window);
+  $.each(windowdic, function(winid, win) { win.inplace = false; });
+  $.map(arg, accept_one_window);
 
   /* Close any windows not mentioned in the argument. */
-  var closewins = windowdic.values().reject(function(win) { return win.inplace; });
-  closewins.map(close_one_window);
+  var closewins = $.map(windowdic, function(win, winid) {
+      if (!win.inplace)
+        return win;
+    });
+  $.map(closewins, close_one_window);
 }
 
 /* Handle the update for a single window. Open it if it doesn't already
@@ -476,25 +503,24 @@ function accept_one_window(arg) {
     return;
   }
 
-  win = windowdic.get(arg.id);
+  win = windowdic[arg.id];
   if (win == null) {
     /* The window must be created. */
     win = { id: arg.id, type: arg.type, rock: arg.rock };
-    windowdic.set(arg.id, win);
+    windowdic[arg.id] = win;
     var typeclass;
     if (win.type == 'grid')
       typeclass = 'GridWindow';
     if (win.type == 'buffer')
       typeclass = 'BufferWindow';
     var rockclass = 'WindowRock_' + arg.rock;
-    frameel = new Element('div',
+    frameel = $('<div>',
       { id: 'window'+arg.id,
         'class': 'WindowFrame ' + typeclass + ' ' + rockclass });
-    frameel.winid = arg.id;
-    Event.observe(frameel, 'mousedown', 
-      function(ev) { evhan_window_mousedown(ev, frameel); });
+    frameel.data('winid', arg.id);
+    frameel.on('mousedown', arg.id, evhan_window_mousedown);
     if (perform_paging && win.type == 'buffer')
-      frameel.onscroll = function() { evhan_window_scroll(frameel); };
+      frameel.on('scroll', arg.id, evhan_window_scroll);
     win.frameel = frameel;
     win.gridheight = 0;
     win.gridwidth = 0;
@@ -508,7 +534,7 @@ function accept_one_window(arg) {
     win.coords = { left:null, top:null, right:null, bottom:null };
     win.history = new Array();
     win.historypos = 0;
-    $(windowport_id).insert(frameel);
+    $('#'+windowport_id).append(frameel);
   }
   else {
     frameel = win.frameel;
@@ -523,16 +549,16 @@ function accept_one_window(arg) {
     var ix;
     if (arg.gridheight > win.gridheight) {
       for (ix=win.gridheight; ix<arg.gridheight; ix++) {
-        var el = new Element('div',
+        var el = $('<div>',
           { id: 'win'+win.id+'_ln'+ix, 'class': 'GridLine' });
-        el.insert(NBSP);
-        win.frameel.insert(el);
+        el.append(NBSP);
+        win.frameel.append(el);
       }
     }
     if (arg.gridheight < win.gridheight) {
       for (ix=arg.gridheight; ix<win.gridheight; ix++) {
-        var el = $('win'+win.id+'_ln'+ix);
-        if (el)
+        var el = $('#win'+win.id+'_ln'+ix);
+        if (el.length)
           el.remove();
       }
     }
@@ -548,7 +574,7 @@ function accept_one_window(arg) {
      of the border, but width/height are measured from the inside of the
      border. (Measured by the browser's DOM methods, I mean.) */
   var styledic;
-  if (Prototype.Browser.IE) {
+  if (0 /*###Prototype.Browser.IE*/) {
     /* Actually this method works in Safari also, but in Firefox the buffer
        windows are too narrow by a scrollbar-width. So we don't use it
        generally. */
@@ -584,17 +610,17 @@ function accept_one_window(arg) {
     win.coords.right = right;
     win.coords.bottom = bottom;
   }
-  frameel.setStyle(styledic);
+  frameel.css(styledic);
 }
 
 /* Handle closing one window. */
 function close_one_window(win) {
   win.frameel.remove();
-  windowdic.unset(win.id);
+  delete windowdic[win.id];
   win.frameel = null;
 
-  var moreel = $('win'+win.id+'_moreprompt');
-  if (moreel)
+  var moreel = $('#win'+win.id+'_moreprompt');
+  if (moreel.length)
     moreel.remove();
 }
 
@@ -607,17 +633,21 @@ var regex_long_whitespace = new RegExp('  +', 'g'); /* two or more spaces */
    a normal one. */
 function func_long_whitespace(match) {
   var len = match.length;
-  return (NBSP.times(len-1)) + ' ';
+  if (len == 1)
+    return ' ';
+  /* Evil trick I picked up from Prototype. Gives len-1 copies of NBSP. */
+  var res = new Array(len).join(NBSP);
+  return res + ' ';
 }
 
 /* Handle all of the window content changes. */
 function accept_contentset(arg) {
-  arg.map(accept_one_content);
+  $.map(arg, accept_one_content);
 }
 
 /* Handle the content changes for a single window. */
 function accept_one_content(arg) {
-  var win = windowdic.get(arg.id);
+  var win = windowdic[arg.id];
 
   /* Check some error conditions. */
 
@@ -641,16 +671,16 @@ function accept_one_content(arg) {
       var linearg = lines[ix];
       var linenum = linearg.line;
       var content = linearg.content;
-      var lineel = $('win'+win.id+'_ln'+linenum);
-      if (!lineel) {
+      var lineel = $('#win'+win.id+'_ln'+linenum);
+      if (!lineel.length) {
         glkote_error('Got content for nonexistent line ' + linenum + ' of window ' + arg.id + '.');
         continue;
       }
       if (!content || !content.length) {
-        lineel.update(NBSP);
+        lineel.text(NBSP);
       }
       else {
-        lineel.update();
+        lineel.empty();
         for (sx=0; sx<content.length; sx++) {
           var rdesc = content[sx];
           var rstyle, rtext, rlink;
@@ -665,19 +695,19 @@ function accept_one_content(arg) {
             rtext = content[sx];
             rlink = undefined;
           }
-          var el = new Element('span',
+          var el = $('<span>',
             { 'class': 'Style_' + rstyle } );
           if (rlink == undefined) {
             insert_text_detecting(el, rtext);
           }
           else {
-            var ael = new Element('a',
-              { 'href': '#' } );
-            insert_text(ael, rtext);
-            ael.onclick = build_evhan_hyperlink(win.id, rlink);
-            el.insert(ael);
+            var ael = $('<a>',
+              { 'href': '#', 'class': 'Internal' } );
+            ael.text(rtext);
+            ael.on('click', build_evhan_hyperlink(win.id, rlink));
+            el.append(ael);
           }
-          lineel.insert(el);
+          lineel.append(el);
         }
       }
     }
@@ -693,18 +723,22 @@ function accept_one_content(arg) {
          would make this content update illegal -- but we already checked
          that.) The inputel is inside the cursel, which we're about to
          rip out. We remove it, so that we can put it back later. */
-        win.inputel.remove();
+        win.inputel.detach();
     }
 
-    var cursel = $('win'+win.id+'_cursor');
-    if (cursel)
+    var cursel = $('#win'+win.id+'_cursor');
+    if (cursel.length)
       cursel.remove();
     cursel = null;
 
     if (arg.clear) {
-      win.frameel.update(); // remove all children
+      win.frameel.empty();
       win.topunseen = 0;
     }
+
+    /* Accept a missing text field as doing nothing. */
+    if (text === undefined)
+      text = [];
 
     /* Each line we receive has a flag indicating whether it *starts*
        a new paragraph. (If the flag is false, the line gets appended
@@ -732,19 +766,23 @@ function accept_one_content(arg) {
       }
       if (divel == null) {
         /* Create a new paragraph div */
-        divel = new Element('div', { 'class': 'BufferLine' })
-        divel.blankpara = true;
-        divel.endswhite = true;
-        win.frameel.insert(divel);
+        divel = $('<div>', { 'class': 'BufferLine' });
+        divel.data('blankpara', true);
+        divel.data('endswhite', true);
+        win.frameel.append(divel);
+      }
+      else {
+        /* jquery-wrap the element. */
+        divel = $(divel);
       }
       if (!content || !content.length) {
-        if (divel.blankpara)
-          divel.update(NBSP);
+        if (divel.data('blankpara'))
+          divel.text(NBSP);
         continue;
       }
-      if (divel.blankpara) {
-        divel.blankpara = false;
-        divel.update();
+      if (divel.data('blankpara')) {
+        divel.data('blankpara', false);
+        divel.empty();
       }
       /* We must munge long strings of whitespace to make sure they aren't
          collapsed. (This wouldn't be necessary if "white-space: pre-wrap"
@@ -767,24 +805,24 @@ function accept_one_content(arg) {
           rtext = content[sx];
           rlink = undefined;
         }
-        var el = new Element('span',
+        var el = $('<span>',
           { 'class': 'Style_' + rstyle } );
         rtext = rtext.replace(regex_long_whitespace, func_long_whitespace);
-        if (divel.endswhite) {
+        if (divel.data('endswhite')) {
           rtext = rtext.replace(regex_initial_whitespace, NBSP);
         }
         if (rlink == undefined) {
           insert_text_detecting(el, rtext);
         }
         else {
-          var ael = new Element('a',
-            { 'href': '#' } );
-          insert_text(ael, rtext);
-          ael.onclick = build_evhan_hyperlink(win.id, rlink);
-          el.insert(ael);
+          var ael = $('<a>',
+            { 'href': '#', 'class': 'Internal' } );
+          ael.text(rtext);
+          ael.on('click', build_evhan_hyperlink(win.id, rlink));
+          el.append(ael);
         }
-        divel.insert(el);
-        divel.endswhite = regex_final_whitespace.test(rtext);
+        divel.append(el);
+        divel.data('endswhite', regex_final_whitespace.test(rtext));
       }
     }
 
@@ -792,18 +830,16 @@ function accept_one_content(arg) {
        paragraphs, delete some. (It would be better to limit by
        character count, rather than paragraph count. But this is
        easier.) */
-    var parals = win.frameel.childNodes;
-    if (parals) {
+    var parals = win.frameel.children();
+    if (parals.length) {
       var totrim = parals.length - max_buffer_length;
       if (totrim > 0) {
         var ix, obj;
-        win.topunseen -= parals[totrim].offsetTop;
+        win.topunseen -= parals.get(totrim).offsetTop;
         if (win.topunseen < 0)
           win.topunseen = 0;
         for (ix=0; ix<totrim; ix++) {
-          obj = parals.item(0);
-          if (obj)
-            win.frameel.removeChild(obj);
+          $(parals.get(ix)).remove();
         }
       }
     }
@@ -812,34 +848,27 @@ function accept_one_content(arg) {
        position the input box. */
     var divel = last_child_of(win.frameel);
     if (divel) {
-      cursel = new Element('span',
+      cursel = $('<span>',
         { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-      insert_text(cursel, NBSP);
-      divel.insert(cursel);
+      cursel.append(NBSP);
+      $(divel).append(cursel);
 
       if (win.inputel) {
         /* Put back the inputel that we found earlier. */
         var inputel = win.inputel;
-        var pos = cursel.positionedOffset();
-        /* This calculation is antsy. On Firefox, buffermarginx is too high
-           (or getWidth() is too low) by the width of a scrollbar. On MSIE,
+        var pos = cursel.position();
+        /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
+           retested in jquery...) On Firefox, buffermarginx is too high (or
+           getWidth() is too low) by the width of a scrollbar. On MSIE,
            buffermarginx is one pixel too low. We fudge for that, giving a
            result which errs on the low side. */
-        var width = win.frameel.getWidth() - (current_metrics.buffermarginx + pos.left + 2);
+        var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
         if (width < 1)
           width = 1;
-        if (Prototype.Browser.Opera) {
-          /* I swear I don't understand what Opera thinks absolute positioning
-             means. We will avoid it. */
-          inputel.setStyle({ position: 'relative',
-            left: '0px', top: '0px', width: width+'px' });
-          cursel.insert({ top:inputel });
-        }
-        else {
-          inputel.setStyle({ position: 'absolute',
-            left: '0px', top: '0px', width: width+'px' });
-          cursel.insert(inputel);
-        }
+        /* ### opera absolute positioning failure? */
+        inputel.css({ position: 'absolute',
+          left: '0px', top: '0px', width: width+'px' });
+        cursel.append(inputel);
       }
     }
   }
@@ -852,15 +881,15 @@ function accept_one_content(arg) {
    (The latter case means that input was cancelled and restarted.)
 */
 function accept_inputcancel(arg) {
-  var hasinput = new Hash();
-  arg.map(function(argi) { 
+  var hasinput = {};
+  $.map(arg, function(argi) { 
     if (argi.type)
-      hasinput.set(argi.id, argi); 
+      hasinput[argi.id] = argi;
   });
 
-  windowdic.values().each(function(win) {
+  $.each(windowdic, function(winid, win) {
     if (win.input) {
-      var argi = hasinput.get(win.id);
+      var argi = hasinput[win.id];
       if (argi == null || argi.gen > win.input.gen) {
         /* cancel this input. */
         win.input = null;
@@ -877,19 +906,19 @@ function accept_inputcancel(arg) {
    to change position, move it.
 */
 function accept_inputset(arg) {
-  var hasinput = new Hash();
-  var hashyperlink = new Hash();
-  arg.map(function(argi) {
+  var hasinput = {};
+  var hashyperlink = {};
+  $.map(arg, function(argi) {
     if (argi.type)
-      hasinput.set(argi.id, argi); 
+      hasinput[argi.id] = argi;
     if (argi.hyperlink)
-      hashyperlink.set(argi.id, true);
+      hashyperlink[argi.id] = true;
   });
 
-  windowdic.values().each(function(win) {
-    win.reqhyperlink = hashyperlink.get(win.id);
+  $.each(windowdic, function(tmpid, win) {
+    win.reqhyperlink = hashyperlink[win.id];
 
-    var argi = hasinput.get(win.id);
+    var argi = hasinput[win.id];
     if (argi == null)
       return;
     win.input = argi;
@@ -911,16 +940,16 @@ function accept_inputset(arg) {
       else {
         glkote_error('Window ' + win.id + ' has requested unrecognized input type ' + argi.type + '.');
       }
-      inputel = new Element('input',
+      inputel = $('<input>',
         { id: 'win'+win.id+'_input',
           'class': classes, type: 'text', maxlength: maxlen });
-      if (Prototype.Browser.MobileSafari)
-        inputel.writeAttribute('autocapitalize', 'off');
+      if (true) /* should be mobile-webkit-only? */
+        inputel.attr('autocapitalize', 'off');
       if (argi.type == 'line') {
-        inputel.onkeypress = evhan_input_keypress;
-        inputel.onkeydown = evhan_input_keydown;
+        inputel.on('keypress', evhan_input_keypress);
+        inputel.on('keydown', evhan_input_keydown);
         if (argi.initial)
-          inputel.value = argi.initial;
+          inputel.val(argi.initial);
         win.terminators = {};
         if (argi.terminators) {
           for (var ix=0; ix<argi.terminators.length; ix++) 
@@ -928,68 +957,57 @@ function accept_inputset(arg) {
         }
       }
       else if (argi.type == 'char') {
-        inputel.onkeypress = evhan_input_char_keypress;
-        inputel.onkeydown = evhan_input_char_keydown;
+        inputel.on('keypress', evhan_input_char_keypress);
+        inputel.on('keydown', evhan_input_char_keydown);
       }
-      /* Subtle point: the winid variable here is never reused, because we're
-         inside a function being map()ed. Therefore, winid is safe to use in
-         a closure. */
-      var winid = win.id;
-      inputel.onfocus = function() { evhan_input_focus(winid); };
-      inputel.onblur = function() { evhan_input_blur(winid); };
-      inputel.winid = win.id;
+      inputel.on('focus', win.id, evhan_input_focus);
+      inputel.on('blur', win.id, evhan_input_blur);
+      inputel.data('winid', win.id);
       win.inputel = inputel;
       win.historypos = win.history.length;
       win.needscroll = true;
     }
 
     if (win.type == 'grid') {
-      var lineel = $('win'+win.id+'_ln'+argi.ypos);
-      if (!lineel) {
+      var lineel = $('#win'+win.id+'_ln'+argi.ypos);
+      if (!lineel.length) {
         glkote_error('Window ' + win.id + ' has requested input at unknown line ' + argi.ypos + '.');
         return;
       }
-      var pos = lineel.positionedOffset();
+      var pos = lineel.position();
       var xpos = pos.left + Math.round(argi.xpos * current_metrics.gridcharwidth);
       var width = Math.round(maxlen * current_metrics.gridcharwidth);
       /* This calculation is antsy. See below. (But grid window line input
          is rare in IF.) */
-      var maxwidth = win.frameel.getWidth() - (current_metrics.buffermarginx + xpos + 2);
+      var maxwidth = win.frameel.width() - (current_metrics.buffermarginx + xpos + 2);
       if (width > maxwidth)
         width = maxwidth;
-      inputel.setStyle({ position: 'absolute',
+      inputel.css({ position: 'absolute',
         left: xpos+'px', top: pos.top+'px', width: width+'px' });
-      win.frameel.insert(inputel);
+      win.frameel.append(inputel);
     }
 
     if (win.type == 'buffer') {
-      var cursel = $('win'+win.id+'_cursor');
-      if (!cursel) {
-        cursel = new Element('span',
+      var cursel = $('#win'+win.id+'_cursor');
+      if (!cursel.length) {
+        cursel = $('<span>',
           { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-        insert_text(cursel, NBSP);
-        win.frameel.insert(cursel);
+        cursel.append(NBSP);
+        win.frameel.append(cursel);
       }
-      var pos = cursel.positionedOffset();
-      /* This calculation is antsy. On Firefox, buffermarginx is too high
-         (or getWidth() is too low) by the width of a scrollbar. On MSIE,
-         buffermarginx is one pixel too low. We fudge for that, giving a
-         result which errs on the low side. */
-      var width = win.frameel.getWidth() - (current_metrics.buffermarginx + pos.left + 2);
+      var pos = cursel.position();
+      /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
+           retested in jquery...) On Firefox, buffermarginx is too high (or
+           getWidth() is too low) by the width of a scrollbar. On MSIE,
+           buffermarginx is one pixel too low. We fudge for that, giving a
+           result which errs on the low side. */
+      var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
       if (width < 1)
         width = 1;
-      if (Prototype.Browser.Opera) {
-        /* I swear I don't understand what Opera thinks absolute positioning
-           means. We will avoid it. */
-        inputel.setStyle({ position: 'relative',
-          left: '0px', top: '0px', width: width+'px' });
-        cursel.insert({ top:inputel });
-      }
-      else {
-        inputel.setStyle({ position: 'absolute',
-          left: '0px', top: '0px', width: width+'px' });
-        cursel.insert(inputel);
-      }
+      /* ### opera absolute positioning failure? */
+      inputel.css({ position: 'absolute',
+        left: '0px', top: '0px', width: width+'px' });
+      cursel.append(inputel);
     }
   });
 }
@@ -1007,7 +1025,10 @@ function accept_specialinput(arg) {
       GlkOte.log('Unable to open file dialog: ' + ex);
       /* Return a failure. But we don't want to call send_response before
          glkote_update has finished, so we defer the reply slightly. */
-      replyfunc.defer(null);
+      replyfunc = function(ref) {
+        send_response('specialresponse', null, 'fileref_prompt', null);
+      };
+      defer_func(replyfunc);
     }
   }
   else {
@@ -1016,13 +1037,15 @@ function accept_specialinput(arg) {
 }
 
 /* Return the vertical offset (relative to the parent) of the top of the 
-   last child of the parent.
+   last child of the parent. We use the raw DOM "offsetTop" property;
+   jQuery doesn't have an accessor for it.
+   (Possibly broken in MSIE7? It worked in the old version, though.)
 */
 function last_line_top_offset(el) {
-  var ls = el.childElements();
-  if (ls.length == 0)
+  var ls = el.children();
+  if (!ls || !ls.length)
     return 0;
-  return ls[ls.length-1].offsetTop;
+  return ls.get(ls.length-1).offsetTop;
 }
 
 /* Set windows_paging_count to the number of windows that need paging.
@@ -1038,7 +1061,7 @@ function readjust_paging_focus(canfocus) {
   var pageable_win = 0;
 
   if (perform_paging) {
-    windowdic.values().each(function(win) {
+    $.each(windowdic, function(tmpid, win) {
         if (win.needspaging) {
           windows_paging_count += 1;
           if (!pageable_win || win.id == last_known_paging)
@@ -1059,7 +1082,7 @@ function readjust_paging_focus(canfocus) {
 
     var newinputwin = 0;
     if (!disabled && !windows_paging_count) {
-      windowdic.values().each(function(win) {
+      $.each(windowdic, function(tmpid, win) {
           if (win.input) {
             if (!newinputwin || win.id == last_known_focus)
               newinputwin = win.id;
@@ -1068,7 +1091,7 @@ function readjust_paging_focus(canfocus) {
     }
     
     if (newinputwin) {
-      var win = windowdic.get(newinputwin);
+      var win = windowdic[newinputwin];
       if (win.inputel) {
         win.inputel.focus();
       }
@@ -1098,13 +1121,13 @@ function glkote_log(msg) {
 /* Display the red error pane, with a message in it. This is called on
    fatal errors.
 
-   Deliberately does not use any Prototype functionality, because this
-   is called when Prototype couldn't be loaded.
+   Deliberately does not use any jQuery functionality, because this
+   is called when jQuery couldn't be loaded.
 */
 function glkote_error(msg) {
   var el = document.getElementById('errorcontent');
   remove_children(el);
-  insert_text(el, msg);
+  el.appendChild(document.createTextNode(msg));
 
   el = document.getElementById('errorpane');
   el.style.display = '';   /* el.show() */
@@ -1131,13 +1154,13 @@ function retry_update() {
 
 /* Hide the error pane. */
 function clear_error() {
-  $('errorpane').hide();
+  $('#errorpane').hide();
 }
 
 /* Hide the loading pane (the spinny compass), if it hasn't already been
    hidden.
 
-   Deliberately does not use any Prototype functionality.
+   Deliberately does not use any jQuery functionality.
 */
 function hide_loading() {
   if (loading_visible == false)
@@ -1152,7 +1175,7 @@ function hide_loading() {
 
 /* Show the loading pane (the spinny compass), if it isn't already visible.
 
-   Deliberately does not use any Prototype functionality.
+   Deliberately does not use any jQuery functionality.
 */
 function show_loading() {
   if (loading_visible == true)
@@ -1165,22 +1188,9 @@ function show_loading() {
   }
 }
 
-/* Add text to a DOM element.
+/* Remove all children from a DOM element. (Not a jQuery collection!)
 
-   Deliberately does not use any Prototype functionality. One reason
-   is that this is called in fatal errors, including the error of
-   failing to find the Prototype library. Another reason, sadly, is that
-   the Prototype library doesn't *have* a function to insert arbitrary
-   text into an element.
-*/
-function insert_text(el, val) {
-  var nod = document.createTextNode(val);
-  el.appendChild(nod);
-}
-
-/* Remove all children from a DOM element.
-
-   Deliberately does not use any Prototype functionality.
+   Deliberately does not use any jQuery functionality.
 */
 function remove_children(parent) {
   var obj, ls;
@@ -1193,22 +1203,26 @@ function remove_children(parent) {
 
 /* Return the last child element of a DOM element. (Ignoring text nodes.)
    If the element has no element children, this returns null.
+   This returns a raw DOM element! Remember to $() it if you want to pass
+   it to jquery.
 */
 function last_child_of(obj) {
-  var ls = obj.childElements();
+  var ls = obj.children();
   if (!ls || !ls.length)
     return null;
-  return ls[ls.length-1];
+  return ls.get(ls.length-1);
 }
 
 /* Add text to a DOM element. If GlkOte is configured to detect URLs,
    this does that, converting them into 
    <a href='...' class='External' target='_blank'> tags.
+   
+   This requires calls to document.createTextNode, because jQuery doesn't
+   have a notion of appending literal text. I swear...
 */
 function insert_text_detecting(el, val) {
   if (!detect_external_links) {
-    var nod = document.createTextNode(val);
-    el.appendChild(nod);
+    el.append(document.createTextNode(val));
     return;
   }
 
@@ -1216,11 +1230,10 @@ function insert_text_detecting(el, val) {
     /* For 'match', we test the entire span of text to see if it's a URL.
        This is simple and fast. */
     if (regex_external_links.test(val)) {
-      var ael = new Element('a',
+      var ael = $('<a>',
         { 'href': val, 'class': 'External', 'target': '_blank' } );
-      var nod = document.createTextNode(val);
-      ael.appendChild(nod);
-      el.insert(ael);
+      ael.text(val);
+      el.append(ael);
       return;
     }
     /* If not, fall through. */
@@ -1236,15 +1249,13 @@ function insert_text_detecting(el, val) {
       /* Add the characters before the URL, if any. */
       if (match.index > 0) {
         var prefix = val.substring(0, match.index);
-        var nod = document.createTextNode(prefix);
-        el.appendChild(nod);
+        el.append(document.createTextNode(prefix));
       }
       /* Add the URL. */
-      var ael = new Element('a',
+      var ael = $('<a>',
         { 'href': match[0], 'class': 'External', 'target': '_blank' } );
-      var nod = document.createTextNode(match[0]);
-      ael.appendChild(nod);
-      el.insert(ael);
+      ael.text(match[0]);
+      el.append(ael);
       /* Continue searching after the URL. */
       val = val.substring(match.index + match[0].length);
     }
@@ -1254,38 +1265,48 @@ function insert_text_detecting(el, val) {
   }
 
   /* Fall-through case. Just add the text. */
-  var nod = document.createTextNode(val);
-  el.appendChild(nod);
+  el.append(document.createTextNode(val));
 }
 
-/* Debugging utility: return a string displaying all of an object's
-   properties. */
-function inspect_method() {
-  var keys = Object.keys(this);
-  keys.sort();
-  var els = keys.map(function(key) {
-      var val = this[key];
-      if (val == inspect_method)
-        val = '[...]';
-      return key + ':' + val;
-    }, this);
-  return '{' + els.join(', ') + '}';
+/* Run a function (no arguments) in timeout seconds. */
+function delay_func(timeout, func)
+{
+  return window.setTimeout(func, timeout*1000);
+}
+
+/* Run a function (no arguments) "soon". */
+function defer_func(func)
+{
+  return window.setTimeout(func, 0.01*1000);
 }
 
 /* Debugging utility: return a string displaying all of an object's
    properties, recursively. (Do not call this on an object which references
    anything big!) */
 function inspect_deep(res) {
-  var keys = Object.keys(res);
+  var keys = $.map(res, function(val, key) { return key; });
   keys.sort();
-  var els = keys.map(function(key) {
+  var els = $.map(keys, function(key) {
       var val = res[key];
-      if (Object.isString(val))
+      if (jQuery.type(val) === 'string')
         val = "'" + val + "'";
-      else if (!Object.isNumber(val))
+      else if (!(jQuery.type(val) === 'number'))
         val = inspect_deep(val);
       return key + ':' + val;
-    }, res);
+    });
+  return '{' + els.join(', ') + '}';
+}
+
+/* Debugging utility: same as above, but only one level deep. */
+function inspect_shallow(res) {
+  var keys = $.map(res, function(val, key) { return key; });
+  keys.sort();
+  var els = $.map(keys, function(key) {
+      var val = res[key];
+      if (jQuery.type(val) === 'string')
+        val = "'" + val + "'";
+      return key + ':' + val;
+    });
   return '{' + els.join(', ') + '}';
 }
 
@@ -1293,12 +1314,14 @@ function inspect_deep(res) {
    the game. (This is a utility function used by various keyboard input
    handlers.)
 */
-function submit_line_input(win, inputel, termkey) {
-  var val = inputel.value;
+function submit_line_input(win, val, termkey) {
+  var historylast = null;
+  if (win.history.length)
+    historylast = win.history[win.history.length-1];
 
   /* Store this input in the command history for this window, unless
      the input is blank or a duplicate. */
-  if (val && val != win.history.last()) {
+  if (val && val != historylast) {
     win.history.push(val);
     if (win.history.length > 20) {
       /* Don't keep more than twenty entries. */
@@ -1354,17 +1377,17 @@ function send_response(type, win, val, val2) {
   }
 
   if (!(type == 'init' || type == 'refresh' || type == 'specialresponse')) {
-    windowdic.values().each(function(win) {
+    $.each(windowdic, function(tmpid, win) {
       var savepartial = (type != 'line' && type != 'char') 
                         || (win.id != winid);
       if (savepartial && win.input && win.input.type == 'line'
-        && win.inputel && win.inputel.value) {
+        && win.inputel && win.inputel.val()) {
         var partial = res.partial;
         if (!partial) {
           partial = {};
           res.partial = partial;
         };
-        partial[win.id] = win.inputel.value;
+        partial[win.id] = win.inputel.val();
       }
     });
   }
@@ -1390,11 +1413,11 @@ function evhan_doc_resize(ev) {
     resize_timer = null;
   }
 
-  resize_timer = doc_resize_real.delay(0.5);
+  resize_timer = delay_func(0.20, doc_resize_real);
 }
 
 /* This executes when no new resize events have come along in the past
-   0.5 seconds. (But if the UI is disabled, we delay again, because
+   0.20 seconds. (But if the UI is disabled, we delay again, because
    the game can't deal with events yet.)
    ### We really should distinguish between disabling the UI (delay
    resize events) from shutting down the UI (ignore resize events).
@@ -1403,11 +1426,23 @@ function doc_resize_real() {
   resize_timer = null;
 
   if (disabled) {
-    resize_timer = doc_resize_real.delay(0.5);
+    resize_timer = delay_func(0.20, doc_resize_real);
     return;
   }
 
-  current_metrics = measure_window();
+  var new_metrics = measure_window();
+  if (new_metrics.width == current_metrics.width
+    && new_metrics.height == current_metrics.height) {
+    /* If the metrics haven't changed, skip the arrange event. Necessary on
+       mobile webkit, where the keyboard popping up and down causes a same-size
+       resize event.
+
+       This is not ideal; it means we'll miss metrics changes caused by
+       font-size changes. (Admittedly, we don't have any code to detect those
+       anyhow, so small loss.) */
+    return;
+  }
+  current_metrics = new_metrics;
   send_response('arrange', null, current_metrics);
 }
 
@@ -1421,13 +1456,7 @@ function evhan_doc_keypress(ev) {
   }
 
   var keycode = 0;
-  if (Prototype.Browser.IE) { /* MSIE broken event API */
-    ev = Event.extend(window.event);
-    if (ev) keycode = ev.keyCode;
-  }
-  else {
-    if (ev) keycode = ev.which;
-  }
+  if (ev) keycode = ev.which;
 
   if (ev.target.tagName.toUpperCase() == 'INPUT') {
     /* If the focus is already on an input field, don't mess with it. */
@@ -1441,7 +1470,7 @@ function evhan_doc_keypress(ev) {
     return;
   }
 
-  if (Prototype.Browser.Opera) {
+  if (0) { /*### opera browser?*/
     /* Opera inexplicably generates keypress events for the shift, option,
        and command keys. The keycodes are 16...18. We don't want those
        to focus-and-scroll-down. */
@@ -1454,7 +1483,7 @@ function evhan_doc_keypress(ev) {
   var win;
 
   if (windows_paging_count) {
-    win = windowdic.get(last_known_paging);
+    win = windowdic[last_known_paging];
     if (win) {
       if (!((keycode >= 32 && keycode <= 126) || keycode == 13)) {
         /* If the keystroke is not a printable character (or Enter),
@@ -1465,11 +1494,11 @@ function evhan_doc_keypress(ev) {
       ev.preventDefault();
       var frameel = win.frameel;
       /* Scroll the unseen content to the top. */
-      frameel.scrollTop = win.topunseen - current_metrics.buffercharheight;
+      frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
       /* Compute the new topunseen value. */
-      var frameheight = frameel.getHeight();
+      var frameheight = frameel.outerHeight();
       var realbottom = last_line_top_offset(frameel);
-      var newtopunseen = frameel.scrollTop + frameheight;
+      var newtopunseen = frameel.scrollTop() + frameheight;
       if (newtopunseen > realbottom)
         newtopunseen = realbottom;
       if (win.topunseen < newtopunseen)
@@ -1477,10 +1506,10 @@ function evhan_doc_keypress(ev) {
       if (win.needspaging) {
         /* The scroll-down might have cleared needspaging already. But 
            if not... */
-        if (frameel.scrollTop + frameheight >= frameel.scrollHeight) {
+        if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
           win.needspaging = false;
-          var moreel = $('win'+win.id+'_moreprompt');
-          if (moreel)
+          var moreel = $('#win'+win.id+'_moreprompt');
+          if (moreel.length)
             moreel.remove();
           readjust_paging_focus(true);
         }
@@ -1489,7 +1518,7 @@ function evhan_doc_keypress(ev) {
     }
   }
 
-  win = windowdic.get(last_known_focus);
+  win = windowdic[last_known_focus];
   if (!win)
     return;
   if (!win.inputel)
@@ -1502,9 +1531,9 @@ function evhan_doc_keypress(ev) {
     if (keycode == 13) {
       /* Grab the Return/Enter key here. This is the same thing we'd do if
          the input field handler caught it. */
-      submit_line_input(win, win.inputel, null);
+      submit_line_input(win, win.inputel.val(), null);
       /* Safari drops an extra newline into the input field unless we call
-         preventDefault() here. I don't know why. */
+         preventDefault() here. */
       ev.preventDefault();
       return;
     }
@@ -1518,7 +1547,7 @@ function evhan_doc_keypress(ev) {
          keyboard), but that's beyond my depth. */
       if (keycode >= 32) {
         var val = String.fromCharCode(keycode);
-        win.inputel.value = win.inputel.value + val;
+        win.inputel.val(win.inputel.val() + val);
       }
       ev.preventDefault();
       return;
@@ -1534,7 +1563,7 @@ function evhan_doc_keypress(ev) {
     var res = null;
     if (keycode == 13)
       res = 'return';
-    else if (keycode == Event.KEY_BACKSPACE)
+    else if (keycode == key_codes.KEY_BACKSPACE)
       res = 'delete';
     else if (keycode)
       res = String.fromCharCode(keycode);
@@ -1551,17 +1580,16 @@ function evhan_doc_keypress(ev) {
    Remember which window the user clicked in last, as a hint for setting
    the focus. (Input focus and paging focus are tracked separately.)
 */
-function evhan_window_mousedown(ev, frameel) {
-  if (!frameel.winid)
-    return;
-  var win = windowdic.get(frameel.winid);
+function evhan_window_mousedown(ev) {
+  var winid = ev.data;
+  var win = windowdic[winid];
   if (!win)
     return;
 
   if (win.inputel) {
     last_known_focus = win.id;
-    if (Prototype.Browser.MobileSafari) {
-      ev.stop();
+    if (0 /*###Prototype.Browser.MobileSafari*/) {
+      ev.preventDefault();
       //glkote_log("### focus to " + win.id);
       //### This doesn't always work, blah
       win.inputel.focus();
@@ -1583,10 +1611,7 @@ function evhan_window_mousedown(ev, frameel) {
 */
 function evhan_input_char_keydown(ev) {
   var keycode = 0;
-  if (!ev) { /* MSIE broken event API */
-    ev = Event.extend(window.event);
-  }
-  if (ev) keycode = ev.keyCode;
+  if (ev) keycode = ev.keyCode; //### ev.which?
   if (!keycode) return true;
 
   var res = null;
@@ -1596,27 +1621,27 @@ function evhan_input_char_keydown(ev) {
      which results in a double input. */
 
   switch (keycode) {
-    case Event.KEY_LEFT:
+    case key_codes.KEY_LEFT:
       res = 'left'; break;
-    case Event.KEY_RIGHT:
+    case key_codes.KEY_RIGHT:
       res = 'right'; break;
-    case Event.KEY_UP:
+    case key_codes.KEY_UP:
       res = 'up'; break;
-    case Event.KEY_DOWN:
+    case key_codes.KEY_DOWN:
       res = 'down'; break;
-    case Event.KEY_BACKSPACE:
+    case key_codes.KEY_BACKSPACE:
       res = 'delete'; break;
-    case Event.KEY_ESC:
+    case key_codes.KEY_ESC:
       res = 'escape'; break;
-    case Event.KEY_TAB:
+    case key_codes.KEY_TAB:
       res = 'tab'; break;
-    case Event.KEY_PAGEUP:
+    case key_codes.KEY_PAGEUP:
       res = 'pageup'; break;
-    case Event.KEY_PAGEDOWN:
+    case key_codes.KEY_PAGEDOWN:
       res = 'pagedown'; break;
-    case Event.KEY_HOME:
+    case key_codes.KEY_HOME:
       res = 'home'; break;
-    case Event.KEY_END:
+    case key_codes.KEY_END:
       res = 'end'; break;
     case 112:
       res = 'func1'; break;
@@ -1645,9 +1670,8 @@ function evhan_input_char_keydown(ev) {
   }
 
   if (res) {
-    if (!this.winid)
-      return true;
-    var win = windowdic.get(this.winid);
+    var winid = $(this).data('winid');
+    var win = windowdic[winid];
     if (!win || !win.input)
       return true;
 
@@ -1666,19 +1690,8 @@ function evhan_input_char_keydown(ev) {
 */
 function evhan_input_char_keypress(ev) {
   var keycode = 0;
-  if (!ev) { /* MSIE broken event API */
-    ev = Event.extend(window.event);
-    if (ev) keycode = ev.keyCode;
-  }
-  else {
-    if (ev) keycode = ev.which;
-  }
+  if (ev) keycode = ev.which;
   if (!keycode) return false;
-
-  if (keycode == 10 && Prototype.Browser.MobileSafari) {
-    /* This case only occurs on old iPhones (iOS 3.1.3). */
-    keycode = 13;
-  }
 
   var res;
   if (keycode == 13)
@@ -1686,9 +1699,8 @@ function evhan_input_char_keypress(ev) {
   else
     res = String.fromCharCode(keycode);
 
-  if (!this.winid)
-    return true;
-  var win = windowdic.get(this.winid);
+  var winid = $(this).data('winid');
+  var win = windowdic[winid];
   if (!win || !win.input)
     return true;
 
@@ -1702,20 +1714,16 @@ function evhan_input_char_keypress(ev) {
    for this window. */
 function evhan_input_keydown(ev) {
   var keycode = 0;
-  if (!ev) { /* MSIE broken event API */
-    ev = Event.extend(window.event);
-  }
-  if (ev) keycode = ev.keyCode;
+  if (ev) keycode = ev.keyCode; //### ev.which?
   if (!keycode) return true;
 
-  if (keycode == Event.KEY_UP || keycode == Event.KEY_DOWN) {
-    if (!this.winid)
-      return true;
-    var win = windowdic.get(this.winid);
+  if (keycode == key_codes.KEY_UP || keycode == key_codes.KEY_DOWN) {
+    var winid = $(this).data('winid');
+    var win = windowdic[winid];
     if (!win || !win.input)
       return true;
 
-    if (keycode == Event.KEY_UP && win.historypos > 0) {
+    if (keycode == key_codes.KEY_UP && win.historypos > 0) {
       win.historypos -= 1;
       if (win.historypos < win.history.length)
         this.value = win.history[win.historypos];
@@ -1723,7 +1731,7 @@ function evhan_input_keydown(ev) {
         this.value = '';
     }
 
-    if (keycode == Event.KEY_DOWN && win.historypos < win.history.length) {
+    if (keycode == key_codes.KEY_DOWN && win.historypos < win.history.length) {
       win.historypos += 1;
       if (win.historypos < win.history.length)
         this.value = win.history[win.historypos];
@@ -1734,16 +1742,15 @@ function evhan_input_keydown(ev) {
     return false;
   }
   else if (terminator_key_values[keycode]) {
-    if (!this.winid)
-      return true;
-    var win = windowdic.get(this.winid);
+    var winid = $(this).data('winid');
+    var win = windowdic[winid];
     if (!win || !win.input)
       return true;
 
     if (win.terminators[terminator_key_values[keycode]]) {
       /* This key is listed as a current terminator for this window,
          so we'll submit the line of input. */
-      submit_line_input(win, win.inputel, terminator_key_values[keycode]);
+      submit_line_input(win, win.inputel.val(), terminator_key_values[keycode]);
       return false;
     }
   }
@@ -1757,28 +1764,16 @@ function evhan_input_keydown(ev) {
 */
 function evhan_input_keypress(ev) {
   var keycode = 0;
-  if (!ev) { /* MSIE broken event API */
-    ev = Event.extend(window.event);
-    if (ev) keycode = ev.keyCode;
-  }
-  else {
-    if (ev) keycode = ev.which;
-  }
+  if (ev) keycode = ev.which;
   if (!keycode) return true;
 
-  if (keycode == 10 && Prototype.Browser.MobileSafari) {
-    /* This case only occurs on old iPhones (iOS 3.1.3). */
-    keycode = 13;
-  }
-
   if (keycode == 13) {
-    if (!this.winid)
-      return true;
-    var win = windowdic.get(this.winid);
+    var winid = $(this).data('winid');
+    var win = windowdic[winid];
     if (!win || !win.input)
       return true;
 
-    submit_line_input(win, this, null);
+    submit_line_input(win, this.value, null);
     return false;
   }
 
@@ -1789,8 +1784,9 @@ function evhan_input_keypress(ev) {
 
    Notice that the focus has switched to a line/char input field.
 */
-function evhan_input_focus(winid) {
-  var win = windowdic.get(winid);
+function evhan_input_focus(ev) {
+  var winid = ev.data;
+  var win = windowdic[winid];
   if (!win)
     return;
 
@@ -1803,36 +1799,37 @@ function evhan_input_focus(winid) {
 
    Notice that the focus has switched away from a line/char input field.
 */
-function evhan_input_blur(winid) {
-  var win = windowdic.get(winid);
+function evhan_input_blur(ev) {
+  var winid = ev.data;
+  var win = windowdic[winid];
   if (!win)
     return;
 
   currently_focussed = false;
 }
 
-function evhan_window_scroll(frameel) {
-  if (!frameel.winid)
-    return;
-  var win = windowdic.get(frameel.winid);
+function evhan_window_scroll(ev) {
+  var winid = ev.data;
+  var win = windowdic[winid];
   if (!win)
     return;
 
   if (!win.needspaging)
     return;
 
-  var frameheight = frameel.getHeight();
+  var frameel = win.frameel;
+  var frameheight = frameel.outerHeight();
   var realbottom = last_line_top_offset(frameel);
-  var newtopunseen = frameel.scrollTop + frameheight;
+  var newtopunseen = frameel.scrollTop() + frameheight;
   if (newtopunseen > realbottom)
     newtopunseen = realbottom;
   if (win.topunseen < newtopunseen)
     win.topunseen = newtopunseen;
 
-  if (frameel.scrollTop + frameheight >= frameel.scrollHeight) {
+  if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
     win.needspaging = false;
-    var moreel = $('win'+win.id+'_moreprompt');
-    if (moreel)
+    var moreel = $('#win'+win.id+'_moreprompt');
+    if (moreel.length)
       moreel.remove();
     readjust_paging_focus(true);
     return;
@@ -1848,7 +1845,7 @@ function evhan_window_scroll(frameel) {
 */
 function build_evhan_hyperlink(winid, linkval) {
   return function() {
-    var win = windowdic.get(winid);
+    var win = windowdic[winid];
     if (!win)
       return false;
     if (!win.reqhyperlink)
@@ -1863,7 +1860,7 @@ function build_evhan_hyperlink(winid, linkval) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '1.3.1',
+  version:  '2.0.0',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,

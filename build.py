@@ -6,6 +6,11 @@
 # rjsmin. As a special bonus, lines (or part-lines) beginning with
 # ';;;' are stripped out. We use this to get rid of debugging log statements
 # and assertions.
+#
+# Previous versions of this script packed Prototype in. We're now based on
+# jQuery, but we don't try to include it -- that makes it hard to integrate
+# Quixe with other web services. We assume that the host page already has
+# jQuery available (version 1.9 or later).
 
 import sys
 import re
@@ -33,7 +38,6 @@ def compress_source(target, srcls):
 
 compress_source(
     'lib/glkote.min.js', [
-        'src/prototype-1.6.1.js',
         'src/glkote/glkote.js',
         'src/glkote/dialog.js',
         'src/glkote/glkapi.js',
