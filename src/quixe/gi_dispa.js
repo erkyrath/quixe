@@ -2,13 +2,8 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
  * 
- * This Javascript library is copyright 2010-2012 by Andrew Plotkin. You may
- * copy and distribute it freely, by any means and under any conditions,
- * as long as the code and documentation is not changed. You may also
- * incorporate this code into your own program and distribute that, or
- * modify this code and use and distribute the modified version, as long
- * as you retain a notice in your program or documentation which mentions
- * my name and the URL shown above.
+ * This Javascript library is copyright 2010-2015 by Andrew Plotkin.
+ * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This is the code layer that sits in between Quixe and GlkAPI. It provides
  * Glk entry points for every Glk call; Quixe's @glk opcode invokes these. It
