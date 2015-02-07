@@ -156,7 +156,7 @@ Copyright 2005, 2014 jQuery Foundation, Inc. and other contributors
 Released under the MIT license <http://jquery.org/license>
 For details, see the jQuery web site: <http://jquery.com/>
 
-The build script uses rJSmin, version 1.0.6 (which is included
+The build script uses rJSmin, version 1.0.10 (which is included
 as a build tool). rJSmin was written and is maintained by Andre Malo,
 and is freely distributable under the Apache License, Version 2.0.
 For details, see the rJSmin web site: <http://opensource.perlig.de/rjsmin/>
