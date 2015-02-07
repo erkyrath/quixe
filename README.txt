@@ -63,10 +63,12 @@ on the web site), copy play-remote.html.
   - glkote/...        -- copied from the GlkOte project
 
 - lib -- compressed Javascript source code
-  (each file contains several files from the src directory, run through
-  rjsmin.py)
-  - glkote.min.js -- prototype and glkote files
-  - quixe.min.js  -- quixe files
+  - jquery-1.11.2.js     -- standard jQuery library
+  - jquery-1.11.2.min.js -- ditto, minified
+  (each of the next two files contains several files from the src directory,
+  run through rjsmin.py)
+  - glkote.min.js        -- glkote files
+  - quixe.min.js         -- quixe files
 
 - media -- images, CSS, and layout for play.html et al
   - glkote.css      -- default stylesheet (copied from GlkOte project)
@@ -85,8 +87,12 @@ on the web site), copy play-remote.html.
 
 * Version History
 
+- 2.0.0 (###)
+  - Switched from Prototype over to jQuery.
+  - Switched from my old ad-hoc license to the MIT license.
+
 - 1.3.1 (March 27, 2014)
-    Added acceleration functions 8 through 13, which work correctly when
+  - Added acceleration functions 8 through 13, which work correctly when
     NUM_ATTR_BYTES is changed.
 
 - 1.3.0 (January 3, 2013)
@@ -149,10 +155,10 @@ documentation which mentions my name and the URL shown above.
 This package includes the GlkOte, GlkAPI, and Dialog libraries, also
 copyright by Andrew Plotkin under the same terms.
 
-This package includes the Prototype JavaScript framework, version 1.6.1
-(c) 2005-2009 Sam Stephenson
-Prototype is freely distributable under the terms of an MIT-style license.
-For details, see the Prototype web site: <http://www.prototypejs.org/>
+This package includes the jQuery JavaScript framework, version 1.11.2
+Copyright 2005, 2014 jQuery Foundation, Inc. and other contributors
+Released under the MIT license <http://jquery.org/license>
+For details, see the jQuery web site: <http://jquery.com/>
 
 The build script uses rJSmin, version 1.0.6 (which is included
 as a build tool). rJSmin was written and is maintained by Andre Malo,
