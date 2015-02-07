@@ -9,7 +9,7 @@
  * and then starts up the display layer and game engine. It also extracts
  * data from a Blorb image, if that's what's provided.
  *
- * (This code makes use of the Prototype library, which therefore must be
+ * (This code makes use of the jQuery library, which therefore must be
  * available.)
  *
  * When you are putting together a Quixe installation page, you call
@@ -102,7 +102,7 @@ function load_run(optobj, image, image_format) {
     if (!optobj)
         optobj = window.game_options;
     if (optobj)
-        Object.extend(all_options, optobj); /* Prototype-ism */
+        jQuery.extend(all_options, optobj);
 
     /* The first question is, what's the game file URL? */
 
@@ -179,7 +179,8 @@ function load_run(optobj, image, image_format) {
            only Chrome. */
         same_origin = false;
     }
-    var old_js_url = gameurl.toLowerCase().endsWith('.js');
+    var regex_js_url = /[.]js$/i;
+    var old_js_url = regex_js_url.test(gameurl);
 
     GlkOte.log('### is_relative=' + is_relative + ', same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
 
@@ -192,6 +193,7 @@ function load_run(optobj, image, image_format) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
+        /*### Prototype-ism */
         new Ajax.Request(gameurl, {
                 method: 'get',
                 evalJS: 'force',
@@ -210,12 +212,12 @@ function load_run(optobj, image, image_format) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
-        var headls = $$('head');
-        if (!headls || headls.length == 0) {
+        var headls = $('head');
+        if (!headls.length) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
-        var script = new Element('script', 
+        var script = $('<script>', 
             { src:gameurl, 'type':"text/javascript" });
         headls[0].insert(script);
         return;
@@ -224,6 +226,7 @@ function load_run(optobj, image, image_format) {
     if (binary_supported && same_origin) {
         /* We can do an Ajax GET of the binary data. */
         GlkOte.log('### trying binary load...');
+        /*### Prototype-ism */
         new Ajax.Request(gameurl, {
                 method: 'get',
                 onCreate: function(resp) {
@@ -264,6 +267,7 @@ function load_run(optobj, image, image_format) {
            convert it to base64 for us. The proxy gives the right headers
            to make cross-origin Ajax work. */
         GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
+        /*### Prototype-ism */
         new Ajax.Request(all_options.proxy_url, {
                 method: 'get',
                 parameters: { encode: 'base64', url: absgameurl },
@@ -288,12 +292,12 @@ function load_run(optobj, image, image_format) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
-        var headls = $$('head');
-        if (!headls || headls.length == 0) {
+        var headls = $('head');
+        if (!headls.length) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
-        var script = new Element('script', 
+        var script = $('<script>', 
             { src:fullurl, 'type':"text/javascript" });
         headls[0].insert(script);
         return;
@@ -331,9 +335,10 @@ function get_query_params() {
 
 /* I learned this terrible trick for turning a relative URL absolute. 
    It's supposed to work on all browsers, if you don't go mad.
+   (This uses DOM methods rather than jQuery.)
 */
 function absolutize(url) {
-    var div = new Element('div');
+    var div = document.createElement('div');
     div.innerHTML = '<a></a>';
     div.firstChild.href = url;
     div.innerHTML = div.innerHTML;
@@ -385,20 +390,14 @@ function unpack_blorb(image) {
         if (chunktype == "IFmd") {
             var arr = image.slice(pos, pos+chunklen);
             var dat = String.fromCharCode.apply(this, arr);
-            /* This works around Prototype's annoying habit of doing
-               something, I'm not sure what, with the <title> tag. */
-            dat = dat.replace(/<title>/gi, '<xtitle>');
-            dat = dat.replace(/<\/title>/gi, '</xtitle>');
-            var met = new Element('metadata').update(dat);
-            if (met.down('bibliographic')) {
-                var els = met.down('bibliographic').childElements();
+            /*### test!*/
+            var met = $('<metadata>').html(dat);
+            var bibels = met.find('bibliographic').children();
+            if (bibels.length) {
                 var el;
-                for (ix=0; ix<els.length; ix++) {
-                    el = els[ix];
-                    if (el.tagName.toLowerCase() == 'xtitle')
-                        metadata.title = el.textContent;
-                    else
-                        metadata[el.tagName.toLowerCase()] = el.textContent;
+                for (ix=0; ix<bibels.length; ix++) {
+                    el = bibels[ix];
+                    metadata[el.tagName.toLowerCase()] = el.textContent;
                 }
             }
         }
