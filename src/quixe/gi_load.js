@@ -157,11 +157,14 @@ function load_run(optobj, image, image_format) {
     image_format = null;
 
     /* The logic of the following code is adapted from Parchment's
-       file.js. */
+       file.js. It's probably obsolete at this point -- I suspect
+       that binary_supported and crossorigin_supported will wind up
+       true in all modern browsers. Why throw away code, though... */
 
-    var xhr = Ajax.getTransport();
-    var binary_supported = (xhr.overrideMimeType !== undefined && !Prototype.Browser.Opera);
-    /* I'm told that Opera's overrideMimeType() doesn't work. */
+    var xhr = new XMLHttpRequest(); /* ### not right on IE? */
+    var binary_supported = (xhr.overrideMimeType !== undefined);
+    /* I'm told that Opera's overrideMimeType() doesn't work, but
+       I'm not inclined to worry about it these days. */
     var crossorigin_supported = (xhr.withCredentials !== undefined);
     xhr = null;
 
@@ -179,8 +182,10 @@ function load_run(optobj, image, image_format) {
            only Chrome. */
         same_origin = false;
     }
-    var regex_js_url = /[.]js$/i;
-    var old_js_url = regex_js_url.test(gameurl);
+
+    /* Crude test for whether the URL is a Javascript file -- just
+       check for a ".js" suffix. */
+    var old_js_url = gameurl.match(/[.]js$/i);
 
     GlkOte.log('### is_relative=' + is_relative + ', same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
 
@@ -193,12 +198,12 @@ function load_run(optobj, image, image_format) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
-        /*### Prototype-ism */
-        new Ajax.Request(gameurl, {
-                method: 'get',
-                evalJS: 'force',
-                onFailure: function(resp) {
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
+        jQuery.ajax(gameurl, {
+                'type': 'GET',
+                dataType: 'script',
+                cache: true,
+                error: function(jqxhr, textstatus, errorthrown) {
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + textstatus + ": " + errorthrown);
                 }
         });
         return;
@@ -226,19 +231,18 @@ function load_run(optobj, image, image_format) {
     if (binary_supported && same_origin) {
         /* We can do an Ajax GET of the binary data. */
         GlkOte.log('### trying binary load...');
-        /*### Prototype-ism */
-        new Ajax.Request(gameurl, {
-                method: 'get',
-                onCreate: function(resp) {
+        jQuery.ajax(gameurl, {
+                'type': 'GET',
+                    beforeSend: function(jqxhr, settings) {
                     /* This ensures that the data doesn't get decoded or
                        munged in any way. */
-                    resp.transport.overrideMimeType('text/plain; charset=x-user-defined');
+                    jqxhr.overrideMimeType('text/plain; charset=x-user-defined');
                 },
-                onSuccess: function(resp) {
-                    start_game(decode_raw_text(resp.responseText));
+                success: function(response, textstatus, errorthrown) {
+                    start_game(decode_raw_text(response));
                 },
-                onFailure: function(resp) {
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
+                error: function(jqxhr, textstatus, errorthrown) {
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + textstatus + ": " + errorthrown);
                 }
         });
         return;
@@ -267,18 +271,17 @@ function load_run(optobj, image, image_format) {
            convert it to base64 for us. The proxy gives the right headers
            to make cross-origin Ajax work. */
         GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
-        /*### Prototype-ism */
-        new Ajax.Request(all_options.proxy_url, {
-                method: 'get',
-                parameters: { encode: 'base64', url: absgameurl },
-                onFailure: function(resp) {
+        jQuery.ajax(all_options.proxy_url, {
+                'type': 'GET',
+                data: { encode: 'base64', url: absgameurl },
+                error: function(jqxhr, textstatus, errorthrown) {
                     /* I would like to display the responseText here, but
                        most servers return a whole HTML page, and that doesn't
                        fit into fatal_error. */
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + resp.status + ": " + resp.statusText);
+                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + textstatus + ": " + errorthrown);
                 },
-                onSuccess: function(resp) {
-                    start_game(decode_base64(resp.responseText));
+                success: function(response, textstatus, errorthrown) {
+                    start_game(decode_base64(response));
                 }
         });
         return;
