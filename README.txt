@@ -90,6 +90,7 @@ on the web site), copy play-remote.html.
 - 2.0.0 (###)
   - Switched from Prototype over to jQuery.
   - Switched from my old ad-hoc license to the MIT license.
+  - Increased the font size in the included CSS stylesheets.
 
 - 1.3.1 (March 27, 2014)
   - Added acceleration functions 8 through 13, which work correctly when
