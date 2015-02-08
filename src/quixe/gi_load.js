@@ -61,6 +61,11 @@
  *   { data:[...], type:"..." } (where the type is TEXT or BINA).
  *   If there was no such chunk, or if the game was loaded from a non-
  *   blorb file, this returns undefined.
+ *
+ * GiLoad.get_metadata(FIELD) -- this returns a metadata field (a
+ *   string) from the iFiction <bibliographic> section. If there is
+ *   no such field, or if the game was loaded from a non-blorb
+ *   file, this returns undefined.
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -351,6 +356,13 @@ function absolutize(url) {
     return div.firstChild.href;
 }
 
+/* Return a metadata field, or undefined if there is no such field
+   (or if no metadata was loaded).
+*/
+function get_metadata(val) {
+    return metadata[val];
+}
+
 /* Return the Data chunk with the given number, or undefined if there
    is no such chunk. (This is used by the glk_stream_open_resource()
    functions.)
@@ -396,7 +408,6 @@ function unpack_blorb(image) {
         if (chunktype == "IFmd") {
             var arr = image.slice(pos, pos+chunklen);
             var dat = String.fromCharCode.apply(this, arr);
-            /*### test!*/
             var met = $('<metadata>').html(dat);
             var bibels = met.find('bibliographic').children();
             if (bibels.length) {
@@ -541,7 +552,8 @@ function start_game(image) {
    become the GiLoad global. */
 return {
     load_run: load_run,
-    find_data_chunk: find_data_chunk
+    find_data_chunk: find_data_chunk,
+    get_metadata: get_metadata
 };
 
 }();
