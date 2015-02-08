@@ -224,7 +224,10 @@ function load_run(optobj, image, image_format) {
         }
         var script = $('<script>', 
             { src:gameurl, 'type':"text/javascript" });
-        headls.append(script);
+        /* jQuery is now sensitive about this, and will not allow it as
+          a Chrome work-around. We use a raw DOM method instead. */
+        // headls.append(script);
+        headls.get(0).appendChild(script.get(0));
         return;
     }
 
