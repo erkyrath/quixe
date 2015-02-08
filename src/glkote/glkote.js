@@ -108,14 +108,14 @@ function glkote_init(iface) {
   }
   game_interface = iface;
 
-  if (!window.jQuery || !$.fn.jquery) {
+  if (!window.jQuery || !jQuery.fn.jquery) {
     glkote_error('The jQuery library has not been loaded.');
     return;
   }
 
-  var version = $.fn.jquery.split('.');
+  var version = jQuery.fn.jquery.split('.');
   if (version.length < 2 || version[0] < 1 || (version[0] == 1 && version[1] < 9)) {
-    glkote_error('This version of the jQuery library is too old. (Version ' + $.fn.jquery + ' found; 1.9.0 required.)');
+    glkote_error('This version of the jQuery library is too old. (Version ' + jQuery.fn.jquery + ' found; 1.9.0 required.)');
     return;
   }
 
@@ -337,7 +337,7 @@ function glkote_update(arg) {
 
   /* Un-disable the UI, if it was previously disabled. */
   if (disabled) {
-    $.each(windowdic, function(winid, win) {
+    jQuery.each(windowdic, function(winid, win) {
       if (win.inputel) {
         win.inputel.prop('disabled', false);
       }
@@ -363,7 +363,7 @@ function glkote_update(arg) {
      Then, we take the opportunity to update topunseen. (If a buffer
      window hasn't changed, topunseen hasn't changed.) */
 
-  $.each(windowdic, function(winid, win) {
+  jQuery.each(windowdic, function(winid, win) {
     if (win.type == 'buffer' && win.needscroll) {
       /* needscroll is true if the window has accumulated any content or
          an input field in this update cycle. needspaging is true if
@@ -435,7 +435,7 @@ function glkote_update(arg) {
   disabled = false;
   if (arg.disable || arg.specialinput) {
     disabled = true;
-    $.each(windowdic, function(winid, win) {
+    jQuery.each(windowdic, function(winid, win) {
       if (win.inputel) {
         win.inputel.prop('disabled', true);
       }
@@ -449,7 +449,7 @@ function glkote_update(arg) {
 
   var newinputwin = 0;
   if (!disabled && !windows_paging_count) {
-    $.each(windowdic, function(winid, win) {
+    jQuery.each(windowdic, function(winid, win) {
       if (win.input) {
         if (!newinputwin || win.id == last_known_focus)
           newinputwin = win.id;
@@ -482,15 +482,15 @@ function glkote_update(arg) {
    an empty argument object (which would mean "close all windows").
 */
 function accept_windowset(arg) {
-  $.each(windowdic, function(winid, win) { win.inplace = false; });
-  $.map(arg, accept_one_window);
+  jQuery.each(windowdic, function(winid, win) { win.inplace = false; });
+  jQuery.map(arg, accept_one_window);
 
   /* Close any windows not mentioned in the argument. */
-  var closewins = $.map(windowdic, function(win, winid) {
+  var closewins = jQuery.map(windowdic, function(win, winid) {
       if (!win.inplace)
         return win;
     });
-  $.map(closewins, close_one_window);
+  jQuery.map(closewins, close_one_window);
 }
 
 /* Handle the update for a single window. Open it if it doesn't already
@@ -642,7 +642,7 @@ function func_long_whitespace(match) {
 
 /* Handle all of the window content changes. */
 function accept_contentset(arg) {
-  $.map(arg, accept_one_content);
+  jQuery.map(arg, accept_one_content);
 }
 
 /* Handle the content changes for a single window. */
@@ -882,12 +882,12 @@ function accept_one_content(arg) {
 */
 function accept_inputcancel(arg) {
   var hasinput = {};
-  $.map(arg, function(argi) { 
+  jQuery.map(arg, function(argi) { 
     if (argi.type)
       hasinput[argi.id] = argi;
   });
 
-  $.each(windowdic, function(winid, win) {
+  jQuery.each(windowdic, function(winid, win) {
     if (win.input) {
       var argi = hasinput[win.id];
       if (argi == null || argi.gen > win.input.gen) {
@@ -908,14 +908,14 @@ function accept_inputcancel(arg) {
 function accept_inputset(arg) {
   var hasinput = {};
   var hashyperlink = {};
-  $.map(arg, function(argi) {
+  jQuery.map(arg, function(argi) {
     if (argi.type)
       hasinput[argi.id] = argi;
     if (argi.hyperlink)
       hashyperlink[argi.id] = true;
   });
 
-  $.each(windowdic, function(tmpid, win) {
+  jQuery.each(windowdic, function(tmpid, win) {
     win.reqhyperlink = hashyperlink[win.id];
 
     var argi = hasinput[win.id];
@@ -1061,7 +1061,7 @@ function readjust_paging_focus(canfocus) {
   var pageable_win = 0;
 
   if (perform_paging) {
-    $.each(windowdic, function(tmpid, win) {
+    jQuery.each(windowdic, function(tmpid, win) {
         if (win.needspaging) {
           windows_paging_count += 1;
           if (!pageable_win || win.id == last_known_paging)
@@ -1082,7 +1082,7 @@ function readjust_paging_focus(canfocus) {
 
     var newinputwin = 0;
     if (!disabled && !windows_paging_count) {
-      $.each(windowdic, function(tmpid, win) {
+      jQuery.each(windowdic, function(tmpid, win) {
           if (win.input) {
             if (!newinputwin || win.id == last_known_focus)
               newinputwin = win.id;
@@ -1284,9 +1284,9 @@ function defer_func(func)
    properties, recursively. (Do not call this on an object which references
    anything big!) */
 function inspect_deep(res) {
-  var keys = $.map(res, function(val, key) { return key; });
+  var keys = jQuery.map(res, function(val, key) { return key; });
   keys.sort();
-  var els = $.map(keys, function(key) {
+  var els = jQuery.map(keys, function(key) {
       var val = res[key];
       if (jQuery.type(val) === 'string')
         val = "'" + val + "'";
@@ -1299,9 +1299,9 @@ function inspect_deep(res) {
 
 /* Debugging utility: same as above, but only one level deep. */
 function inspect_shallow(res) {
-  var keys = $.map(res, function(val, key) { return key; });
+  var keys = jQuery.map(res, function(val, key) { return key; });
   keys.sort();
-  var els = $.map(keys, function(key) {
+  var els = jQuery.map(keys, function(key) {
       var val = res[key];
       if (jQuery.type(val) === 'string')
         val = "'" + val + "'";
@@ -1377,7 +1377,7 @@ function send_response(type, win, val, val2) {
   }
 
   if (!(type == 'init' || type == 'refresh' || type == 'specialresponse')) {
-    $.each(windowdic, function(tmpid, win) {
+    jQuery.each(windowdic, function(tmpid, win) {
       var savepartial = (type != 'line' && type != 'char') 
                         || (win.id != winid);
       if (savepartial && win.input && win.input.type == 'line'
