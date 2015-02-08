@@ -54,7 +54,7 @@ enc = base64.b64encode(contents)
 if (format == 'base64z'):
     print "processBase64Zcode('%s');" % (enc,)
 elif (format == 'giload'):
-    print "Event.observe(window, 'load', function() {"
+    print "$(document).ready(function() {"
     print "  GiLoad.load_run(null, '%s', 'base64');" % (enc,)
     print "});"
 
