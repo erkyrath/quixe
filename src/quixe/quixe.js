@@ -178,7 +178,7 @@ function qobjdump(obj, depth) {
     if (obj instanceof Array) {
         if (depth)
             depth--;
-        var ls = obj.map(function(v) {return qobjdump(v, depth);});
+        var ls = jQuery.map(obj, function(v, ix) {return qobjdump(v, depth);});
         return ("[" + ls.join(",") + "]");
     }
     if (!(obj instanceof Object))
