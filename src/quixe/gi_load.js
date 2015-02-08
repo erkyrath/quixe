@@ -224,7 +224,7 @@ function load_run(optobj, image, image_format) {
         }
         var script = $('<script>', 
             { src:gameurl, 'type':"text/javascript" });
-        headls[0].insert(script);
+        headls.append(script);
         return;
     }
 
@@ -302,7 +302,7 @@ function load_run(optobj, image, image_format) {
         }
         var script = $('<script>', 
             { src:fullurl, 'type':"text/javascript" });
-        headls[0].insert(script);
+        headls.append(script);
         return;
     }
 
