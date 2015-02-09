@@ -36,6 +36,11 @@
    into a UTF-16-encoded pair of two-byte characters. This will come
    out okay in a buffer window, but it will again mess up grid windows,
    and will also double the write-count in a stream.
+
+   When opening a Unicode file stream, the library does not follow
+   the (recent) requirement to store four-byte values (binary mode)
+   or UTF-8 characters (text mode). This causes errors in the
+   extbinaryfile.ulx test.
 */
 
 /* Put everything inside the Glk namespace. */
@@ -1879,7 +1884,10 @@ function TrimArrayToBytes(arr) {
     }
     newarr = Array(len);
     for (ix=0; ix<len; ix++) {
-        newarr[ix] = (arr[ix] & 0xFF);
+        if (arr[ix] < 0 || arr[ix] >= 0x100) 
+            newarr[ix] = 63;  // '?'
+        else
+            newarr[ix] = arr[ix];
     }
     return newarr;
 }
@@ -2613,8 +2621,10 @@ function gli_put_char(str, ch) {
     if (!str || !str.writable)
         throw('gli_put_char: invalid stream');
 
-    if (!str.unicode)
-        ch = ch & 0xFF;
+    if (!str.unicode) {
+        if (ch < 0 || ch >= 0x100)
+            ch = 63;  // '?'
+    }
 
     str.writecount += 1;
     
@@ -2935,8 +2945,12 @@ function glk_put_jstring_stream(str, val, allbytes) {
                 str.buf[str.bufpos+ix] = val.charCodeAt(ix);
         }
         else {
-            for (ix=0; ix<len; ix++)
-                str.buf[str.bufpos+ix] = val.charCodeAt(ix) & 0xFF;
+            for (ix=0; ix<len; ix++) {
+                var ch = val.charCodeAt(ix);
+                if (ch < 0 || ch >= 0x100)
+                    ch = 63;  // '?'
+                str.buf[str.bufpos+ix] = ch;
+            }
         }
         str.bufpos += len;
         if (str.bufpos > str.bufeof)
