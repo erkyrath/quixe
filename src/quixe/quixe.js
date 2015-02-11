@@ -5511,23 +5511,20 @@ function decompress_bytes(arr) {
     return result;
 }
 
-/* Pack a map of { ID -> bytes } into a single byte array.
+/* Pack an array of { key:ID, chunk:bytes } into a single byte array.
    The ID should be a 4-character string.
 */
 function pack_iff_chunks(chunks) {
-    keys = [];
-    for (var key in chunks) {
+    bytes = [];
+    for (var ix = 0; ix < chunks.length; ix++) {
+        var key = chunks[ix].key;
+        var chunk = chunks[ix].chunk;
         if (key.length != 4) {
             fatal_error("Bad chunk ID (must be exactly 4 chars): " + key);
         }
-        keys.push(key);    
-    }
-    keys.sort(); // Ensures consistent behaviour across browsers.
-    
-    bytes = [];
-    for (var ix = 0; ix < keys.length; ix++) {
-        var key = keys[ix];
-        var chunk = chunks[key];
+        if (chunk == undefined) {
+            fatal_error("Missing chunk data: " + key);
+        }
         //qlog("Writing " + key + " (" + chunk.length + " bytes)");
         BytePushString(bytes, key);
         BytePush4(bytes, chunk.length);
@@ -5577,9 +5574,9 @@ function vm_save(streamid) {
     if (!str)
         return false;
     
-    chunks = {};
+    chunks = [];
     
-    chunks["IFhd"] = game_image.slice(0, 128);
+    chunks.push({ key:"IFhd", chunk:game_image.slice(0, 128) });
     
     var cmem = memmap.slice(ramstart);
     for (var i = ramstart; i < game_image.length; i++) {
@@ -5589,20 +5586,22 @@ function vm_save(streamid) {
     cmem.splice(0, 0, 0,0,0,0); // prepend four zeroes
     // Write in the endmem value
     ByteWrite4(cmem, 0, endmem);
-    chunks["CMem"] = cmem;
+    chunks.push({key:"CMem", chunk:cmem});
     
-    chunks["Stks"] = [];
+    var stkschunk = [];
+    chunks.push({ key:"Stks", chunk:stkschunk });
     for (var i = 0; i < stack.length; i++) {
-        push_serialized_stackframe(stack[i], chunks["Stks"]);
+        push_serialized_stackframe(stack[i], stkschunk);
     }
 
     if (heap_is_active()) {
-        chunks["MAll"] = [];
-        BytePush4(chunks["MAll"], heapstart);
-        BytePush4(chunks["MAll"], usedlist.length);
+        var mallchunk = [];
+        chunks.push({ key:"MAll", chunk:mallchunk });
+        BytePush4(mallchunk, heapstart);
+        BytePush4(mallchunk, usedlist.length);
         for (var i = 0; i < usedlist.length; i++) {
-            BytePush4(chunks["MAll"], usedlist[i].addr);
-            BytePush4(chunks["MAll"], usedlist[i].size);
+            BytePush4(mallchunk, usedlist[i].addr);
+            BytePush4(mallchunk, usedlist[i].size);
         }
     }
 
@@ -5610,7 +5609,7 @@ function vm_save(streamid) {
     BytePushString(payload_bytes, "IFZS");
     payload_bytes = payload_bytes.concat(pack_iff_chunks(chunks));
     
-    var quetzal = pack_iff_chunks({"FORM": payload_bytes})
+    var quetzal = pack_iff_chunks([{ key:"FORM", chunk:payload_bytes }])
     //qlog("vm_save: writing " + quetzal.length + " bytes");    
     Glk.glk_put_buffer_stream(str, quetzal);
     return true;
