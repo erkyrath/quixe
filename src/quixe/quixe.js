@@ -5529,11 +5529,15 @@ function pack_iff_chunks(chunks) {
         BytePushString(bytes, key);
         BytePush4(bytes, chunk.length);
         bytes = bytes.concat(chunk);
+        /* Align to even length... */
+        if (bytes.length & 1)
+            bytes.push(0);
     }
     return bytes;
 }
 
 /* Unpack a byte array into an { ID -> bytes } map, or undefined on error.
+   The order of chunks is not preserved.
 */
 function unpack_iff_chunks(bytes) {
     chunks = {};
@@ -5554,6 +5558,9 @@ function unpack_iff_chunks(bytes) {
         }
         chunks[key] = bytes.slice(pos, pos + size);
         pos += size;
+        /* Align to even length... */
+        if (pos & 1)
+            pos += 1;
         //qlog("Reading " + key + " (" + size + " bytes)");
     }
     return chunks;

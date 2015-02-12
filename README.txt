@@ -92,7 +92,8 @@ on the web site), copy play-remote.html.
   - Switched from my old ad-hoc license to the MIT license.
   - Increased the font size in the included CSS stylesheets.
   - Fixed save bug where the IFhd chunk could appear late in the file
-    (violating the Quetzal spec).
+    (violating the Quetzal spec). Also, a bug where odd-length chunks
+    were not padded (violating the IFF spec).
 
 - 1.3.1 (March 27, 2014)
   - Added acceleration functions 8 through 13, which work correctly when
