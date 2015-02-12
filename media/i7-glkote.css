@@ -54,7 +54,7 @@
   overflow: scroll;   /* vertical scrollbar is mandatory */
   overflow-x: hidden; /* but horizontal scrollbar is forbidden */
   font-family: Georgia, "Times New Roman", Times, serif;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.4;
   padding: 6px 10px 6px 10px;
 }
@@ -66,7 +66,7 @@
   background: #D0D0C0;
   overflow: hidden;
   font-family: monaco, andale mono, lucidatypewriter, courier, courier new, monospace; /* necessary! */
-  font-size: 12px;
+  font-size: 14px;
   padding: 6px 10px 6px 10px;
 }
 
@@ -109,12 +109,12 @@
 
 .BufferWindow .Input {
   font-family: Georgia, "Times New Roman", Times, serif;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .GridWindow .Input {
   font-family: monaco, andale mono, lucidatypewriter, courier, courier new, monospace; /* necessary! */
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* The following are the standard Glk styles. */
@@ -135,7 +135,7 @@
 }
 
 .BufferWindow .Style_header {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .Style_subheader {
