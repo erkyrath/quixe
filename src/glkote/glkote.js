@@ -786,7 +786,8 @@ function accept_one_content(arg) {
       }
       /* We must munge long strings of whitespace to make sure they aren't
          collapsed. (This wouldn't be necessary if "white-space: pre-wrap"
-         were widely implemented. Oh well.) ### Use if available?
+         were widely implemented. Mind you, these days it probably *is*,
+         but why update working code, right?)
          The rule: if we find a block of spaces, turn all but the last one
          into NBSP. Also, if a div's last span ends with a space (or the
          div has no spans), and a new span begins with a space, turn that
