@@ -26,7 +26,12 @@
  * and use GlkOte directly.
  *
  * Alternatively, GlkOte could be used with a Glk library which acts as a
- * web service. However, this has not yet been implemented.
+ * web service. The RemGlk library (not included) can be used this way.
+ * In this mode, GlkOte collects user input and sends it to the web service
+ * as a AJAX request. The service decodes the (JSON-format) input data,
+ * executes a game turn, and returns the game response as a (JSON-format)
+ * reply to the request. A proof-of-concept can be found at:
+ *     https://github.com/erkyrath/remote-if-demo
  *
  * For full documentation, see the docs.html file in this package.
  */
@@ -90,6 +95,14 @@ var terminator_key_names = {
 /* The inverse of the above. Maps native values to Glk key names. Set up at
    init time. */
 var terminator_key_values = {};
+
+/* The transcript-recording feature. If enabled, this sends session
+   information to an external recording service. */
+var recording = false;
+var recording_state = null;
+var recording_handler = null;
+var recording_handler_url = null;
+var recording_context = {};
 
 /* This function becomes GlkOte.init(). The document calls this to begin
    the game. The simplest way to do this is to give the <body> tag an
@@ -156,6 +169,8 @@ function glkote_init(iface) {
   }
   current_metrics = res;
 
+  /* Check the options that control whether URL-like strings in the output
+     are displayed as hyperlinks. */
   detect_external_links = iface.detect_external_links;
   if (detect_external_links) {
     regex_external_links = iface.regex_external_links;
@@ -178,6 +193,43 @@ function glkote_init(iface) {
            beginning with "http" or "https". */
         regex_external_links = RegExp('^https?:', 'i');
       }
+    }
+  }
+
+  /* Check the options that control transcript recording. */
+  if (iface.recording_url) {
+    recording = true;
+    recording_handler = recording_standard_handler;
+    recording_handler_url = iface.recording_url;
+  }
+  if (iface.recording_handler) {
+    recording = true;
+    recording_handler = iface.recording_handler;
+    recording_handler_url = '(custom handler)';
+  }
+  if (recording) {
+    /* But also check whether the user has opted out by putting "feedback=0"
+       in the URL query. */
+    var qparams = get_query_params();
+    var flag = qparams['feedback'];
+    if (jQuery.type(flag) != 'undefined' && flag != '1') {
+      recording = false;
+      glkote_log('User has opted out of transcript recording.');
+    }
+    else {
+      /* Set up the recording-state object. */
+      recording_state = {
+        sessionId: (new Date().getTime())+""+( Math.ceil( Math.random() * 10000 ) ),
+        input: null, output: null,
+        timestamp: 0, outtimestamp: 0
+      }
+      if (iface.recording_label)
+        recording_state.label = iface.recording_label;
+      if (iface.recording_format == 'simple')
+        recording_state.format = 'simple';
+      else
+        recording_state.format = 'glkote';
+      glkote_log('Transcript recording active: session ' + recording_state.sessionId + ' "' + recording_state.label + '", destination ' + recording_handler_url);
     }
   }
 
@@ -296,6 +348,9 @@ function measure_window() {
 */
 function glkote_update(arg) {
   hide_loading();
+
+  if (recording)
+    recording_send(arg);
 
   if (arg.type == 'error') {
     glkote_error(arg.message);
@@ -1393,7 +1448,149 @@ function send_response(type, win, val, val2) {
     });
   }
 
+  if (recording) {
+    recording_state.input = res;
+    recording_state.timestamp = (new Date().getTime());
+  }
   game_interface.accept(res);
+}
+
+/* ---------------------------------------------- */
+
+/* Take apart the query string of the current URL, and turn it into
+   an object map.
+   (Adapted from querystring.js by Adam Vandenberg.)
+*/
+function get_query_params() {
+    var map = {};
+
+    var qs = location.search.substring(1, location.search.length);
+    if (qs.length) {
+        var args = qs.split('&');
+
+        qs = qs.replace(/\+/g, ' ');
+        for (var ix = 0; ix < args.length; ix++) {
+            var pair = args[ix].split('=');
+            var name = decodeURIComponent(pair[0]);
+            
+            var value = (pair.length==2)
+                ? decodeURIComponent(pair[1])
+                : name;
+            
+            map[name] = value;
+        }
+    }
+
+    return map;
+}
+
+/* This is called every time the game updates the screen state. It
+   wraps up the update with the most recent input event and sends them
+   off to whatever is handling transcript recordings.
+*/
+function recording_send(arg) {
+  recording_state.output = arg;
+  recording_state.outtimestamp = (new Date().getTime());
+
+  var send = true;
+
+  /* If the format is not "glkote", we should massage state.input and
+     state.output. (Or set send=false to skip this update entirely.) */
+  if (recording_state.format == 'simple') {
+    var input = recording_state.input;
+    var output = recording_state.output;
+
+    var inputtype = null;
+    if (input)
+      inputtype = input.type;
+
+    if (inputtype == 'line' || inputtype == 'char') {
+      recording_state.input = input.value;
+    }
+    else if (inputtype == 'init' || inputtype == 'external' || inputtype == 'specialresponse' || !inputtype) {
+      recording_state.input = '';
+    }
+    else {
+      /* Do not send 'arrange' events. */
+      send = false;
+    }
+
+    /* We keep track of which windows are buffer windows. */
+    if (output.windows) {
+      recording_context.bufferwins = {};
+      for (var ix=0; ix<output.windows.length; ix++) {
+        if (output.windows[ix].type == 'buffer')
+          recording_context.bufferwins[output.windows[ix].id] = true;
+      }
+    }
+
+    /* Accumulate all the text that's sent to buffer windows. */
+    var buffer = '';
+
+    if (output.content) {
+      for (var ix=0; ix<output.content.length; ix++) {
+        var content = output.content[ix];
+        if (recording_context.bufferwins && recording_context.bufferwins[content.id]) {
+          if (content.text) {
+            for (var jx=0; jx<content.text.length; jx++) {
+              var text = content.text[jx];
+              if (!text.append)
+                buffer = buffer + '\n';
+              if (text.content) {
+                for (var kx=0; kx<text.content.length; kx++) {
+                  var el = text.content[kx];
+                  /* Why did I allow the LINE_DATA_ARRAY to have two
+                     possible formats? Sigh */
+                  if (jQuery.type(el) == 'string') {
+                    kx++;
+                    buffer = buffer + text.content[kx];
+                  }
+                  else {
+                    if (el.text)
+                      buffer = buffer + el.text;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }      
+    }
+
+    recording_state.output = buffer;
+  }
+
+
+  if (send)
+    recording_handler(recording_state);
+
+  recording_state.input = null;
+  recording_state.output = null;
+  recording_state.timestamp = 0;
+  recording_state.outtimestamp = 0;
+}
+
+/* Send a wrapped-up state off to an AJAX handler. The state is a JSONable
+   object containing input, output, and timestamps. The format of the input
+   and output depends on the recording parameters.
+
+   (The timestamp field refers to the input time, which is what you generally
+   care about. The outtimestamp will nearly always follow very closely. If
+   there's a long gap, you know your game has spent a long time computing.)
+
+   If the AJAX request returns an error, this shuts off recording (rather
+   than trying again for future commands).
+*/
+function recording_standard_handler(state) {
+  jQuery.ajax(recording_handler_url, {
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(state),
+        error: function(jqxhr, textstatus, errorthrown) {
+          glkote_log('Transcript recording failed; deactivating. Error ' + textstatus + ': ' + errorthrown);
+          recording = false;
+        }
+      } );
 }
 
 /* ---------------------------------------------- */
