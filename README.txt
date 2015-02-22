@@ -87,6 +87,9 @@ on the web site), copy play-remote.html.
 
 * Version History
 
+- Release 2.0.# (###)
+  - Added the ability to send transcript data to an external server.
+
 - 2.0.0 (February 12, 2015)
   - Switched from Prototype over to jQuery.
   - Switched from my old ad-hoc license to the MIT license.
