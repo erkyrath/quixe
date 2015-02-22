@@ -529,15 +529,20 @@ function start_game(image) {
         }
     }
 
-    if (all_options.set_page_title) {
+    {
         var title = null;
         if (metadata)
             title = metadata.title;
         if (!title && gameurl) 
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
         if (!title)
-            title = 'Game'
-        document.title = title + " - Quixe";
+            title = 'Game';
+
+        if (!all_options.recording_label)
+            all_options.recording_label = title;
+
+        if (all_options.set_page_title)
+            document.title = title + " - Quixe";
     }
 
     /* Pass the game image file along to the VM engine. */
