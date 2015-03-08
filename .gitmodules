@@ -1,3 +1,3 @@
 [submodule "src/glkote"]
 	path = src/glkote
-	url = git@github.com:erkyrath/glkote.git
+	url = https://github.com/erkyrath/glkote.git
