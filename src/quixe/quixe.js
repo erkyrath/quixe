@@ -1,7 +1,7 @@
 /* Quixe -- a Glulx VM interpreter written in Javascript
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
- * 
+ *
  * This Javascript library is copyright 2010-2015 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
@@ -45,7 +45,7 @@
 // Change memory to an array of 4-byte values. Inline Mem4 and Mem4W when
 //   address is known to be aligned.
 // Inline Mem1 wherever possible.
-// Is "x instanceof Function" efficient? Should compile_string return a 
+// Is "x instanceof Function" efficient? Should compile_string return a
 //   tiny tagged object instead?
 // Probably don't want to cache string-functions in filter mode.
 // If a compiled path has no iosys dependencies, we could cache it in
@@ -142,7 +142,7 @@ function quixe_resume() {
    attempt.
 */
 function show_exception(ex) {
-    if (typeof(ex) == 'string')
+    if (typeof(ex) === 'string')
         return ex;
     var res = ex.toString();
     if (ex.message)
@@ -218,7 +218,7 @@ function qstackdump() {
     qlog("VM stack dump: " + ls.join(", "));
 }
 
-/* Fast char-to-hex and char-to-quoted-char conversion tables. 
+/* Fast char-to-hex and char-to-quoted-char conversion tables.
    setup_bytestring_table() is called once, at startup time.
 */
 var bytestring_table = Array(256);
@@ -235,12 +235,12 @@ function setup_bytestring_table() {
     for (ix=0; ix<0x100; ix++) {
         if (ix >= 0x20 && ix < 0x7f) {
             /* Escape quote, double-quote, backslash. */
-            if (ix == 0x22 || ix == 0x27 || ix == 0x5c)
+            if (ix === 0x22 || ix === 0x27 || ix === 0x5c)
                 val = "\\"+String.fromCharCode(ix);
             else
                 val = String.fromCharCode(ix);
         }
-        else if (ix == 0x0a) {
+        else if (ix === 0x0a) {
             val = "\\n";
         }
         else {
@@ -260,7 +260,7 @@ function setup_bytestring_table() {
 */
 
 function ByteRead4(arr, addr) {
-    return (arr[addr] * 0x1000000) + (arr[addr+1] * 0x10000) 
+    return (arr[addr] * 0x1000000) + (arr[addr+1] * 0x10000)
         + (arr[addr+2] * 0x100) + (arr[addr+3]);
 }
 function ByteRead2(arr, addr) {
@@ -277,7 +277,7 @@ function Mem2(addr) {
     return (memmap[addr] * 0x100) + (memmap[addr+1]);
 }
 function Mem4(addr) {
-    return (memmap[addr] * 0x1000000) + (memmap[addr+1] * 0x10000) 
+    return (memmap[addr] * 0x1000000) + (memmap[addr+1] * 0x10000)
         + (memmap[addr+2] * 0x100) + (memmap[addr+3]);
 }
 function MemW1(addr, val) {
@@ -330,59 +330,59 @@ function QuoteMem1(addr) {
     return "0x" + bytestring_table[memmap[addr]];
 }
 function QuoteMem2(addr) {
-    if (memmap[addr] >= 0x80) 
+    if (memmap[addr] >= 0x80)
         return "0xffff" + bytestring_table[memmap[addr]] + bytestring_table[memmap[addr+1]];
-    if (memmap[addr]) 
+    if (memmap[addr])
         return "0x" + bytestring_table[memmap[addr]] + bytestring_table[memmap[addr+1]];
     return "0x" + bytestring_table[memmap[addr+1]];
 }
 function QuoteMem4(addr) {
-    if (memmap[addr]) 
+    if (memmap[addr])
         return "0x" + bytestring_table[memmap[addr]] + bytestring_table[memmap[addr+1]] + bytestring_table[memmap[addr+2]] + bytestring_table[memmap[addr+3]];
-    if (memmap[addr+1]) 
+    if (memmap[addr+1])
         return "0x" + bytestring_table[memmap[addr+1]] + bytestring_table[memmap[addr+2]] + bytestring_table[memmap[addr+3]];
-    if (memmap[addr+2]) 
+    if (memmap[addr+2])
         return "0x" + bytestring_table[memmap[addr+2]] + bytestring_table[memmap[addr+3]];
     return "0x" + bytestring_table[memmap[addr+3]];
 }
 
 function ReadArgByte(addr) {
-    if (addr == 0xffffffff)
+    if (addr === 0xffffffff)
         return frame.valstack.pop() & 0xFF;
     else
         return Mem1(addr);
 }
 
 function WriteArgByte(addr, val) {
-    if (addr == 0xffffffff)
+    if (addr === 0xffffffff)
         frame.valstack.push(val & 0xFF);
     else
         MemW1(addr, val);
 }
 
 function ReadArgWord(addr) {
-    if (addr == 0xffffffff)
+    if (addr === 0xffffffff)
         return frame.valstack.pop();
     else
         return Mem4(addr);
 }
 
 function WriteArgWord(addr, val) {
-    if (addr == 0xffffffff)
+    if (addr === 0xffffffff)
         frame.valstack.push(val);
     else
         MemW4(addr, val);
 }
 
 function ReadStructField(addr, fieldnum) {
-    if (addr == 0xffffffff)
+    if (addr === 0xffffffff)
         return frame.valstack.pop();
     else
         return Mem4(addr + 4*fieldnum);
 }
 
 function WriteStructField(addr, fieldnum, val) {
-    if (addr == 0xffffffff)
+    if (addr === 0xffffffff)
         frame.valstack.push(val);
     else
         MemW4(addr + 4*fieldnum, val);
@@ -410,7 +410,7 @@ function CharToString(val) {
 }
 
 /* Convert a 32-bit Unicode value to a fragment of a JS string literal.
-   That is, eval('"'+QuoteCharToString(val)+'"') == CharToString(val).
+   That is, eval('"'+QuoteCharToString(val)+'"') === CharToString(val).
 */
 function QuoteCharToString(val) {
     if (val < 0x100) {
@@ -455,13 +455,13 @@ function fatal_error(msg) {
         msg += " (";
         for (ix = 1; ix < arguments.length; ix++) {
             val = arguments[ix];
-            if (typeof(val) == 'number') {
+            if (typeof(val) === 'number') {
                 val = val.toString(16);
             }
             else {
                 val = ""+val;
             }
-            if (ix != 1)
+            if (ix !== 1)
                 msg += " ";
             msg += val;
         }
@@ -474,7 +474,7 @@ function fatal_error(msg) {
 /* Turn a string containing JS statements into a function object that
    executes those statements. If an arg is provided, it becomes the
    function argument. (It can also be a comma-separated list of
-   arguments, if you want more than one.) 
+   arguments, if you want more than one.)
 
    This uses eval(), rather than Function(), because it needs to
    return a closure inside the Quixe environment. (All the generated
@@ -520,12 +520,12 @@ function VMFunc(funcaddr, startpc, localsformat, rawformat) {
     this.rawformat = rawformat; /* array of bytes (multiple of 4) */
     this.localsindex = []; /* array of {size, pos} */
 
-    /* Create a locals index, according to the format. This will 
+    /* Create a locals index, according to the format. This will
        contain one {size, pos} per local.
 
        This is wacky, because it's not a simple list of values. A local is
        accessed by its byte position, assuming the "natural" four-byte word
-       size. So the first (4-byte) local will be locals[0], the second will 
+       size. So the first (4-byte) local will be locals[0], the second will
        be locals[4], and so on. In-between values will be undefined. */
     var ix, jx;
     var locallen = 0;
@@ -534,11 +534,11 @@ function VMFunc(funcaddr, startpc, localsformat, rawformat) {
 
         /* Pad to 4-byte or 2-byte alignment if these locals are 4 or 2
            bytes long. */
-        if (form.size == 4) {
+        if (form.size === 4) {
             while (locallen & 3)
                 locallen++;
         }
-        else if (form.size == 2) {
+        else if (form.size === 2) {
             while (locallen & 1)
                 locallen++;
         }
@@ -561,7 +561,7 @@ function VMFunc(funcaddr, startpc, localsformat, rawformat) {
    for the stack frame; we generate that at save time.
 
    If we're deserializing a saved game, the vmfunc isn't a "real" vmfunc,
-   but a ghost built from the saved stack frame. In particular, 
+   but a ghost built from the saved stack frame. In particular,
    vmfunc.funcaddr and vmfunc.startpc are null.
 */
 function StackFrame(vmfunc) {
@@ -577,7 +577,7 @@ function StackFrame(vmfunc) {
     this.localsindex = vmfunc.localsindex;
     this.locals = [];
 
-    /* Create a locals array, according to the index. All locals begin 
+    /* Create a locals array, according to the index. All locals begin
        with a value of zero. */
     for (ix=0; ix<this.localsindex.length; ix++) {
         var form = this.localsindex[ix];
@@ -619,16 +619,16 @@ function push_serialized_stackframe(frame, arr) {
     for (var i = 0; i < rawformat.length; i++) {
         arr.push(rawformat[i]);
     }
-    
+
     // Local variables, plus any necessary padding.
     for (var i = 0; i < frame.vmfunc.localsindex.length; i++) {
         var form = frame.vmfunc.localsindex[i];
-        if (form.size == 4) {
+        if (form.size === 4) {
             while (arr.length & 3)
                 arr.push(0);
             BytePush4(arr, frame.locals[form.pos]);
         }
-        else if (form.size == 2) {
+        else if (form.size === 2) {
             while (arr.length & 1)
                 arr.push(0);
             BytePush2(arr, frame.locals[form.pos]);
@@ -639,13 +639,13 @@ function push_serialized_stackframe(frame, arr) {
     }
     while (arr.length & 3)
         arr.push(0);
-    
+
     // Value stack.
     for (var i = 0; i < frame.valstack.length; i++) {
         BytePush4(arr, frame.valstack[i]);
     }
 }
-    
+
 /* Pop a stack frame from the end of the given byte array.
    Returns a deserialized StackFrame object, or undefined on failure.
  */
@@ -657,7 +657,7 @@ function pop_deserialized_stackframe(arr) {
         return undefined;
     }
     arr = arr.splice(frameptr, arr.length);
-    
+
     // Frame length and locals format. We'll need this to build a fake
     // stack frame.
     var framelen = ByteRead4(arr, 0);
@@ -670,49 +670,49 @@ function pop_deserialized_stackframe(arr) {
     var localsformat = [];
     var addr = 8;
     while (1) {
-        /* Grab two bytes from the locals-format list. These are 
+        /* Grab two bytes from the locals-format list. These are
            unsigned (0..255 range). */
         var loctype = ByteRead1(arr, addr);
         addr++;
         var locnum = ByteRead1(arr, addr);
         addr++;
 
-        if (loctype == 0) {
+        if (loctype === 0) {
             break;
         }
-        if (loctype != 1 && loctype != 2 && loctype != 4) {
+        if (loctype !== 1 && loctype !== 2 && loctype !== 4) {
             fatal_error("Invalid local variable size in function header.", loctype);
         }
-        
+
         localsformat.push({ size:loctype, count:locnum });
     }
 
     // Build the fake VMFunc that will serve this stack frame.
     var vmfunc = new VMFunc(null, null, localsformat, rawformat);
-    
+
     // Build an empty frame.
     var frame = new StackFrame(vmfunc);
     frame.framestart = frameptr;
-    
+
     // Load the local variables.
     for (var i = 0; i < frame.vmfunc.localsindex.length; i++) {
         var form = frame.vmfunc.localsindex[i];
-        if (form.size == 4) {
+        if (form.size === 4) {
             frame.locals[form.pos] = ByteRead4(arr, 4 + localspos + form.pos);
         }
-        else if (form.size == 2) {
+        else if (form.size === 2) {
             frame.locals[form.pos] = ByteRead2(arr, 4 + localspos + form.pos);
         }
         else {
             frame.locals[form.pos] = ByteRead1(arr, 4 + localspos + form.pos);
         }
     }
-    
+
     // Load the stack variables.
     for (var pos = framelen; pos < arr.length; pos += 4) {
         frame.valstack.push(ByteRead4(arr, pos));
     }
-    
+
     return frame;
 }
 
@@ -724,7 +724,7 @@ function pop_deserialized_stackframe(arr) {
    make a VMTextEnv, but it's empty.
 */
 function VMTextEnv(addr, dectab) {
-    if (addr == 0)
+    if (addr === 0)
         fatal_error("Tried to create a VMTextEnv for address zero.");
 
     this.addr = addr;
@@ -779,7 +779,7 @@ function setup_operandlist_table() {
     var list_SS = new OperandList("SS");
     var list_CL = new OperandList("CL");
     var list_C = new OperandList("C");
-    operandlist_table = { 
+    operandlist_table = {
         0x00: list_none, /* nop */
         0x10: list_EES, /* add */
         0x11: list_LES, /* sub */
@@ -939,21 +939,21 @@ var funcop_cache = {};
    that will be overwritten.)
 */
 function oputil_record_funcop(funcop) {
-    if (funcop.mode == 0) {
+    if (funcop.mode === 0) {
         /* discard value */
         return "null";
     }
 
     var key = "m" + funcop.mode;
-    if (funcop.argsize != null)
+    if (funcop.argsize !== null)
         key = key + "s" + funcop.argsize;
-    if (funcop.addr != null)
+    if (funcop.addr !== null)
         key = key + "a" + funcop.addr;
 
     if (funcop_cache.key)
         return "funcop_cache."+key;
 
-    var obj = { key: key, 
+    var obj = { key: key,
         mode: funcop.mode, argsize: funcop.argsize, addr: funcop.addr };
     funcop_cache[key] = obj;
     return "funcop_cache."+key;
@@ -968,12 +968,12 @@ function oputil_store(context, funcop, operand) {
     switch (funcop.mode) {
 
     case 8: /* push on stack */
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             /* These two cases are tested in a nasty fast way. Pretend
                I'm calling quot_isconstant() and quot_isholdvar(). */
             var opchar = operand[0];
             if (opchar === "0") { /* quot_isconstant(operand) */
-                /* If this is an untruncated constant, we can move it 
+                /* If this is an untruncated constant, we can move it
                    directly to the offstack. */
                 context.offstack.push(operand);
                 ;;;context.code.push("// push to offstack: "+operand); //debug
@@ -990,10 +990,10 @@ function oputil_store(context, funcop, operand) {
 
         holdvar = alloc_holdvar(context, true);
         context.offstack.push(holdvar);
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             context.code.push(holdvar+"=("+operand+");");
         }
-        else if (funcop.argsize == 2) {
+        else if (funcop.argsize === 2) {
             context.code.push(holdvar+"=0xffff&("+operand+");");
         }
         else {
@@ -1006,12 +1006,12 @@ function oputil_store(context, funcop, operand) {
         return;
 
     case 11: /* The local-variable cases. */
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             /* These two cases are tested in a nasty fast way. Pretend
                I'm calling quot_isconstant() and quot_isholdvar(). */
             var opchar = operand[0];
             if (opchar === "0") { /* quot_isconstant(operand) */
-                /* If this is an untruncated constant, we can move it 
+                /* If this is an untruncated constant, we can move it
                    directly to the offloc. */
                 store_offloc_value(context, funcop.addr, operand, false);
                 ;;;context.code.push("// store to offloc["+funcop.addr+"]: "+operand); //debug
@@ -1029,10 +1029,10 @@ function oputil_store(context, funcop, operand) {
         /* Wipe the offloc entry, if any. */
         store_offloc_value(context, funcop.addr, undefined);
         /* Store directly to the locals array. */
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             context.code.push("frame.locals["+funcop.addr+"]=("+operand+");");
         }
-        else if (funcop.argsize == 2) {
+        else if (funcop.argsize === 2) {
             context.code.push("frame.locals["+funcop.addr+"]=(0xffff &"+operand+");");
         }
         else {
@@ -1041,10 +1041,10 @@ function oputil_store(context, funcop, operand) {
         return;
 
     case 15: /* The main-memory cases. */
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             context.code.push("MemW4("+funcop.addr+","+operand+");");
         }
-        else if (funcop.argsize == 2) {
+        else if (funcop.argsize === 2) {
             context.code.push("MemW2("+funcop.addr+","+operand+");");
         }
         else {
@@ -1059,7 +1059,7 @@ function oputil_store(context, funcop, operand) {
 }
 
 /* Push the four-value call stub onto the stack. The operand should be the
-   output of a "C" operand -- a string of the form "DESTTYPE,DESTADDR". 
+   output of a "C" operand -- a string of the form "DESTTYPE,DESTADDR".
 
    The last argument, addr, is optional. If not provided, it defaults to
    context.cp -- the address of the next opcode (to be compiled).
@@ -1087,7 +1087,7 @@ function oputil_push_substring_callstub(context) {
 /* Move all values on the offstack to the real stack, and all values
    on the offloc to the real local variables. A handler should call
    this before any operation which requires a legal game state, and
-   also before ending compilation. 
+   also before ending compilation.
 
    If keepstack is true, this generates code to move the values, but
    leaves them on the offstack as well. Call this form before a conditional
@@ -1122,14 +1122,14 @@ function oputil_unload_offstate(context, keepstack) {
             if (context.holduse[holdvar] !== undefined)
                 context.holduse[holdvar] = false;
         }
-        /* Now offstack/offloc are empty, and all their variables are marked 
+        /* Now offstack/offloc are empty, and all their variables are marked
            not on it. (There might have been constant values too, but that
            didn't affect holduse.) */
     }
 }
 
 function oputil_flush_string(context) {
-    if (context.buffer.length == 0)
+    if (context.buffer.length === 0)
         return;
 
     var str = context.buffer.join("");
@@ -1138,7 +1138,7 @@ function oputil_flush_string(context) {
     context.code.push("Glk.glk_put_jstring("+QuoteEscapeString(str)+");");
 }
 
-/* Return the signed equivalent of a value. If it is a high-bit constant, 
+/* Return the signed equivalent of a value. If it is a high-bit constant,
    this returns its negative equivalent as a constant. If it is a _hold
    variable or expression, a new expression is returned with the signed
    value.
@@ -1185,7 +1185,7 @@ function oputil_decode_float(context, operand, hold) {
         val = Number(operand);
         /* The standard toString rendering of -0 is "0", so we have to
            handle that case specially. */
-        if (val == 0x80000000)
+        if (val === 0x80000000)
             return "-0";
         return ""+decode_float(val);
     }
@@ -1202,14 +1202,14 @@ function oputil_decode_float(context, operand, hold) {
 }
 
 /* Generate code for a branch to operand. This includes the usual branch
-   hack; 0 or 1 return from the current function. 
+   hack; 0 or 1 return from the current function.
    If unconditional is false, the offstack values are left in place,
    so that compilation can continue.
 */
 function oputil_perform_jump(context, operand, unconditional) {
     if (quot_isconstant(operand)) {
         var val = Number(operand);
-        if (val == 0 || val == 1) {
+        if (val === 0 || val === 1) {
             if (unconditional) {
                 ;;;context.code.push("// quashing offstack for unconditional return: " + context.offstack.length); //debug
                 context.offstack.length = 0;
@@ -1231,7 +1231,7 @@ function oputil_perform_jump(context, operand, unconditional) {
     }
     else {
         oputil_unload_offstate(context, !unconditional);
-        context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
+        context.code.push("if (("+operand+")===0 || ("+operand+")===1) {");
         context.code.push("leave_function();");
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
@@ -1242,7 +1242,7 @@ function oputil_perform_jump(context, operand, unconditional) {
     context.code.push("return;");
 }
 
-/* opcode_table: All the Glulx VM opcodes. 
+/* opcode_table: All the Glulx VM opcodes.
 
    Each entry in this table is a function that *generates* executable
    Javascript code for that opcode. When we're compiling a code path,
@@ -1380,25 +1380,25 @@ var opcode_table = {
     },
 
     0x22: function(context, operands) { /* jz */
-        context.code.push("if (("+operands[0]+")==0) {");
+        context.code.push("if (("+operands[0]+")===0) {");
         oputil_perform_jump(context, operands[1]);
         context.code.push("}");
     },
 
     0x23: function(context, operands) { /* jnz */
-        context.code.push("if (("+operands[0]+")!=0) {");
+        context.code.push("if (("+operands[0]+")!==0) {");
         oputil_perform_jump(context, operands[1]);
         context.code.push("}");
     },
 
     0x24: function(context, operands) { /* jeq */
-        context.code.push("if (("+operands[0]+")==("+operands[1]+")) {");
+        context.code.push("if (("+operands[0]+")===("+operands[1]+")) {");
         oputil_perform_jump(context, operands[2]);
         context.code.push("}");
     },
 
     0x25: function(context, operands) { /* jne */
-        context.code.push("if (("+operands[0]+")!=("+operands[1]+")) {");
+        context.code.push("if (("+operands[0]+")!==("+operands[1]+")) {");
         oputil_perform_jump(context, operands[2]);
         context.code.push("}");
     },
@@ -1761,7 +1761,7 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Generate addrx as a number. */
                 addrx = Number(operands[0]);
-                if (bitnum >= 0) 
+                if (bitnum >= 0)
                     addrx += (bitnum>>3);
                 else
                     addrx -= (1+((-1-bitnum)>>3));
@@ -1799,7 +1799,7 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Generate addrx as a number. */
                 addrx = Number(operands[0]);
-                if (bitnum >= 0) 
+                if (bitnum >= 0)
                     addrx += (bitnum>>3);
                 else
                     addrx -= (1+((-1-bitnum)>>3));
@@ -1937,7 +1937,7 @@ var opcode_table = {
 
     0x103: function(context, operands) { /* setmemsize */
         context.code.push("change_memsize("+operands[0]+",false);");
-        /* An allocation failure is a fatal error, so we always return 
+        /* An allocation failure is a fatal error, so we always return
            success. */
         context.code.push(operands[1]+"0);");
     },
@@ -1949,7 +1949,7 @@ var opcode_table = {
            done in two chunks. */
         if (quot_isconstant(operands[0])) {
             var val = Number(operands[0]) & 0xffffffff; /* signed */
-            if (val == 0)
+            if (val === 0)
                 expr = "(Math.floor(random_func() * 0x10000) | (Math.floor(random_func() * 0x10000) << 16)) >>>0";
             else if (val > 0)
                 expr = "Math.floor(random_func() * "+val+")";
@@ -2055,7 +2055,7 @@ var opcode_table = {
     0x127: function(context, operands) { /* protect */
         context.code.push("protectstart="+operands[0]+";");
         context.code.push("protectend=protectstart+("+operands[1]+");");
-        context.code.push("if (protectstart==protectend) {")
+        context.code.push("if (protectstart===protectend) {")
         context.code.push("  protectstart=0; protectend=0;");
         context.code.push("}");
     },
@@ -2079,7 +2079,7 @@ var opcode_table = {
         context.code.push("mdest="+operands[2]+";");
 
         /* This could be optimized for the case where mlen is constant.
-           But for a rarely-used opcode, it's not really worth it. 
+           But for a rarely-used opcode, it's not really worth it.
         */
         context.code.push("if (mdest < msrc) {");
         context.code.push("for (ix=0; ix<mlen; ix++, msrc++, mdest++) MemW1(mdest, Mem1(msrc));");
@@ -2094,7 +2094,7 @@ var opcode_table = {
         context.code.push(operands[1]+expr+");");
         ;;;context.code.push("assert_heap_valid();"); //assert
     },
-    
+
     0x179: function(context, operands) { /* mfree */
         context.code.push("heap_free("+operands[0]+");");
         ;;;context.code.push("assert_heap_valid();"); //assert
@@ -2103,13 +2103,13 @@ var opcode_table = {
     0x180: function(context, operands) { /* accelfunc */
         context.code.push("accel_address_map["+operands[1]+"] = accel_func_map["+operands[0]+"];");
     },
-    
+
     0x181: function(context, operands) { /* accelparam */
         context.code.push("if ("+operands[0]+" < 9) {");
         context.code.push("  accel_params["+operands[0]+"] = "+operands[1]+";");
         context.code.push("}");
     },
-    
+
 
     0x150: function(context, operands) { /* linearsearch */
         var expr = "linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
@@ -2180,7 +2180,7 @@ var opcode_table = {
         /* It would be nice to determine at compile-time whether the
            value is a (cacheable) simple string value. In that case, we
            could throw it into glk_put_jstring and continue -- no need
-           to unload the offstack or return. (Or, of the value is 
+           to unload the offstack or return. (Or, of the value is
            determined to be a function, we can unload and return.)
         */
         oputil_unload_offstate(context);
@@ -2232,7 +2232,7 @@ var opcode_table = {
             context.curiosys = val;
         }
         else {
-            /* We can't compile with an unknown iosysmode. So, stop 
+            /* We can't compile with an unknown iosysmode. So, stop
                compiling. */
             oputil_unload_offstate(context);
             context.code.push("pc = "+context.cp+";");
@@ -2331,7 +2331,7 @@ var opcode_table = {
         context.varsused["quov"] = true;
         context.code.push("modv=("+valf0+" % "+valf1+");");
         context.code.push("quov=encode_float(("+valf0+" - modv) / "+valf1+");");
-        context.code.push("if (quov == 0x0 || quov == 0x80000000) {");
+        context.code.push("if (quov === 0x0 || quov === 0x80000000) {");
         /* When the quotient is zero, the sign has been lost in the
            shuffle. We'll set that by hand, based on the original
            arguments. */
@@ -2360,10 +2360,10 @@ var opcode_table = {
         context.varsused["valf"] = true;
         var valf0 = oputil_decode_float(context, operands[0], true);
         var valf1 = oputil_decode_float(context, operands[1], true);
-        context.code.push("if ("+operands[0]+" == 0x3f800000) {");
+        context.code.push("if ("+operands[0]+" === 0x3f800000) {");
         /* pow(1, anything) is 1 */
         context.code.push("  valf = 0x3f800000;");
-        context.code.push("} else if ("+operands[0]+" == 0xbf800000 && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        context.code.push("} else if ("+operands[0]+" === 0xbf800000 && ("+operands[1]+" === 0xff800000 || "+operands[1]+" === 0x7f800000)) {");
         /* pow(-1, infinity) is 1 */
         context.code.push("  valf = 0x3f800000;");
         context.code.push("} else {");
@@ -2412,13 +2412,13 @@ var opcode_table = {
         var val, valf0, valf1, valf2;
         context.varsused["fequal"] = true;
         context.varsused["fdiff"] = true;
-        context.code.push("if (("+operands[2]+" & 0x7f800000) == 0x7f800000 && ("+operands[2]+" & 0x007fffff) != 0) {");
+        context.code.push("if (("+operands[2]+" & 0x7f800000) === 0x7f800000 && ("+operands[2]+" & 0x007fffff) !== 0) {");
         /* The delta is NaN, which can never match. */
         context.code.push("  fequal = 0;");
-        context.code.push("} else if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        context.code.push("} else if (("+operands[0]+" === 0xff800000 || "+operands[0]+" === 0x7f800000) && ("+operands[1]+" === 0xff800000 || "+operands[1]+" === 0x7f800000)) {");
         /* Both are infinite. Opposite infinities are never equal,
            even if the difference is infinite, so this is easy. */
-        context.code.push("  fequal = ("+operands[0]+" == "+operands[1]+");");
+        context.code.push("  fequal = ("+operands[0]+" === "+operands[1]+");");
         context.code.push("} else {");
         /* The other case: the values are not both infinite. */
         if (quot_isconstant(operands[2])) {
@@ -2444,13 +2444,13 @@ var opcode_table = {
         var val, valf0, valf1, valf2;
         context.varsused["fequal"] = true;
         context.varsused["fdiff"] = true;
-        context.code.push("if (("+operands[2]+" & 0x7f800000) == 0x7f800000 && ("+operands[2]+" & 0x007fffff) != 0) {");
+        context.code.push("if (("+operands[2]+" & 0x7f800000) === 0x7f800000 && ("+operands[2]+" & 0x007fffff) !== 0) {");
         /* The delta is NaN, which can never match. */
         context.code.push("  fequal = 0;");
-        context.code.push("} else if (("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) && ("+operands[1]+" == 0xff800000 || "+operands[1]+" == 0x7f800000)) {");
+        context.code.push("} else if (("+operands[0]+" === 0xff800000 || "+operands[0]+" === 0x7f800000) && ("+operands[1]+" === 0xff800000 || "+operands[1]+" === 0x7f800000)) {");
         /* Both are infinite. Opposite infinities are never equal,
            even if the difference is infinite, so this is easy. */
-        context.code.push("  fequal = ("+operands[0]+" == "+operands[1]+");");
+        context.code.push("  fequal = ("+operands[0]+" === "+operands[1]+");");
         context.code.push("} else {");
         /* The other case: the values are not both infinite. */
         if (quot_isconstant(operands[2])) {
@@ -2505,13 +2505,13 @@ var opcode_table = {
     },
 
     0x1C8: function(context, operands) { /* jisnan */
-        context.code.push("if (("+operands[0]+" & 0x7f800000) == 0x7f800000 && ("+operands[0]+" & 0x007fffff) != 0) {");
+        context.code.push("if (("+operands[0]+" & 0x7f800000) === 0x7f800000 && ("+operands[0]+" & 0x007fffff) !== 0) {");
         oputil_perform_jump(context, operands[1]);
         context.code.push("}");
     },
 
     0x1C9: function(context, operands) { /* jisinf */
-        context.code.push("if ("+operands[0]+" == 0xff800000 || "+operands[0]+" == 0x7f800000) {");
+        context.code.push("if ("+operands[0]+" === 0xff800000 || "+operands[0]+" === 0x7f800000) {");
         oputil_perform_jump(context, operands[1]);
         context.code.push("}");
     },
@@ -2561,9 +2561,9 @@ var opcode_table = {
     }
 }
 
-/* Select a currently-unused "_hold*" variable, and mark it used. 
+/* Select a currently-unused "_hold*" variable, and mark it used.
    If use is true, it's marked "1", meaning it's going onto the offstack
-   or offloc. 
+   or offloc.
 */
 function alloc_holdvar(context, use) {
     var ix = 0;
@@ -2578,9 +2578,9 @@ function alloc_holdvar(context, use) {
     }
 }
 
-/* Remove a value from the offstack. If it is a constant, return it. If it 
-   is a _hold var, mark it as not used by the offstack any more, and return 
-   it (now a temporary holdvar). 
+/* Remove a value from the offstack. If it is a constant, return it. If it
+   is a _hold var, mark it as not used by the offstack any more, and return
+   it (now a temporary holdvar).
    (Do not call this if the offstack is empty.)
 */
 function pop_offstack_holdvar(context) {
@@ -2594,7 +2594,7 @@ function pop_offstack_holdvar(context) {
     ;;;    fatal_error("Offstack variable not marked as stack.", holdvar); //assert
     ;;;}
     use--;
-    if (use == 0)
+    if (use === 0)
         use = true; // Not on the stack any more
     context.holduse[holdvar] = use;
     return holdvar;
@@ -2628,7 +2628,7 @@ function store_offloc_value(context, addr, value, inchold) {
     if (oldvar && quot_isholdvar(oldvar)) {
         var use = context.holduse[oldvar];
         use--;
-        if (use == 0)
+        if (use === 0)
             use = true; // Not on the offloc any more
         context.holduse[oldvar] = use;
     }
@@ -2699,7 +2699,7 @@ function quot_isholdvar(val) {
    may have side effects, so the opcode handler must use the expression
    exactly once. If there are several "E" operands, the handler must
    use them in order.
-   
+
    "L" (load): The returned value is either a numeric constant or a
    "_holdN" temporary variable. In the latter case, a line of the form
    "_holdN = EXPRESSION" has been inserted into the generated code
@@ -2722,11 +2722,11 @@ function quot_isholdvar(val) {
    it messes with the offstack in a confusing way, and also can't treat
    constants specially.
 
-   "C" (callstub): The returned value is an expression of the form 
+   "C" (callstub): The returned value is an expression of the form
    "desttype,destaddr" -- two of the values in a Glulx call stub. The
    oputil_push_callstub() function knows how to generate code that pushes
    a call stub, if you pass these values in.
-   
+
 */
 function parse_operands(context, cp, oplist, operands) {
     var modeaddr;
@@ -2741,7 +2741,7 @@ function parse_operands(context, cp, oplist, operands) {
     cp += ((oplist.numops+1) >> 1);
 
     for (ix=0; ix<oplist.numops; ix++) {
-        if ((ix & 1) == 0) {
+        if ((ix & 1) === 0) {
             modeval = Mem1(modeaddr);
             mode = (modeval & 0x0F);
         }
@@ -2752,7 +2752,7 @@ function parse_operands(context, cp, oplist, operands) {
 
         var optype = oplist.formlist[ix];
 
-        if (optype == "L") {
+        if (optype === "L") {
             switch (mode) {
 
             case 8: /* pop off stack */
@@ -2765,18 +2765,18 @@ function parse_operands(context, cp, oplist, operands) {
                     operands[ix] = holdvar;
                 }
                 continue;
-                
+
             case 0: /* constant zero */
                 operands[ix] = "0";
                 continue;
-                
+
             case 1: /* one-byte constant */
                 /* Sign-extend from 8 bits to 32 */
                 value = QuoteMem1(cp);
                 cp++;
                 operands[ix] = value;
                 continue;
-                
+
             case 2: /* two-byte constant */
                 /* Sign-extend the first byte from 8 bits to 32; the subsequent
                    byte must not be sign-extended. */
@@ -2784,7 +2784,7 @@ function parse_operands(context, cp, oplist, operands) {
                 cp += 2;
                 operands[ix] = value;
                 continue;
-                
+
             case 3: /* four-byte constant */
                 /* Bytes must not be sign-extended. */
                 value = QuoteMem4(cp);
@@ -2794,15 +2794,15 @@ function parse_operands(context, cp, oplist, operands) {
             }
 
             if (mode >= 9 && mode <= 11) {
-                if (mode == 9) {
+                if (mode === 9) {
                     addr = Mem1(cp);
                     cp++;
                 }
-                else if (mode == 10) {
+                else if (mode === 10) {
                     addr = Mem2(cp);
                     cp += 2;
                 }
-                else if (mode == 11) {
+                else if (mode === 11) {
                     addr = Mem4(cp);
                     cp += 4;
                 }
@@ -2812,10 +2812,10 @@ function parse_operands(context, cp, oplist, operands) {
                     continue;
                 }
 
-                if (oplist.argsize == 4) {
+                if (oplist.argsize === 4) {
                     value = "frame.locals["+addr+"]";
                 }
-                else if (oplist.argsize == 2) {
+                else if (oplist.argsize === 2) {
                     value = "frame.locals["+addr+"] & 0xffff";
                 }
                 else {
@@ -2833,18 +2833,18 @@ function parse_operands(context, cp, oplist, operands) {
             case 15: /* main memory RAM, four-byte address */
                 addr = Mem4(cp) + ramstart;
                 cp += 4;
-                break; 
+                break;
 
             case 14: /* main memory RAM, two-byte address */
                 addr = Mem2(cp) + ramstart;
                 cp += 2;
-                break; 
+                break;
 
             case 13: /* main memory RAM, one-byte address */
                 addr = Mem1(cp) + ramstart;
                 cp++;
-                break; 
-        
+                break;
+
             case 7: /* main memory, four-byte address */
                 addr = Mem4(cp);
                 cp += 4;
@@ -2865,10 +2865,10 @@ function parse_operands(context, cp, oplist, operands) {
             }
 
             /* The main-memory cases. */
-            if (oplist.argsize == 4) {
+            if (oplist.argsize === 4) {
                 value = "Mem4("+addr+")";
             }
-            else if (oplist.argsize == 2) {
+            else if (oplist.argsize === 2) {
                 value = "Mem2("+addr+")";
             }
             else {
@@ -2880,7 +2880,7 @@ function parse_operands(context, cp, oplist, operands) {
             continue;
 
         }
-        else if (optype == "E") {
+        else if (optype === "E") {
             switch (mode) {
 
             case 8: /* pop off stack */
@@ -2891,18 +2891,18 @@ function parse_operands(context, cp, oplist, operands) {
                     operands[ix] = "frame.valstack.pop()";
                 }
                 continue;
-                
+
             case 0: /* constant zero */
                 operands[ix] = "0";
                 continue;
-                
+
             case 1: /* one-byte constant */
                 /* Sign-extend from 8 bits to 32 */
                 value = QuoteMem1(cp);
                 cp++;
                 operands[ix] = value;
                 continue;
-                
+
             case 2: /* two-byte constant */
                 /* Sign-extend the first byte from 8 bits to 32; the subsequent
                    byte must not be sign-extended. */
@@ -2910,7 +2910,7 @@ function parse_operands(context, cp, oplist, operands) {
                 cp += 2;
                 operands[ix] = value;
                 continue;
-                
+
             case 3: /* four-byte constant */
                 /* Bytes must not be sign-extended. */
                 value = QuoteMem4(cp);
@@ -2920,15 +2920,15 @@ function parse_operands(context, cp, oplist, operands) {
             }
 
             if (mode >= 9 && mode <= 11) {
-                if (mode == 9) {
+                if (mode === 9) {
                     addr = Mem1(cp);
                     cp++;
                 }
-                else if (mode == 10) {
+                else if (mode === 10) {
                     addr = Mem2(cp);
                     cp += 2;
                 }
-                else if (mode == 11) {
+                else if (mode === 11) {
                     addr = Mem4(cp);
                     cp += 4;
                 }
@@ -2938,10 +2938,10 @@ function parse_operands(context, cp, oplist, operands) {
                     continue;
                 }
 
-                if (oplist.argsize == 4) {
+                if (oplist.argsize === 4) {
                     value = "frame.locals["+addr+"]";
                 }
-                else if (oplist.argsize == 2) {
+                else if (oplist.argsize === 2) {
                     value = "frame.locals["+addr+"] & 0xffff";
                 }
                 else {
@@ -2959,18 +2959,18 @@ function parse_operands(context, cp, oplist, operands) {
             case 15: /* main memory RAM, four-byte address */
                 addr = Mem4(cp) + ramstart;
                 cp += 4;
-                break; 
+                break;
 
             case 14: /* main memory RAM, two-byte address */
                 addr = Mem2(cp) + ramstart;
                 cp += 2;
-                break; 
+                break;
 
             case 13: /* main memory RAM, one-byte address */
                 addr = Mem1(cp) + ramstart;
                 cp++;
-                break; 
-        
+                break;
+
             case 7: /* main memory, four-byte address */
                 addr = Mem4(cp);
                 cp += 4;
@@ -2991,10 +2991,10 @@ function parse_operands(context, cp, oplist, operands) {
             }
 
             /* The main-memory cases. */
-            if (oplist.argsize == 4) {
+            if (oplist.argsize === 4) {
                 value = "Mem4("+addr+")";
             }
-            else if (oplist.argsize == 2) {
+            else if (oplist.argsize === 2) {
                 value = "Mem2("+addr+")";
             }
             else {
@@ -3004,7 +3004,7 @@ function parse_operands(context, cp, oplist, operands) {
             continue;
 
         }
-        else if (optype == "S") {
+        else if (optype === "S") {
             switch (mode) {
 
             case 8: /* push on stack */
@@ -3013,33 +3013,33 @@ function parse_operands(context, cp, oplist, operands) {
                 context.offstack.push(holdvar);
                 operands[ix] = holdvar+"=(";
                 continue;
-                
+
             case 0: /* discard value */
                 operands[ix] = "(";
                 continue;
             }
-                
+
             if (mode >= 9 && mode <= 11) {
-                if (mode == 9) {
+                if (mode === 9) {
                     addr = Mem1(cp);
                     cp++;
                 }
-                else if (mode == 10) {
+                else if (mode === 10) {
                     addr = Mem2(cp);
                     cp += 2;
                 }
-                else if (mode == 11) {
+                else if (mode === 11) {
                     addr = Mem4(cp);
                     cp += 4;
                 }
-                
+
                 /* The local-variable cases. */
-                if (oplist.argsize == 4) {
+                if (oplist.argsize === 4) {
                     holdvar = alloc_holdvar(context, true);
                     store_offloc_value(context, addr, holdvar, false);
                     operands[ix] = holdvar+"=(";
                 }
-                else if (oplist.argsize == 2) {
+                else if (oplist.argsize === 2) {
                     store_offloc_value(context, addr, undefined);
                     operands[ix] = "frame.locals["+addr+"]=(0xffff &";
                 }
@@ -3054,18 +3054,18 @@ function parse_operands(context, cp, oplist, operands) {
             case 15: /* main memory RAM, four-byte address */
                 addr = Mem4(cp) + ramstart;
                 cp += 4;
-                break; 
+                break;
 
             case 14: /* main memory RAM, two-byte address */
                 addr = Mem2(cp) + ramstart;
                 cp += 2;
-                break; 
+                break;
 
             case 13: /* main memory RAM, one-byte address */
                 addr = Mem1(cp) + ramstart;
                 cp++;
-                break; 
-        
+                break;
+
             case 7: /* main memory, four-byte address */
                 addr = Mem4(cp);
                 cp += 4;
@@ -3086,10 +3086,10 @@ function parse_operands(context, cp, oplist, operands) {
             }
 
             /* The main-memory cases. */
-            if (oplist.argsize == 4) {
+            if (oplist.argsize === 4) {
                 value = "MemW4("+addr+",";
             }
-            else if (oplist.argsize == 2) {
+            else if (oplist.argsize === 2) {
                 value = "MemW2("+addr+",";
             }
             else {
@@ -3098,7 +3098,7 @@ function parse_operands(context, cp, oplist, operands) {
             operands[ix] = value;
             continue;
         }
-        else if (optype == "F") {
+        else if (optype === "F") {
             var funcop = operands.func_store;
 
             switch (mode) {
@@ -3108,28 +3108,28 @@ function parse_operands(context, cp, oplist, operands) {
                 funcop.argsize = oplist.argsize;
                 operands[ix] = funcop;
                 continue;
-                
+
             case 0: /* discard value */
                 funcop.mode = 0;
                 funcop.argsize = oplist.argsize;
                 operands[ix] = funcop;
                 continue;
             }
-                
+
             if (mode >= 9 && mode <= 11) {
-                if (mode == 9) {
+                if (mode === 9) {
                     addr = Mem1(cp);
                     cp++;
                 }
-                else if (mode == 10) {
+                else if (mode === 10) {
                     addr = Mem2(cp);
                     cp += 2;
                 }
-                else if (mode == 11) {
+                else if (mode === 11) {
                     addr = Mem4(cp);
                     cp += 4;
                 }
-                
+
                 /* The local-variable cases. */
                 funcop.mode = 11;
                 funcop.addr = addr;
@@ -3142,18 +3142,18 @@ function parse_operands(context, cp, oplist, operands) {
             case 15: /* main memory RAM, four-byte address */
                 addr = Mem4(cp) + ramstart;
                 cp += 4;
-                break; 
+                break;
 
             case 14: /* main memory RAM, two-byte address */
                 addr = Mem2(cp) + ramstart;
                 cp += 2;
-                break; 
+                break;
 
             case 13: /* main memory RAM, one-byte address */
                 addr = Mem1(cp) + ramstart;
                 cp++;
-                break; 
-        
+                break;
+
             case 7: /* main memory, four-byte address */
                 addr = Mem4(cp);
                 cp += 4;
@@ -3180,32 +3180,32 @@ function parse_operands(context, cp, oplist, operands) {
             operands[ix] = funcop;
             continue;
         }
-        else if (optype == "C") {
+        else if (optype === "C") {
             switch (mode) {
 
             case 8: /* push on stack */
                 operands[ix] = "3,0";
                 continue;
-                
+
             case 0: /* discard value */
                 operands[ix] = "0,0";
                 continue;
             }
-                
+
             if (mode >= 9 && mode <= 11) {
-                if (mode == 9) {
+                if (mode === 9) {
                     addr = Mem1(cp);
                     cp++;
                 }
-                else if (mode == 10) {
+                else if (mode === 10) {
                     addr = Mem2(cp);
                     cp += 2;
                 }
-                else if (mode == 11) {
+                else if (mode === 11) {
                     addr = Mem4(cp);
                     cp += 4;
                 }
-                
+
                 /* The local-variable cases. */
                 operands[ix] = "2,"+addr;
                 continue;
@@ -3215,18 +3215,18 @@ function parse_operands(context, cp, oplist, operands) {
             case 15: /* main memory RAM, four-byte address */
                 addr = Mem4(cp) + ramstart;
                 cp += 4;
-                break; 
+                break;
 
             case 14: /* main memory RAM, two-byte address */
                 addr = Mem2(cp) + ramstart;
                 cp += 2;
-                break; 
+                break;
 
             case 13: /* main memory RAM, one-byte address */
                 addr = Mem1(cp) + ramstart;
                 cp++;
-                break; 
-        
+                break;
+
             case 7: /* main memory, four-byte address */
                 addr = Mem4(cp);
                 cp += 4;
@@ -3265,34 +3265,34 @@ function compile_func(funcaddr) {
 
     /* Check the Glulx type identifier byte. */
     var functype = Mem1(addr);
-    if (functype != 0xC0 && functype != 0xC1) {
+    if (functype !== 0xC0 && functype !== 0xC1) {
         if (functype >= 0xC0 && functype <= 0xDF)
             fatal_error("Call to unknown type of function.", addr);
         else
             fatal_error("Call to non-function.", addr);
     }
     addr++;
-    
+
     /* Go through the function's locals-format list, and construct a
        slightly nicer description of the locals. (An array of [size, num].) */
     var localsformat = [];
     var rawstart = addr;
     var ix = 0;
     while (1) {
-        /* Grab two bytes from the locals-format list. These are 
+        /* Grab two bytes from the locals-format list. These are
            unsigned (0..255 range). */
         var loctype = Mem1(addr);
         addr++;
         var locnum = Mem1(addr);
         addr++;
 
-        if (loctype == 0) {
+        if (loctype === 0) {
             break;
         }
-        if (loctype != 1 && loctype != 2 && loctype != 4) {
+        if (loctype !== 1 && loctype !== 2 && loctype !== 4) {
             fatal_error("Invalid local variable size in function header.", loctype);
         }
-        
+
         localsformat.push({ size:loctype, count:locnum });
     }
 
@@ -3360,7 +3360,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
 
         /* Indicates whether the values in offloc need to be written back
            to the locals array. (True means yes; false means it's just a
-           a cached value and doesn't need to be written.) Same indices as 
+           a cached value and doesn't need to be written.) Same indices as
            offloc. */
         offlocdirty: [],
 
@@ -3369,7 +3369,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
     };
 
     /* This will hold the operand information for each opcode we compile.
-       We'll recycle the object rather than allocating a new one each 
+       We'll recycle the object rather than allocating a new one each
        time. */
     var operands = {};
     /* Another object to recycle. */
@@ -3382,7 +3382,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         /* Fetch the opcode number. */
         opcodecp = cp;
         opcode = Mem1(cp);
-        if (opcode === undefined) 
+        if (opcode === undefined)
             fatal_error("Tried to compile nonexistent address", cp);
         cp++;
 
@@ -3410,7 +3410,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         ;;;context.code.push("// " + opcodecp.toString(16) + ": opcode " + opcode.toString(16)); //debug
 
         /* Fetch the structure that describes how the operands for this
-           opcode are arranged. This is a pointer to an immutable, 
+           opcode are arranged. This is a pointer to an immutable,
            static object. */
         var oplist = operandlist_table[opcode];
         if (!oplist)
@@ -3418,7 +3418,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         cp = parse_operands(context, cp, oplist, operands);
         /* Some ophandlers need the next PC -- the address of the next
            instruction. That's cp right now. */
-        context.cp = cp; 
+        context.cp = cp;
 
         var ophandler = opcode_table[opcode];
         if (!ophandler)
@@ -3448,9 +3448,9 @@ function compile_path(vmfunc, startaddr, startiosys) {
         }
     }
 
-    if (context.offstack.length) 
+    if (context.offstack.length)
         fatal_error("Path compilation ended with nonempty offstack.", context.offstack.length);
-    if (context.offloc.length) 
+    if (context.offloc.length)
         fatal_error("Path compilation ended with nonempty offloc.", context.offloc.length);
 
     /* Declare all the _hold variables, and other variables, that we need. */
@@ -3469,7 +3469,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
 }
 
 /* Prepare for execution of a new function. The argcount is the number
-   of arguments passed in; the arguments themselves are in the 
+   of arguments passed in; the arguments themselves are in the
    tempcallargs array. (We don't rely on tempcallargs.length, as that
    can be greater than argcount.)
 
@@ -3503,14 +3503,14 @@ function enter_function(addr, argcount) {
 
     var newframe = new StackFrame(vmfunc);
     newframe.depth = stack.length;
-    if (stack.length == 0)
+    if (stack.length === 0)
         newframe.framestart = 0;
     else
         newframe.framestart = frame.framestart + frame.framelen + 4*frame.valstack.length;
     stack.push(newframe);
     frame = newframe;
 
-    if (vmfunc.functype == 0xC0) {
+    if (vmfunc.functype === 0xC0) {
         /* Push the function arguments on the stack. The locals have already
            been zeroed. */
         for (ix=argcount-1; ix >= 0; ix--)
@@ -3526,11 +3526,11 @@ function enter_function(addr, argcount) {
             var form = vmfunc.localsindex[ix];
             if (form === undefined)
                 break;
-            if (form.size == 4)
+            if (form.size === 4)
                 frame.locals[form.pos] = tempcallargs[ix];
-            else if (form.size == 2)
+            else if (form.size === 2)
                 frame.locals[form.pos] = tempcallargs[ix] & 0xFFFF;
-            else if (form.size == 1)
+            else if (form.size === 1)
                 frame.locals[form.pos] = tempcallargs[ix] & 0xFF;
         }
     }
@@ -3546,13 +3546,13 @@ function leave_function() {
     var olddepth = frame.depth;
 
     stack.pop();
-    if (stack.length == 0) {
+    if (stack.length === 0) {
         frame = null;
         throw ReturnedFromMain;
     }
     frame = stack[stack.length-1];
 
-    if (frame.depth != olddepth-1)
+    if (frame.depth !== olddepth-1)
         fatal_error("Stack inconsistent after function exit.");
 }
 
@@ -3561,7 +3561,7 @@ function pop_stack_to(val) {
     /* Down to the correct frame, if necessary. */
     while (stack.length && stack[stack.length-1].framestart > val)
         stack.pop();
-    if (stack.length == 0)
+    if (stack.length === 0)
         fatal_error("Stack evaporated during throw.");
     frame = stack[stack.length-1];
 
@@ -3577,7 +3577,7 @@ function pop_stack_to(val) {
     frame.valstack.length = val;
 }
 
-/* Pop a callstub off the stack, and store a value at the appropriate 
+/* Pop a callstub off the stack, and store a value at the appropriate
    location. (When returning from a function, for example, the value is
    the function return value, and it gets stored wherever the function
    call wants it. The pc winds up pointing after the function call
@@ -3591,7 +3591,7 @@ function pop_callstub(val) {
         fatal_error("Function returned undefined value.");
 
     var framestart = frame.valstack.pop();
-    if (framestart != frame.framestart)
+    if (framestart !== frame.framestart)
         fatal_error("Call stub frameptr (" + framestart + ") " +
             "does not match frame (" + frame.framestart + ")");
     pc = frame.valstack.pop();
@@ -3618,7 +3618,7 @@ function pop_callstub(val) {
     case 0x10:
         /* This call stub was pushed during a string-decoding operation!
            We have to restart it. (Note that the return value is discarded.) */
-        stream_string(0, pc, 0xE1, destaddr); 
+        stream_string(0, pc, 0xE1, destaddr);
         return;
 
     case 0x12:
@@ -3630,13 +3630,13 @@ function pop_callstub(val) {
     case 0x13:
         /* This call stub was pushed during a C-string printing operation.
            We have to restart it. (Note that the return value is discarded.) */
-        stream_string(0, pc, 0xE0, destaddr); 
+        stream_string(0, pc, 0xE0, destaddr);
         return;
 
     case 0x14:
         /* This call stub was pushed during a Unicode printing operation.
            We have to restart it. (Note that the return value is discarded.) */
-        stream_string(0, pc, 0xE2, destaddr); 
+        stream_string(0, pc, 0xE2, destaddr);
         return;
 
     default:
@@ -3645,7 +3645,7 @@ function pop_callstub(val) {
 }
 
 /* Do the value-storing part of an already-popped call stub. (This is a
-   subset of the pop_callstub() work.) 
+   subset of the pop_callstub() work.)
 */
 function store_operand(desttype, destaddr, val) {
     switch (desttype) {
@@ -3682,10 +3682,10 @@ function store_operand_by_funcop(funcop, val) {
         return;
 
     case 11: /* The local-variable cases. */
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             frame.locals[funcop.addr] = (val);
         }
-        else if (funcop.argsize == 2) {
+        else if (funcop.argsize === 2) {
             frame.locals[funcop.addr] = (0xffff & val);
         }
         else {
@@ -3694,10 +3694,10 @@ function store_operand_by_funcop(funcop, val) {
         return;
 
     case 15: /* The main-memory cases. */
-        if (funcop.argsize == 4) {
+        if (funcop.argsize === 4) {
             MemW4(funcop.addr, val);
         }
-        else if (funcop.argsize == 2) {
+        else if (funcop.argsize === 2) {
             MemW2(funcop.addr, val);
         }
         else {
@@ -3715,7 +3715,7 @@ function store_operand_by_funcop(funcop, val) {
    Math.random), or a seeded deterministic RNG.
 */
 function set_random(val) {
-    if (val == 0) {
+    if (val === 0) {
         random_func = Math.random;
     }
     else {
@@ -3741,7 +3741,7 @@ function srand_set_seed(seed) {
     srand_table[54] = seed;
     srand_index1 = 0;
     srand_index2 = 31;
-    
+
     k = 1;
 
     for (i = 0; i < 55; i++) {
@@ -3772,7 +3772,7 @@ var accel_address_map = {};
 var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
 /* The code for all the functions we can accelerate. Remember that there may
-   be fewer arguments than expected, and any beyond argc should be taken as 
+   be fewer arguments than expected, and any beyond argc should be taken as
    zero.
 */
 var accel_func_map = {
@@ -3804,7 +3804,7 @@ var accel_func_map = {
         var id = ((argc > 1) ? argv[1] : 0);
 
         /* func_1_z__region(obj) */
-        if (accel_func_map[1](argc, argv) != 1) { 
+        if (accel_func_map[1](argc, argv) !== 1) {
             Glk.glk_put_jstring("\n[** Programming error: tried to find the \".\" of (something) **]\n");
             return 0;
         }
@@ -3824,7 +3824,7 @@ var accel_func_map = {
         var id = ((argc > 1) ? argv[1] : 0);
 
         var prop = accel_helper_get_prop(obj, id);
-        if (prop == 0)
+        if (prop === 0)
             return 0;
 
         return Mem4(prop + 4);
@@ -3835,7 +3835,7 @@ var accel_func_map = {
         var id = ((argc > 1) ? argv[1] : 0);
 
         var prop = accel_helper_get_prop(obj, id);
-        if (prop == 0)
+        if (prop === 0)
             return 0;
 
         return 4 * Mem2(prop + 2);
@@ -3849,58 +3849,58 @@ var accel_func_map = {
 
         /* func_1_z__region(obj) */
         zr = accel_func_map[1](argc, argv);
-        if (zr == 3)
-            return (cla == accel_params[5]) ? 1 : 0;
-        if (zr == 2)
-            return (cla == accel_params[4]) ? 1 : 0;
-        if (zr != 1)
+        if (zr === 3)
+            return (cla === accel_params[5]) ? 1 : 0;
+        if (zr === 2)
+            return (cla === accel_params[4]) ? 1 : 0;
+        if (zr !== 1)
             return 0;
-    
-        if (cla == accel_params[2]) {
+
+        if (cla === accel_params[2]) {
             if (accel_helper_obj_in_class(obj))
                 return 1;
-            if (obj == accel_params[2])
+            if (obj === accel_params[2])
                 return 1;
-            if (obj == accel_params[5])
+            if (obj === accel_params[5])
                 return 1;
-            if (obj == accel_params[4])
+            if (obj === accel_params[4])
                 return 1;
-            if (obj == accel_params[3])
+            if (obj === accel_params[3])
                 return 1;
             return 0;
         }
-        if (cla == accel_params[3]) {
+        if (cla === accel_params[3]) {
             if (accel_helper_obj_in_class(obj))
                 return 0;
-            if (obj == accel_params[2])
+            if (obj === accel_params[2])
                 return 0;
-            if (obj == accel_params[5])
+            if (obj === accel_params[5])
                 return 0;
-            if (obj == accel_params[4])
+            if (obj === accel_params[4])
                 return 0;
-            if (obj == accel_params[3])
+            if (obj === accel_params[3])
                 return 0;
             return 1;
         }
-        if ((cla == accel_params[5]) || (cla == accel_params[4]))
+        if ((cla === accel_params[5]) || (cla === accel_params[4]))
             return 0;
-    
+
         if (!accel_helper_obj_in_class(cla)) {
             Glk.glk_put_jstring("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
             return 0;
         }
-    
+
         prop = accel_helper_get_prop(obj, 2);
-        if (prop == 0)
+        if (prop === 0)
            return 0;
-    
+
         inlist = Mem4(prop + 4);
-        if (inlist == 0)
+        if (inlist === 0)
            return 0;
-    
+
         inlistlen = Mem2(prop + 2);
         for (jx = 0; jx < inlistlen; jx++) {
-            if (Mem4(inlist + (4 * jx)) == cla)
+            if (Mem4(inlist + (4 * jx)) === cla)
                 return 1;
         }
         return 0;
@@ -3912,8 +3912,8 @@ var accel_func_map = {
 
         /* func_3_ra__pr */
         addr = accel_func_map[3](argc, argv);
-        
-        if (addr == 0) {
+
+        if (addr === 0) {
             /* id > 0 && id < indiv_prop_start */
             if ((id > 0) && (id < accel_params[1])) {
                 /* Mem4(cpv__start + 4*id) */
@@ -3935,27 +3935,27 @@ var accel_func_map = {
 
         /* func_1_z__region(obj) */
         var zr = accel_func_map[1](argc, argv);
-        if (zr == 3) {
+        if (zr === 3) {
             /* print is INDIV_PROP_START+6 */
-            if (id == indiv_prop_start+6)
+            if (id === indiv_prop_start+6)
                 return 1;
             /* print_to_array is INDIV_PROP_START+7 */
-            if (id == indiv_prop_start+7)
+            if (id === indiv_prop_start+7)
                 return 1;
             return 0;
         }
-        if (zr == 2) {
+        if (zr === 2) {
             /* call is INDIV_PROP_START+5 */
-            return ((id == indiv_prop_start+5) ? 1 : 0);
+            return ((id === indiv_prop_start+5) ? 1 : 0);
         }
-        if (zr != 1)
+        if (zr !== 1)
             return 0;
-    
+
         if ((id >= indiv_prop_start) && (id < indiv_prop_start+8)) {
             if (accel_helper_obj_in_class(obj))
                 return 1;
         }
-    
+
         /* func_3_ra__pr */
         return ((accel_func_map[3](argc, argv)) ? 1 : 0);
     },
@@ -3965,7 +3965,7 @@ var accel_func_map = {
         var id = ((argc > 1) ? argv[1] : 0);
 
         /* func_1_z__region(obj) */
-        if (accel_func_map[1](argc, argv) != 1) { 
+        if (accel_func_map[1](argc, argv) !== 1) {
             Glk.glk_put_jstring("\n[** Programming error: tried to find the \".\" of (something) **]\n");
             return 0;
         }
@@ -3986,7 +3986,7 @@ var accel_func_map = {
         var id = ((argc > 1) ? argv[1] : 0);
 
         var prop = accel_helper_get_prop_new(obj, id);
-        if (prop == 0)
+        if (prop === 0)
             return 0;
 
         return Mem4(prop + 4);
@@ -3997,7 +3997,7 @@ var accel_func_map = {
         var id = ((argc > 1) ? argv[1] : 0);
 
         var prop = accel_helper_get_prop_new(obj, id);
-        if (prop == 0)
+        if (prop === 0)
             return 0;
 
         return 4 * Mem2(prop + 2);
@@ -4011,58 +4011,58 @@ var accel_func_map = {
 
         /* func_1_z__region(obj) */
         zr = accel_func_map[1](argc, argv);
-        if (zr == 3)
-            return (cla == accel_params[5]) ? 1 : 0;
-        if (zr == 2)
-            return (cla == accel_params[4]) ? 1 : 0;
-        if (zr != 1)
+        if (zr === 3)
+            return (cla === accel_params[5]) ? 1 : 0;
+        if (zr === 2)
+            return (cla === accel_params[4]) ? 1 : 0;
+        if (zr !== 1)
             return 0;
-    
-        if (cla == accel_params[2]) {
+
+        if (cla === accel_params[2]) {
             if (accel_helper_obj_in_class(obj))
                 return 1;
-            if (obj == accel_params[2])
+            if (obj === accel_params[2])
                 return 1;
-            if (obj == accel_params[5])
+            if (obj === accel_params[5])
                 return 1;
-            if (obj == accel_params[4])
+            if (obj === accel_params[4])
                 return 1;
-            if (obj == accel_params[3])
+            if (obj === accel_params[3])
                 return 1;
             return 0;
         }
-        if (cla == accel_params[3]) {
+        if (cla === accel_params[3]) {
             if (accel_helper_obj_in_class(obj))
                 return 0;
-            if (obj == accel_params[2])
+            if (obj === accel_params[2])
                 return 0;
-            if (obj == accel_params[5])
+            if (obj === accel_params[5])
                 return 0;
-            if (obj == accel_params[4])
+            if (obj === accel_params[4])
                 return 0;
-            if (obj == accel_params[3])
+            if (obj === accel_params[3])
                 return 0;
             return 1;
         }
-        if ((cla == accel_params[5]) || (cla == accel_params[4]))
+        if ((cla === accel_params[5]) || (cla === accel_params[4]))
             return 0;
-    
+
         if (!accel_helper_obj_in_class(cla)) {
             Glk.glk_put_jstring("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
             return 0;
         }
-    
+
         prop = accel_helper_get_prop_new(obj, 2);
-        if (prop == 0)
+        if (prop === 0)
            return 0;
-    
+
         inlist = Mem4(prop + 4);
-        if (inlist == 0)
+        if (inlist === 0)
            return 0;
-    
+
         inlistlen = Mem2(prop + 2);
         for (jx = 0; jx < inlistlen; jx++) {
-            if (Mem4(inlist + (4 * jx)) == cla)
+            if (Mem4(inlist + (4 * jx)) === cla)
                 return 1;
         }
         return 0;
@@ -4074,8 +4074,8 @@ var accel_func_map = {
 
         /* func_9_ra__pr */
         addr = accel_func_map[9](argc, argv);
-        
-        if (addr == 0) {
+
+        if (addr === 0) {
             /* id > 0 && id < indiv_prop_start */
             if ((id > 0) && (id < accel_params[1])) {
                 /* Mem4(cpv__start + 4*id) */
@@ -4097,27 +4097,27 @@ var accel_func_map = {
 
         /* func_1_z__region(obj) */
         var zr = accel_func_map[1](argc, argv);
-        if (zr == 3) {
+        if (zr === 3) {
             /* print is INDIV_PROP_START+6 */
-            if (id == indiv_prop_start+6)
+            if (id === indiv_prop_start+6)
                 return 1;
             /* print_to_array is INDIV_PROP_START+7 */
-            if (id == indiv_prop_start+7)
+            if (id === indiv_prop_start+7)
                 return 1;
             return 0;
         }
-        if (zr == 2) {
+        if (zr === 2) {
             /* call is INDIV_PROP_START+5 */
-            return ((id == indiv_prop_start+5) ? 1 : 0);
+            return ((id === indiv_prop_start+5) ? 1 : 0);
         }
-        if (zr != 1)
+        if (zr !== 1)
             return 0;
-    
+
         if ((id >= indiv_prop_start) && (id < indiv_prop_start+8)) {
             if (accel_helper_obj_in_class(obj))
                 return 1;
         }
-    
+
         /* func_9_ra__pr */
         return ((accel_func_map[9](argc, argv)) ? 1 : 0);
     }
@@ -4129,8 +4129,8 @@ function accel_helper_obj_in_class(obj)
 {
     /* This checks whether obj is contained in Class, not whether
        it is a member of Class. */
-    /* (Mem4(obj + 13 + num_attr_bytes) == class_metaclass) */
-    return (Mem4(obj + 13 + accel_params[7]) == accel_params[2]);
+    /* (Mem4(obj + 13 + num_attr_bytes) === class_metaclass) */
+    return (Mem4(obj + 13 + accel_params[7]) === accel_params[2]);
 }
 
 /* Look up a property entry. */
@@ -4145,7 +4145,7 @@ function accel_helper_get_prop(obj, id)
         accel_helper_temp_args[0] = obj;
         accel_helper_temp_args[1] = cla;
         /* func_5_oc__cl */
-        if (accel_func_map[5](2, accel_helper_temp_args) == 0)
+        if (accel_func_map[5](2, accel_helper_temp_args) === 0)
             return 0;
 
         id = id >> 16;
@@ -4156,17 +4156,17 @@ function accel_helper_get_prop(obj, id)
     accel_helper_temp_args[1] = id;
     /* func_2_cp__tab */
     prop = accel_func_map[2](2, accel_helper_temp_args);
-    if (prop == 0)
+    if (prop === 0)
         return 0;
 
-    if (accel_helper_obj_in_class(obj) && (cla == 0)) {
+    if (accel_helper_obj_in_class(obj) && (cla === 0)) {
         /* id < num_attr_bytes || id >= num_attr_bytes+8 */
         if ((id < accel_params[1]) || (id >= accel_params[1]+8))
             return 0;
     }
 
     /* Mem4(self) -- the global variable self */
-    if (Mem4(accel_params[6]) != obj) {
+    if (Mem4(accel_params[6]) !== obj) {
         if (Mem1(prop + 9) & 1)
             return 0;
     }
@@ -4188,7 +4188,7 @@ function accel_helper_get_prop_new(obj, id)
         accel_helper_temp_args[0] = obj;
         accel_helper_temp_args[1] = cla;
         /* func_11_oc__cl */
-        if (accel_func_map[11](2, accel_helper_temp_args) == 0)
+        if (accel_func_map[11](2, accel_helper_temp_args) === 0)
             return 0;
 
         id = id >> 16;
@@ -4199,17 +4199,17 @@ function accel_helper_get_prop_new(obj, id)
     accel_helper_temp_args[1] = id;
     /* func_8_cp__tab */
     prop = accel_func_map[8](2, accel_helper_temp_args);
-    if (prop == 0)
+    if (prop === 0)
         return 0;
 
-    if (accel_helper_obj_in_class(obj) && (cla == 0)) {
+    if (accel_helper_obj_in_class(obj) && (cla === 0)) {
         /* id < num_attr_bytes || id >= num_attr_bytes+8 */
         if ((id < accel_params[1]) || (id >= accel_params[1]+8))
             return 0;
     }
 
     /* Mem4(self) -- the global variable self */
-    if (Mem4(accel_params[6]) != obj) {
+    if (Mem4(accel_params[6]) !== obj) {
         if (Mem1(prop + 9) & 1)
             return 0;
     }
@@ -4219,7 +4219,7 @@ function accel_helper_get_prop_new(obj, id)
 
 /* Set the current table address, and rebuild decoding tree. */
 function set_string_table(addr) {
-    if (stringtable == addr)
+    if (stringtable === addr)
         return;
 
     /* Drop the existing cache and tree. */
@@ -4229,7 +4229,7 @@ function set_string_table(addr) {
     /* Set the register. */
     stringtable = addr;
 
-    if (stringtable == 0) {
+    if (stringtable === 0) {
         return;
     }
 
@@ -4261,7 +4261,7 @@ function set_string_table(addr) {
     vmstring_table = textenv.vmstring_tables[iosysmode];
 }
 
-/* Set the VM iosys, and adjust the vmstring_table register appropriately. 
+/* Set the VM iosys, and adjust the vmstring_table register appropriately.
 */
 function set_iosys(mode, rock) {
     switch (mode) {
@@ -4296,7 +4296,7 @@ function set_iosys(mode, rock) {
    The arrays have a peculiar structure (inherited from Glulxe). Each one
    encapsulates a subtree of binary branch nodes, up to four nodes deep. This
    lets you traverse the tree four levels at a time (using four input bits at
-   a time). The first input bit is the 1s place of the array index, and so 
+   a time). The first input bit is the 1s place of the array index, and so
    on.
 
    Life gets complicated if we want to encode *fewer* than four levels. A
@@ -4313,7 +4313,7 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
 
     type = Mem1(nodeaddr);
 
-    if (type == 0 && depth == 4) { /*CACHEBITS*/
+    if (type === 0 && depth === 4) { /*CACHEBITS*/
         /* Start a new array. */
         cab = Array(16); /*CACHESIZE*/
         cab.type = 0;
@@ -4323,7 +4323,7 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
         return;
     }
 
-    if (type == 0) {
+    if (type === 0) {
         var leftaddr  = Mem4(nodeaddr+1);
         var rightaddr = Mem4(nodeaddr+5);
         build_decoding_tree(cablist, leftaddr, depth+1, mask);
@@ -4417,12 +4417,12 @@ function stream_num(nextcp, value, inmiddle, charnum) {
     if (inmiddle) {
         var desttype, destaddr;
         /* String terminated. Carry out a pop_callstub_string(). */
-        if (frame.valstack.pop() != frame.framestart)
+        if (frame.valstack.pop() !== frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
         pc = frame.valstack.pop();
         destaddr = frame.valstack.pop();
         desttype = frame.valstack.pop();
-        if (desttype != 0x11) 
+        if (desttype !== 0x11)
             fatal_error("String-on-string call stub while printing number.");
     }
 }
@@ -4438,7 +4438,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
    whole thing got printed.
 */
 function stream_string(nextcp, addr, inmiddle, bitnum) {
-    var substring = (inmiddle != 0);
+    var substring = (inmiddle !== 0);
     var addrkey, strop, res;
     var desttype, destaddr;
 
@@ -4446,7 +4446,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
 
     while (true) {
         strop = undefined;
-        if (inmiddle == 0)
+        if (inmiddle === 0)
             addrkey = addr;
         else
             addrkey = addr+"/"+inmiddle+"/"+bitnum;
@@ -4466,7 +4466,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         }
 
         //qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
-    
+
         if (!(strop instanceof Function)) {
             Glk.glk_put_jstring(strop);
             if (!substring)
@@ -4489,20 +4489,20 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             }
             /* Else, string terminated. */
         }
-        
+
         /* String terminated. Carry out a pop_callstub_string(). */
-        if (frame.valstack.pop() != frame.framestart)
+        if (frame.valstack.pop() !== frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
         pc = frame.valstack.pop();
         destaddr = frame.valstack.pop();
         desttype = frame.valstack.pop();
 
-        if (desttype == 0x11) {
+        if (desttype === 0x11) {
             /* The call stub for the top-level string. Return to the main
                execution loop. */
             return true;
         }
-        else if (desttype == 0x10) {
+        else if (desttype === 0x10) {
             /* The call stub for a sub-function. Continue the compressed
                string that called it. */
             substring = true;
@@ -4549,9 +4549,9 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         code: []
     }
 
-    if (inmiddle == 0) {
+    if (inmiddle === 0) {
         type = Mem1(addr);
-        if (type == 0xE2)
+        if (type === 0xE2)
             addr+=4;
         else
             addr++;
@@ -4561,19 +4561,19 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         type = inmiddle;
     }
 
-    if (type == 0xE1) {
+    if (type === 0xE1) {
         if (decoding_tree) {
             var bits, numbits, readahead, tmpaddr;
             var cablist, cab;
             var done = false;
 
             /* bitnum is already set right */
-            bits = Mem1(addr); 
+            bits = Mem1(addr);
             if (bitnum)
                 bits >>= bitnum;
             numbits = (8 - bitnum);
             readahead = false;
-            
+
             if (!(decoding_tree instanceof Array)) {
                 /* This is a bit of a cheat. If the top-level block is not
                    a branch, then it must be a string-terminator -- otherwise
@@ -4643,7 +4643,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         tmpaddr = cab.addr;
                         while (true) {
                             ch = Mem1(tmpaddr);
-                            if (ch == 0)
+                            if (ch === 0)
                                 break;
                             context.buffer.push(CharToString(ch));
                             tmpaddr++;
@@ -4665,7 +4665,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         tmpaddr = cab.addr;
                         while (true) {
                             ch = Mem4(tmpaddr);
-                            if (ch == 0)
+                            if (ch === 0)
                                 break;
                             context.buffer.push(CharToString(ch));
                             tmpaddr += 4;
@@ -4684,7 +4684,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                 case 0x08:
                 case 0x09:
                 case 0x0A:
-                case 0x0B: 
+                case 0x0B:
                     oputil_flush_string(context);
                     oputil_push_substring_callstub(context);
                     /* It's not worth precomputing this type-test. We could
@@ -4696,7 +4696,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("var oaddr = "+(cab.addr)+";");
                     if (cab.type >= 0x09)
                         context.code.push("oaddr = Mem4(oaddr);");
-                    if (cab.type == 0x0B)
+                    if (cab.type === 0x0B)
                         context.code.push("oaddr = Mem4(oaddr);");
                     context.code.push("otype = Mem1(oaddr);");
                     retval = "retval";
@@ -4708,7 +4708,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("}");
                     context.code.push("else if (otype >= 0xC0 && otype <= 0xDF) {");
                     var argc = 0;
-                    if (cab.type == 0x0A || cab.type == 0x0B) {
+                    if (cab.type === 0x0A || cab.type === 0x0B) {
                         argc = Mem4(cab.addr+4);
                         for (var ix=0; ix<argc; ix++)
                             context.code.push("tempcallargs["+ix+"]="+Mem4(cab.addr+8+4*ix)+";");
@@ -4729,7 +4729,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         else {  /* No decoding_tree available. */
             var node, byt, nodetype;
             var done = false;
-            
+
             if (!stringtable)
                 fatal_error("Attempted to print a compressed string with no table set.");
             /* bitnum is already set right */
@@ -4743,11 +4743,11 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                 node++;
                 switch (nodetype) {
                 case 0x00: /* non-leaf node */
-                    if (byt & 1) 
+                    if (byt & 1)
                         node = Mem4(node+4);
                     else
                         node = Mem4(node+0);
-                    if (bitnum == 7) {
+                    if (bitnum === 7) {
                         bitnum = 0;
                         addr++;
                         byt = Mem1(addr);
@@ -4802,7 +4802,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     case 2: /* glk */
                         while (true) {
                             ch = Mem1(node);
-                            if (ch == 0)
+                            if (ch === 0)
                                 break;
                             context.buffer.push(CharToString(ch));
                             node++;
@@ -4823,7 +4823,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     case 2: /* glk */
                         while (true) {
                             ch = Mem4(node);
-                            if (ch == 0)
+                            if (ch === 0)
                                 break;
                             context.buffer.push(CharToString(ch));
                             node += 4;
@@ -4842,7 +4842,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                 case 0x08:
                 case 0x09:
                 case 0x0A:
-                case 0x0B: 
+                case 0x0B:
                     oputil_flush_string(context);
                     oputil_push_substring_callstub(context);
                     /* It's not worth precomputing this type-test. We could
@@ -4852,7 +4852,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                        let's not bother. */
                     context.code.push("var otype, retval;");
                     context.code.push("var oaddr = "+Mem4(node)+";");
-                    if (nodetype == 0x09 || nodetype == 0x0B)
+                    if (nodetype === 0x09 || nodetype === 0x0B)
                         context.code.push("oaddr = Mem4(oaddr);");
                     context.code.push("otype = Mem1(oaddr);");
                     retval = "retval";
@@ -4864,7 +4864,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("}");
                     context.code.push("else if (otype >= 0xC0 && otype <= 0xDF) {");
                     var argc = 0;
-                    if (nodetype == 0x0A || nodetype == 0x0B) {
+                    if (nodetype === 0x0A || nodetype === 0x0B) {
                         argc = Mem4(node+4);
                         for (var ix=0; ix<argc; ix++)
                             context.code.push("tempcallargs["+ix+"]="+Mem4(node+8+4*ix)+";");
@@ -4883,14 +4883,14 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             }
         }
     }
-    else if (type == 0xE0) {
+    else if (type === 0xE0) {
         var ch;
         switch (curiosys) {
         case 2: /* glk */
             while (1) {
                 ch = Mem1(addr);
                 addr++;
-                if (ch == 0)
+                if (ch === 0)
                     break;
                 context.buffer.push(CharToString(ch));
             }
@@ -4900,7 +4900,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             oputil_push_substring_callstub(context);
             ch = Mem1(addr);
             addr++;
-            if (ch != 0) {
+            if (ch !== 0) {
                 oputil_push_callstub(context, "0x13,0", addr);
                 context.code.push("tempcallargs[0]="+ch+";");
                 context.code.push("enter_function(iosysrock, 1);");
@@ -4912,14 +4912,14 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             break;
         }
     }
-    else if (type == 0xE2) {
+    else if (type === 0xE2) {
         var ch;
         switch (curiosys) {
         case 2: /* glk */
             while (1) {
                 ch = Mem4(addr);
                 addr+=4;
-                if (ch == 0)
+                if (ch === 0)
                     break;
                 context.buffer.push(CharToString(ch));
             }
@@ -4929,7 +4929,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             oputil_push_substring_callstub(context);
             ch = Mem4(addr);
             addr+=4;
-            if (ch != 0) {
+            if (ch !== 0) {
                 oputil_push_callstub(context, "0x14,0", addr);
                 context.code.push("tempcallargs[0]="+ch+";");
                 context.code.push("enter_function(iosysrock, 1);");
@@ -5058,19 +5058,19 @@ function fetch_search_key(addr, len, options) {
     return tempsearchkey;
 }
 
-function linear_search(key, keysize, start, 
+function linear_search(key, keysize, start,
     structsize, numstructs, keyoffset, options) {
 
     var ix, count, match, byt;
-    var retindex = ((options & 4) != 0);
-    var zeroterm = ((options & 2) != 0);
+    var retindex = ((options & 4) !== 0);
+    var zeroterm = ((options & 2) !== 0);
     var keybuf = fetch_search_key(key, keysize, options);
 
     for (count=0; count<numstructs; count++, start+=structsize) {
         match = true;
         for (ix=0; match && ix<keysize; ix++) {
             byt = Mem1(start + keyoffset + ix);
-            if (byt != keybuf[ix])
+            if (byt !== keybuf[ix])
                 match = false;
         }
 
@@ -5080,15 +5080,15 @@ function linear_search(key, keysize, start,
             else
                 return start;
         }
-        
+
         if (zeroterm) {
             match = true;
             for (ix=0; match && ix<keysize; ix++) {
                 byt = Mem1(start + keyoffset + ix);
-                if (byt != 0)
+                if (byt !== 0)
                     match = false;
             }
-            
+
             if (match) {
                 break;
             }
@@ -5101,12 +5101,12 @@ function linear_search(key, keysize, start,
         return 0;
 }
 
-function binary_search(key, keysize, start, 
+function binary_search(key, keysize, start,
     structsize, numstructs, keyoffset, options) {
 
     var top, bot, addr, val, cmp, ix;
     var byt, byt2;
-    var retindex = ((options & 4) != 0);
+    var retindex = ((options & 4) !== 0);
     var keybuf = fetch_search_key(key, keysize, options);
 
     bot = 0;
@@ -5130,7 +5130,7 @@ function binary_search(key, keysize, start,
             else
                 return addr;
         }
-        
+
         if (cmp < 0) {
             bot = val+1;
         }
@@ -5145,33 +5145,33 @@ function binary_search(key, keysize, start,
         return 0;
 }
 
-function linked_search(key, keysize, start, 
+function linked_search(key, keysize, start,
     keyoffset, nextoffset, options) {
 
     var ix, byt, match;
-    var zeroterm = ((options & 2) != 0);
+    var zeroterm = ((options & 2) !== 0);
     var keybuf = fetch_search_key(key, keysize, options);
 
-    while (start != 0) {
+    while (start !== 0) {
         match = true;
         for (ix=0; match && ix<keysize; ix++) {
             byt = Mem1(start + keyoffset + ix);
-            if (byt != keybuf[ix])
+            if (byt !== keybuf[ix])
                 match = false;
         }
 
         if (match) {
             return start;
         }
-        
+
         if (zeroterm) {
             match = true;
             for (ix=0; match && ix<keysize; ix++) {
                 byt = Mem1(start + keyoffset + ix);
-                if (byt != 0)
+                if (byt !== 0)
                     match = false;
             }
-            
+
             if (match) {
                 break;
             }
@@ -5197,13 +5197,13 @@ function decode_float(val) {
         sign = false;
     }
 
-    if (val == 0) {
+    if (val === 0) {
         return (sign ? -0.0 : 0.0);
     }
 
-    if ((val & 0x7f800000) == 0x7f800000) {
+    if ((val & 0x7f800000) === 0x7f800000) {
         /* Either an infinity or a NaN. */
-        if ((val & 0x7fffff) == 0) {
+        if ((val & 0x7fffff) === 0) {
             return (sign ? -Infinity : Infinity);
         }
         else {
@@ -5244,7 +5244,7 @@ function encode_float(val) {
         else
             return 0x7f800000;
     }
-    if (val == 0) {
+    if (val === 0) {
         /* We have to deal with zeroes separately, because you can't test
            (-0 < 0) -- it ain't so. You have to turn the thing into an
            infinity and test that. */
@@ -5275,7 +5275,7 @@ function encode_float(val) {
         mant = mant * Math.pow(2, 126 + expo);
         expo = 0;
     }
-    else if (!(expo == 0 && mant == 0.0)) {
+    else if (!(expo === 0 && mant === 0.0)) {
         expo += 127;
         mant -= 1.0; /* Get rid of leading 1 */
     }
@@ -5285,7 +5285,7 @@ function encode_float(val) {
     /* We want to round mant to the nearest integer. However, we bias
        towards rounding down, in order to make Javascript's math
        (which is double-precision) match the single-precision C code. */
-    fbits = (mant + 0.4999999999999999) << 0; 
+    fbits = (mant + 0.4999999999999999) << 0;
     if (fbits >= 8388608) {
         /* The carry propagated out of a string of 23 1 bits. */
         fbits = 0;
@@ -5382,14 +5382,14 @@ function setup_vm() {
     if (game_image.length < 36)
         fatal_error("This is too short to be a valid Glulx file.");
     val = ByteRead4(game_image, 0);
-    if (val != 0x476c756c)   // 'Glul'
+    if (val !== 0x476c756c)   // 'Glul'
         fatal_error("This is not a valid Glulx file.");
-    
+
     /* We support version 2.0 through 3.1.*. */
     version = ByteRead4(game_image, 4);
-    if (version < 0x20000) 
+    if (version < 0x20000)
         fatal_error("This Glulx file is too old a version to execute.");
-    if (version >= 0x30200) 
+    if (version >= 0x30200)
         fatal_error("This Glulx file is too new a version to execute.");
 
     ramstart = ByteRead4(game_image, 8);
@@ -5404,12 +5404,12 @@ function setup_vm() {
     protectstart = 0;
     protectend = 0;
 
-    if (ramstart < 0x100 
-        || endgamefile < ramstart 
-        || origendmem < endgamefile) 
+    if (ramstart < 0x100
+        || endgamefile < ramstart
+        || origendmem < endgamefile)
         fatal_error("The segment boundaries in the header are in an impossible order.");
 
-    if (endgamefile != game_image.length)
+    if (endgamefile !== game_image.length)
         fatal_error("The game file length does not agree with the header.");
 
     done_executing = false;
@@ -5429,13 +5429,13 @@ function setup_vm() {
     heapstart = 0;
     usedlist = [];
     freelist = [];
-    
+
     vm_restart();
 }
 
 /* Put the VM into a state where it's ready to begin executing the
    game. This is called both at startup time, and when the machine
-   performs a "restart" opcode. 
+   performs a "restart" opcode.
 */
 function vm_restart() {
     var ix;
@@ -5462,10 +5462,10 @@ function vm_restart() {
     set_string_table(origstringtable);
 
     /* Note that we do not reset the protection range. */
-    
+
     /* Push the first function call. (No arguments.) */
     enter_function(startfuncaddr, 0);
-    
+
     /* We're now ready to execute. */
 }
 
@@ -5475,7 +5475,7 @@ function compress_bytes(arr) {
     var i = 0;
     while (i < arr.length) {
         var zeroes = 0;
-        while (i < arr.length && arr[i] == 0 && zeroes <= 255) {
+        while (i < arr.length && arr[i] === 0 && zeroes <= 255) {
             zeroes++;
             i++;
         }
@@ -5483,7 +5483,7 @@ function compress_bytes(arr) {
             result.push(0);
             result.push(zeroes - 1);
         }
-        while (i < arr.length && arr[i] != 0) {
+        while (i < arr.length && arr[i] !== 0) {
             result.push(arr[i]);
             i++;
         }
@@ -5498,7 +5498,7 @@ function decompress_bytes(arr) {
     var i = 0;
     while (i < arr.length) {
         var b = arr[i++];
-        if (b == 0) {
+        if (b === 0) {
             var count = arr[i++] + 1;
             for (var j = 0; j < count; j++) {
                 result.push(0);
@@ -5519,10 +5519,10 @@ function pack_iff_chunks(chunks) {
     for (var ix = 0; ix < chunks.length; ix++) {
         var key = chunks[ix].key;
         var chunk = chunks[ix].chunk;
-        if (key.length != 4) {
+        if (key.length !== 4) {
             fatal_error("Bad chunk ID (must be exactly 4 chars): " + key);
         }
-        if (chunk == undefined) {
+        if (chunk === undefined) {
             fatal_error("Missing chunk data: " + key);
         }
         //qlog("Writing " + key + " (" + chunk.length + " bytes)");
@@ -5567,24 +5567,24 @@ function unpack_iff_chunks(bytes) {
 }
 
 /* Writes a snapshot of the VM state to the given Glk stream. Returns true
-   on success. 
+   on success.
 */
 function vm_save(streamid) {
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length !== endmem) {
     ;;;    fatal_error("Memory length was incorrect before save."); //assert
     ;;;}
 
-    if (iosysmode != 2)
+    if (iosysmode !== 2)
         fatal_error("Streams are only available in Glk I/O system.");
 
     var str = GiDispa.class_obj_from_id('stream', streamid);
     if (!str)
         return false;
-    
+
     chunks = [];
-    
+
     chunks.push({ key:"IFhd", chunk:game_image.slice(0, 128) });
-    
+
     var cmem = memmap.slice(ramstart);
     for (var i = ramstart; i < game_image.length; i++) {
         cmem[i - ramstart] ^= game_image[i];
@@ -5594,7 +5594,7 @@ function vm_save(streamid) {
     // Write in the endmem value
     ByteWrite4(cmem, 0, endmem);
     chunks.push({key:"CMem", chunk:cmem});
-    
+
     var stkschunk = [];
     chunks.push({ key:"Stks", chunk:stkschunk });
     for (var i = 0; i < stack.length; i++) {
@@ -5615,9 +5615,9 @@ function vm_save(streamid) {
     var payload_bytes = []
     BytePushString(payload_bytes, "IFZS");
     payload_bytes = payload_bytes.concat(pack_iff_chunks(chunks));
-    
+
     var quetzal = pack_iff_chunks([{ key:"FORM", chunk:payload_bytes }])
-    //qlog("vm_save: writing " + quetzal.length + " bytes");    
+    //qlog("vm_save: writing " + quetzal.length + " bytes");
     Glk.glk_put_buffer_stream(str, quetzal);
     return true;
 }
@@ -5626,13 +5626,13 @@ function vm_save(streamid) {
    Returns true on success.
 */
 function vm_restore(streamid) {
-    if (iosysmode != 2)
+    if (iosysmode !== 2)
         fatal_error("Streams are only available in Glk I/O system.");
 
     var str = GiDispa.class_obj_from_id('stream', streamid);
     if (!str)
         return false;
-    
+
     var quetzal = new Array(0);
     var buffer = new Array(1024);
     var count = 1;
@@ -5641,14 +5641,14 @@ function vm_restore(streamid) {
         quetzal = quetzal.concat(buffer.slice(0, count));
     }
     //qlog("vm_restore: reading " + quetzal.length + " bytes");
-    
+
     quetzal = unpack_iff_chunks(quetzal);
     if (!quetzal) {
         qlog("vm_restore failed: file is not Quetzal");
         return false;
     }
     quetzal = quetzal["FORM"];
-    if (!quetzal || ByteReadString(quetzal, 0, 4) != "IFZS") {
+    if (!quetzal || ByteReadString(quetzal, 0, 4) !== "IFZS") {
         qlog("vm_restore failed: file doesn't start with FORM/IFZS header");
         return false;
     }
@@ -5656,17 +5656,17 @@ function vm_restore(streamid) {
 
     // Unpack the chunks map into the VM state. (This is destructive to
     // the contents of chunks.)
-    
+
     if (!chunks["IFhd"]) {
         qlog("vm_restore failed: missing required IFhd chunk");
         return false;
     }
     for (var i = 0; i < 128; i++) {
-        if (chunks["IFhd"][i] != game_image[i]) {
+        if (chunks["IFhd"][i] !== game_image[i]) {
             qlog("vm_restore failed: this save image is for a different game");
             return false;
         }
-    }    
+    }
     if (!chunks["CMem"]) {
         qlog("vm_restore failed: missing required CMem chunk");
         return false;
@@ -5675,11 +5675,11 @@ function vm_restore(streamid) {
         qlog("vm_restore failed: missing required Stks chunk");
         return false;
     }
-    
+
     // The point of no return.
     var protect = copy_protected_range();
     heap_clear();
-    
+
     var newendmem = ByteRead4(chunks["CMem"], 0);
     var ram_xor = chunks["CMem"].slice(4);
     ram_xor = decompress_bytes(ram_xor);
@@ -5692,7 +5692,7 @@ function vm_restore(streamid) {
         memmap[i] ^= game_image[i];
     }
 
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length !== endmem) {
     ;;;    fatal_error("Memory length was incorrect after restore."); //assert
     ;;;}
 
@@ -5743,7 +5743,7 @@ function vm_restore(streamid) {
     }
 
     ;;;assert_heap_valid(); //assert
-    
+
     paste_protected_range(protect);
     return true;
 }
@@ -5752,7 +5752,7 @@ function vm_restore(streamid) {
    many on the stack, throw away the oldest.
 */
 function vm_saveundo() {
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length !== endmem) {
     ;;;    fatal_error("Memory length was incorrect before saveundo."); //assert
     ;;;}
 
@@ -5779,7 +5779,7 @@ function vm_saveundo() {
    Returns true on success.
 */
 function vm_restoreundo() {
-    if (undostack.length == 0) {
+    if (undostack.length === 0) {
         return false;
     }
     var snapshot = undostack.pop();
@@ -5794,10 +5794,10 @@ function vm_restoreundo() {
     heapstart = snapshot.heapstart;
     usedlist = snapshot.usedlist;
     freelist = snapshot.freelist;
-    
+
     paste_protected_range(protect);
 
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length !== endmem) {
     ;;;    fatal_error("Memory length was incorrect after undo."); //assert
     ;;;}
     ;;;assert_heap_valid(); //assert
@@ -5805,13 +5805,13 @@ function vm_restoreundo() {
     return true;
 }
 
-/* Change the size of the memory map. The internal flag should be true 
+/* Change the size of the memory map. The internal flag should be true
    only when the heap-allocation system is calling.
 */
 function change_memsize(newlen, internal) {
     var lx;
 
-    if (newlen == endmem)
+    if (newlen === endmem)
         return;
 
     if ((!internal) && heap_is_active())
@@ -5828,7 +5828,7 @@ function change_memsize(newlen, internal) {
         }
     }
 
-    endmem = newlen;    
+    endmem = newlen;
 }
 
 /* Return an object which represents the protected-memory range and its
@@ -5859,7 +5859,7 @@ function copy_protected_range() {
     return obj;
 }
 
-/* Paste a protected-memory range into the VM. 
+/* Paste a protected-memory range into the VM.
 */
 function paste_protected_range(obj) {
     if (!obj)
@@ -5882,9 +5882,9 @@ function perform_verify() {
     var imagelen = game_image.length;
     var ix, newsum, checksum;
 
-    if (imagelen < 0x100 || (imagelen & 0xFF) != 0)
+    if (imagelen < 0x100 || (imagelen & 0xFF) !== 0)
         return 1;
-    if (imagelen != ByteRead4(game_image, 12))
+    if (imagelen !== ByteRead4(game_image, 12))
         return 1;
 
     checksum = ByteRead4(game_image, 32);
@@ -5896,14 +5896,14 @@ function perform_verify() {
         newsum = (newsum + ByteRead4(game_image, ix)) >>>0;
     }
 
-    if (newsum != checksum)
+    if (newsum !== checksum)
         return 1;
 
     return 0;
 }
 
 /* Return the game image signature. This is used as a fingerprint on save
-   files, to ensure that you can't save in one game and restore in a 
+   files, to ensure that you can't save in one game and restore in a
    different one.
 */
 function quixe_get_signature() {
@@ -5976,7 +5976,7 @@ function heap_malloc(size) {
     if (!heap_is_active()) {
         heapstart = endmem;
     }
-    
+
     for (var i = 0, max = freelist.length; i < max; i++) {
         var freeblock = freelist[i];
         if (freeblock.size >= size) {
@@ -6006,12 +6006,12 @@ function heap_malloc(size) {
 function heap_free(addr) {
     var pos = heap_binary_search(usedlist, addr);
     var block = usedlist[pos];
-    if (!block || block.addr != addr) {
+    if (!block || block.addr !== addr) {
         fatal_error("Tried to free non-existent block");
     }
     usedlist.splice(pos, 1);
-    
-    if (usedlist.length == 0) {
+
+    if (usedlist.length === 0) {
         // No allocated blocks left. Blow away the whole heap.
         change_memsize(heapstart, true);
         heap_clear();
@@ -6023,19 +6023,19 @@ function heap_free(addr) {
 
     // If the next block is free, merge with it.
     var next = freelist[pos];
-    if (next && next.addr == block.end) {
+    if (next && next.addr === block.end) {
         block = new HeapBlock(addr, block.size + next.size);
         freelist.splice(pos, 1);
     }
-    
+
     // If the previous block is free, merge with it.
     var prev = freelist[pos - 1];
-    if (prev && prev.end == block.addr) {
+    if (prev && prev.end === block.addr) {
         block = new HeapBlock(prev.addr, prev.size + block.size);
         freelist.splice(pos - 1, 1);
         pos -= 1;
     }
-    
+
     freelist.splice(pos, 0, block);
 }
 
@@ -6045,7 +6045,7 @@ function heap_free(addr) {
 function assert_heap_valid() {
     //qlog("### heap check: heapstart " + heapstart + ", " + usedlist.length + " used, " + freelist.length + " free");
     if (!heap_is_active()) {
-        if (heapstart != 0)
+        if (heapstart !== 0)
             fatal_error("Heap inconsistency: heapstart nonzero");
 
         if (usedlist.length > 0)
@@ -6057,7 +6057,7 @@ function assert_heap_valid() {
         return;
     }
 
-    if (heapstart == 0)
+    if (heapstart === 0)
         fatal_error("Heap inconsistency: heapstart is zero");
 
     var addr = heapstart;
@@ -6065,11 +6065,11 @@ function assert_heap_valid() {
     while (upos < usedlist.length || fpos < freelist.length) {
         var u = usedlist[upos];
         var f = freelist[fpos];
-        if (u && u.addr == addr) {
+        if (u && u.addr === addr) {
             //qlog("###..."+u.addr+" ("+u.size+" alloc)");
             addr += u.size;
             upos++;
-        } else if (f && f.addr == addr) {
+        } else if (f && f.addr === addr) {
             //qlog("###..."+f.addr+" ("+f.size+" free)");
             addr += f.size;
             fpos++;
@@ -6077,8 +6077,8 @@ function assert_heap_valid() {
             fatal_error("Heap inconsistency: no block at address " + addr);
         }
     }
-    
-    if (addr != endmem)
+
+    if (addr !== endmem)
         fatal_error("Heap inconsistency: overrun at end of heap");
 }
 
@@ -6099,10 +6099,10 @@ function parse_inform_debug_data(datachunknum) {
     var buf = el.data;
     var done;
     var pos, oldpos;
-    
-    if (!(buf[0] == 0xDE && buf[1] == 0xBF && buf[2] == 0 && buf[3] == 0))
+
+    if (!(buf[0] === 0xDE && buf[1] === 0xBF && buf[2] === 0 && buf[3] === 0))
         return;
-    
+
     var informversion = (buf[4]<<8) | (buf[5]);
     pos = 6;
     done = false;
@@ -6208,7 +6208,7 @@ function parse_inform_debug_data(datachunknum) {
                     locals.push(locname);
                 }
                 pos++;
-                debuginfo.functions.push({ 
+                debuginfo.functions.push({
                     num:funcnum, name:funcname, addr:funcaddr,
                     locals:locals });
                 break;
@@ -6236,7 +6236,7 @@ function parse_inform_debug_data(datachunknum) {
                 var line = buf.slice(pos, pos+4);
                 pos += 4;
                 var endaddr = (buf[pos++]<<16) | (buf[pos++]<<8) | (buf[pos++]);
-                break;                
+                break;
 
             default:
                 qlog("Unknown record type in debug data: " + rectype);

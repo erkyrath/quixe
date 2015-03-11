@@ -33,15 +33,6 @@
   top: 20%;
 }
 
-#layouttestpane {
-  position: absolute;
-  visibility: hidden;
-  top: 0px;
-  /* Move this way off the screen. Even though it's hidden, Firefox has
-     a nasty habit of showing the inactive scroll bar. */
-  left: -1000px;
-}
-
 .WindowFrame {
   /* This class provides the default background color of windows. You
      can change that, but don't touch the position or margin. */

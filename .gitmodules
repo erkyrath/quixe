@@ -1,0 +1,3 @@
+[submodule "src/glkote"]
+	path = src/glkote
+	url = https://github.com/erkyrath/glkote.git
