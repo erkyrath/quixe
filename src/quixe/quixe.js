@@ -175,19 +175,19 @@ function qlog(msg) {
 function qobjdump(obj, depth) {
     var key, proplist;
 
-    if (obj instanceof Array) {
+    if (jQuery.type(obj) === 'array') {
         if (depth)
             depth--;
         var ls = jQuery.map(obj, function(v, ix) {return qobjdump(v, depth);});
         return ("[" + ls.join(",") + "]");
     }
-    if (!(obj instanceof Object))
+    if (!(jQuery.type(obj) === 'object'))
         return (""+obj);
 
     proplist = [ ];
     for (key in obj) {
         var val = obj[key];
-        if (depth && val instanceof Object)
+        if (depth && jQuery.type(val) === 'object')
             val = qobjdump(val, depth-1);
         proplist.push(key + ":" + val);
     }
