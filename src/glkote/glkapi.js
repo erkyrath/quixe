@@ -2268,7 +2268,7 @@ function gli_window_buffer_deaccumulate(win) {
 /* Add a special object onto a buffer window update. This resets the
    accumulator.
 */
-function gli_window_buffer_put_special(win, obj) {
+function gli_window_buffer_put_special(win, special) {
     gli_window_buffer_deaccumulate(win);
 
     var conta = win.content;
@@ -2295,7 +2295,7 @@ function gli_window_buffer_put_special(win, obj) {
     }
     
     if (arr !== undefined) {
-        arr.push(obj);
+        arr.push(special);
     }
 }
 
