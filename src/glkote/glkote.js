@@ -42,6 +42,7 @@ GlkOte = function() {
 
 /* Module global variables */
 var game_interface = null;
+var dom_context = undefined;
 var windowport_id = 'windowport';
 var gameport_id = 'gameport';
 var generation = 0;
@@ -152,7 +153,7 @@ function glkote_init(iface) {
   if (iface.gameport)
       gameport_id = iface.gameport;
 
-  var el = $('#'+windowport_id);
+  var el = $('#'+windowport_id, dom_context);
   if (!el.length) {
     glkote_error('Cannot find windowport element #'+windowport_id+' in this document.');
     return;
@@ -255,7 +256,7 @@ function measure_window() {
      is true on all browsers but IE7. Fortunately, on IE7 it's
      the windowport size that's wrong -- gameport is the size
      we're interested in. */
-  el = $('#'+gameport_id);
+  el = $('#'+gameport_id, dom_context);
   if (!el.length)
     return 'Cannot find gameport element #'+gameport_id+' in this document.';
 
@@ -263,22 +264,22 @@ function measure_window() {
   metrics.width  = el.width();
   metrics.height = el.height();
 
-  el = $('#layouttest_grid');
+  el = $('#layouttest_grid', dom_context);
   if (!el.length)
     return 'Cannot find layouttest_grid element for window measurement.';
 
   /* Here we will include padding and border. */
   winsize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_gridspan');
+  el = $('#layouttest_gridspan', dom_context);
   spansize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_gridline');
+  el = $('#layouttest_gridline', dom_context);
   line1size = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_gridline2');
+  el = $('#layouttest_gridline2', dom_context);
   line2size = { width:el.outerWidth(), height:el.outerHeight() };
 
-  metrics.gridcharheight = ($('#layouttest_gridline2').position().top
-    - $('#layouttest_gridline').position().top);
-  metrics.gridcharwidth = ($('#layouttest_gridspan').width() / 8);
+  metrics.gridcharheight = ($('#layouttest_gridline2', dom_context).position().top
+    - $('#layouttest_gridline', dom_context).position().top);
+  metrics.gridcharwidth = ($('#layouttest_gridspan', dom_context).width() / 8);
   /* Yes, we can wind up with a non-integer charwidth value. */
 
   /* Find the total margin around the character grid (out to the window's
@@ -287,22 +288,22 @@ function measure_window() {
   metrics.gridmarginx = winsize.width - spansize.width;
   metrics.gridmarginy = winsize.height - (line1size.height + line2size.height);
 
-  el = $('#layouttest_buffer');
+  el = $('#layouttest_buffer', dom_context);
   if (!el.length)
     return 'Cannot find layouttest_buffer element for window measurement.';
 
   /* Here we will include padding and border. */
   winsize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_bufferspan');
+  el = $('#layouttest_bufferspan', dom_context);
   spansize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_bufferline');
+  el = $('#layouttest_bufferline', dom_context);
   line1size = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_bufferline2');
+  el = $('#layouttest_bufferline2', dom_context);
   line2size = { width:el.outerWidth(), height:el.outerHeight() };
 
-  metrics.buffercharheight = ($('#layouttest_bufferline2').position().top
-    - $('#layouttest_bufferline').position().top);
-  metrics.buffercharwidth = ($('#layouttest_bufferspan').width() / 8);
+  metrics.buffercharheight = ($('#layouttest_bufferline2', dom_context).position().top
+    - $('#layouttest_bufferline', dom_context).position().top);
+  metrics.buffercharwidth = ($('#layouttest_bufferspan', dom_context).width() / 8);
   /* Yes, we can wind up with a non-integer charwidth value. */
 
   /* Again, these values include both sides (left+right, top+bottom). */
@@ -460,7 +461,7 @@ function glkote_update(arg) {
         }
 
         /* Add or remove the more prompt, based on the new needspaging flag. */
-        var moreel = $('#win'+win.id+'_moreprompt');
+        var moreel = $('#win'+win.id+'_moreprompt', dom_context);
         if (!win.needspaging) {
           if (moreel.length)
             moreel.remove();
@@ -474,7 +475,7 @@ function glkote_update(arg) {
             var morex = win.coords.right + 20;
             var morey = win.coords.bottom;
             moreel.css({ bottom:morey+'px', right:morex+'px' });
-            $('#'+windowport_id).append(moreel);
+            $('#'+windowport_id, dom_context).append(moreel);
           }
         }
       }
@@ -589,7 +590,7 @@ function accept_one_window(arg) {
     win.coords = { left:null, top:null, right:null, bottom:null };
     win.history = new Array();
     win.historypos = 0;
-    $('#'+windowport_id).append(frameel);
+    $('#'+windowport_id, dom_context).append(frameel);
   }
   else {
     frameel = win.frameel;
@@ -612,7 +613,7 @@ function accept_one_window(arg) {
     }
     if (arg.gridheight < win.gridheight) {
       for (ix=arg.gridheight; ix<win.gridheight; ix++) {
-        var el = $('#win'+win.id+'_ln'+ix);
+        var el = $('#win'+win.id+'_ln'+ix, dom_context);
         if (el.length)
           el.remove();
       }
@@ -674,7 +675,7 @@ function close_one_window(win) {
   delete windowdic[win.id];
   win.frameel = null;
 
-  var moreel = $('#win'+win.id+'_moreprompt');
+  var moreel = $('#win'+win.id+'_moreprompt', dom_context);
   if (moreel.length)
     moreel.remove();
 }
@@ -726,7 +727,7 @@ function accept_one_content(arg) {
       var linearg = lines[ix];
       var linenum = linearg.line;
       var content = linearg.content;
-      var lineel = $('#win'+win.id+'_ln'+linenum);
+      var lineel = $('#win'+win.id+'_ln'+linenum, dom_context);
       if (!lineel.length) {
         glkote_error('Got content for nonexistent line ' + linenum + ' of window ' + arg.id + '.');
         continue;
@@ -739,7 +740,9 @@ function accept_one_content(arg) {
         for (sx=0; sx<content.length; sx++) {
           var rdesc = content[sx];
           var rstyle, rtext, rlink;
-          if (rdesc.length === undefined) {
+          if (jQuery.type(rdesc) === 'object') {
+            if (rdesc.special !== undefined)
+              continue;
             rstyle = rdesc.style;
             rtext = rdesc.text;
             rlink = rdesc.hyperlink;
@@ -781,7 +784,7 @@ function accept_one_content(arg) {
         win.inputel.detach();
     }
 
-    var cursel = $('#win'+win.id+'_cursor');
+    var cursel = $('#win'+win.id+'_cursor', dom_context);
     if (cursel.length)
       cursel.remove();
     cursel = null;
@@ -850,7 +853,43 @@ function accept_one_content(arg) {
       for (sx=0; sx<content.length; sx++) {
         var rdesc = content[sx];
         var rstyle, rtext, rlink;
-        if (rdesc.length === undefined) {
+        if (jQuery.type(rdesc) === 'object') {
+          if (rdesc.special !== undefined) {
+            if (rdesc.special == 'image') {
+              /* This is not as restrictive as the Glk spec says it should
+                 be. Margin-aligned images which do not follow a line
+                 break should disappear. This will undoubtedly cause
+                 headaches for portability someday. */
+              /*### reload URL if possible */
+              var el = $('<img>', 
+                { src:rdesc.url,
+                  width:''+rdesc.width, height:''+rdesc.height } );
+              if (rdesc.alttext)
+                el.attr('alt', rdesc.alttext);
+              else
+                el.attr('alt', 'Image '+rdesc.image);
+              switch (rdesc.alignment) {
+                case 'inlineup':
+                  el.addClass('ImageInlineUp');
+                  break;
+                case 'inlinedown':
+                  el.addClass('ImageInlineDown');
+                  break;
+                case 'inlinecenter':
+                  el.addClass('ImageInlineCenter');
+                  break;
+                case 'marginleft':
+                  el.addClass('ImageMarginLeft');
+                  break;
+                case 'marginright':
+                  el.addClass('ImageMarginRight');
+                  break;
+              }
+              divel.append(el);
+              divel.data('endswhite', false);
+            }
+            continue;
+          }
           rstyle = rdesc.style;
           rtext = rdesc.text;
           rlink = rdesc.hyperlink;
@@ -1025,7 +1064,7 @@ function accept_inputset(arg) {
     }
 
     if (win.type == 'grid') {
-      var lineel = $('#win'+win.id+'_ln'+argi.ypos);
+      var lineel = $('#win'+win.id+'_ln'+argi.ypos, dom_context);
       if (!lineel.length) {
         glkote_error('Window ' + win.id + ' has requested input at unknown line ' + argi.ypos + '.');
         return;
@@ -1044,7 +1083,7 @@ function accept_inputset(arg) {
     }
 
     if (win.type == 'buffer') {
-      var cursel = $('#win'+win.id+'_cursor');
+      var cursel = $('#win'+win.id+'_cursor', dom_context);
       if (!cursel.length) {
         cursel = $('<span>',
           { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
@@ -1164,6 +1203,29 @@ function glkote_get_interface() {
   return game_interface;
 }
 
+/* Set the DOM context. This is the jQuery element within which all Glk
+   DOM elements are looked up. (#gameport, #windowport, etc.)
+
+   In normal usage this is always undefined (meaning, DOM elements are
+   searched for within the entire document). This is a fast case;
+   jQuery optimizes for it. However, some apps (not Quixe!) want to 
+   detach the Glk DOM and maintain it off-screen. That's possible if you 
+   set the DOM context to the detached element. I think (although I have
+   not tested) that this configuration is less well-optimized.
+
+   You cannot use this to maintain two separate Glk DOMs in the same
+   document. Sorry.
+*/
+function glkote_set_dom_context(val) {
+  dom_context = val;
+}
+
+/* Return the current DOM context. (Normally undefined.)
+*/
+function glkote_get_dom_context() {
+  return dom_context;
+}
+
 /* Log the message in the browser's error log, if it has one. (This shows
    up in Safari, in Opera, and in Firefox if you have Firebug installed.)
 */
@@ -1210,7 +1272,7 @@ function retry_update() {
 
 /* Hide the error pane. */
 function clear_error() {
-  $('#errorpane').hide();
+  $('#errorpane', dom_context).hide();
 }
 
 /* Hide the loading pane (the spinny compass), if it hasn't already been
@@ -1706,7 +1768,7 @@ function evhan_doc_keypress(ev) {
            if not... */
         if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
           win.needspaging = false;
-          var moreel = $('#win'+win.id+'_moreprompt');
+          var moreel = $('#win'+win.id+'_moreprompt', dom_context);
           if (moreel.length)
             moreel.remove();
           readjust_paging_focus(true);
@@ -2026,7 +2088,7 @@ function evhan_window_scroll(ev) {
 
   if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
     win.needspaging = false;
-    var moreel = $('#win'+win.id+'_moreprompt');
+    var moreel = $('#win'+win.id+'_moreprompt', dom_context);
     if (moreel.length)
       moreel.remove();
     readjust_paging_focus(true);
@@ -2063,6 +2125,8 @@ return {
   update:   glkote_update,
   extevent: glkote_extevent,
   getinterface: glkote_get_interface,
+  getdomcontext: glkote_get_dom_context,
+  setdomcontext: glkote_set_dom_context,
   log:      glkote_log,
   error:    glkote_error
 };
