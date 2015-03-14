@@ -367,6 +367,11 @@ function get_metadata(val) {
 
 /* ### */
 function get_image_info(val) {
+    if (window.GiLoadImages) {
+        var img = window.GiLoadImages[val];
+        if (img)
+            return img;
+    }
     return null;
 }
 
