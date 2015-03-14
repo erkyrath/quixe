@@ -115,6 +115,30 @@
   font-size: 14px;
 }
 
+/* The following are used for image alignment (in buffer windows). */
+
+.ImageMarginLeft {
+  float: left;
+  margin-right: 0.5em;
+}
+
+.ImageMarginRight {
+  float: right;
+  margin-left: 0.5em;
+}
+
+.ImageInlineDown {
+  vertical-align: text-top;
+}
+
+.ImageInlineUp {
+  vertical-align: text-bottom;
+}
+
+.ImageInlineCenter {
+  vertical-align: middle;
+}
+
 /* The following are the standard Glk styles. */
 
 .Style_normal {
