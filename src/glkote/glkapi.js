@@ -4326,7 +4326,44 @@ function glk_image_draw(win, imgid, val1, val2) {
 function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
     if (!win)
         throw('glk_image_draw_scaled: invalid window');
-    //###
+
+    if (!window.GiLoad || !GiLoad.get_image_info)
+        return 0;
+    var info = GiLoad.get_image_info(imgid);
+    if (info === null)
+        return 0;
+
+    /* Same as above, except we use the passed-in width and height
+       values */
+    var img = { special:'image', image:imgid, 
+                url:info.url, alttext:info.alttext,
+                width:width, height:height };
+
+    switch (win.type) {
+    case Const.wintype_TextBuffer:
+        var alignment = 'inlineup';
+        switch (val1) {
+            case Const.imagealign_InlineUp:
+                alignment = 'inlineup';
+                break;
+            case Const.imagealign_InlineDown:
+                alignment = 'inlinedown';
+                break;
+            case Const.imagealign_InlineCenter:
+                alignment = 'inlinecenter';
+                break;
+            case Const.imagealign_MarginLeft:
+                alignment = 'marginleft';
+                break;
+            case Const.imagealign_MarginRight:
+                alignment = 'marginright';
+                break;
+        }
+        img.alignment = alignment;
+        gli_window_buffer_put_special(win, img);
+        return 1;
+    }
+
     return 0;
 }
 
