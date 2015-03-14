@@ -66,6 +66,8 @@
  *   string) from the iFiction <bibliographic> section. If there is
  *   no such field, or if the game was loaded from a non-blorb
  *   file, this returns undefined.
+ *
+ * GiLoad.get_image_info(NUM) -- ###
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -363,6 +365,11 @@ function get_metadata(val) {
     return metadata[val];
 }
 
+/* ### */
+function get_image_info(val) {
+    return null;
+}
+
 /* Return the Data chunk with the given number, or undefined if there
    is no such chunk. (This is used by the glk_stream_open_resource()
    functions.)
@@ -558,7 +565,8 @@ function start_game(image) {
 return {
     load_run: load_run,
     find_data_chunk: find_data_chunk,
-    get_metadata: get_metadata
+    get_metadata: get_metadata,
+    get_image_info: get_image_info
 };
 
 }();
