@@ -2268,7 +2268,7 @@ function gli_window_buffer_deaccumulate(win) {
 /* Add a special object onto a buffer window update. This resets the
    accumulator.
 */
-function gli_window_buffer_put_special(win, special) {
+function gli_window_buffer_put_special(win, special, flowbreak) {
     gli_window_buffer_deaccumulate(win);
 
     var conta = win.content;
@@ -2281,10 +2281,15 @@ function gli_window_buffer_put_special(win, special) {
 
     if (conta.length == 0) {
         arr = [];
-        conta.push({ content: arr, append: true });
+        obj = { content: arr, append: true };
+        if (flowbreak)
+            obj.flowbreak = true;
+        conta.push(obj);
     }
     else {
         obj = conta[conta.length-1];
+        if (flowbreak)
+            obj.flowbreak = true;
         if (!obj.content) {
             arr = [];
             obj.content = arr;
@@ -2294,7 +2299,7 @@ function gli_window_buffer_put_special(win, special) {
         }
     }
     
-    if (arr !== undefined) {
+    if (arr !== undefined && special !== undefined) {
         arr.push(special);
     }
 }
@@ -4370,7 +4375,8 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
 function glk_window_flow_break(win) {
     if (!win)
         throw('glk_window_flow_break: invalid window');
-    //###
+
+    gli_window_buffer_put_special(win, undefined, true);
 }
 
 function glk_window_erase_rect(win, left, top, width, height) {

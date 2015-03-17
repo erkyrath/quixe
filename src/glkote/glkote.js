@@ -833,6 +833,8 @@ function accept_one_content(arg) {
         /* jquery-wrap the element. */
         divel = $(divel);
       }
+      if (textarg.flowbreak)
+        divel.addClass('FlowBreak');
       if (!content || !content.length) {
         if (divel.data('blankpara'))
           divel.text(NBSP);
@@ -884,10 +886,22 @@ function accept_one_content(arg) {
                 case 'marginright':
                   el.addClass('ImageMarginRight');
                   break;
+                default:
+                  el.addClass('ImageInlineUp');
+                  break;
+              }
+              if (rdesc.hyperlink != undefined) {
+                var ael = $('<a>',
+                  { 'href': '#', 'class': 'Internal' } );
+                ael.append(el);
+                ael.on('click', build_evhan_hyperlink(win.id, rdesc.hyperlink));
+                el = ael;
               }
               divel.append(el);
               divel.data('endswhite', false);
+              continue;
             }
+            glkote_log('Unknown special entry in line data: ' + rdesc.special);
             continue;
           }
           rstyle = rdesc.style;
