@@ -87,7 +87,8 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- Release 2.0.# (###)
+- 2.0.# (###)
+  - Remove the #layouttestpane from all the HTML templates.
   - Added the ability to send transcript data to an external server.
 
 - 2.0.0 (February 12, 2015)
