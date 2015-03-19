@@ -373,6 +373,53 @@ function get_image_info(val) {
         if (img)
             return img;
     }
+
+    var chunk = blorbchunks['Pict:'+val];
+    if (chunk) {
+        if (chunk.content === null) {
+            if (chunk.type == "FORM") {
+                chunk.content = blorbimage.slice(chunk.pos, chunk.pos+chunk.len+8);
+            }
+            else {
+                chunk.content = blorbimage.slice(chunk.pos+8, chunk.pos+chunk.len);
+            }
+        }
+        var img = { image:val };
+        if (chunk.type == 'JPEG')
+            img.type = 'jpeg';
+        else if (chunk.type == 'PNG ')
+            img.type = 'png';
+        else
+            img.type = '????';
+        /* ### now we need to extract the alt text and the size! */
+        return img;
+    }
+
+    return null;
+}
+
+/*###*/
+function get_image_url(val) {
+    var chunk = blorbchunks['Pict:'+val];
+    if (chunk) {
+        if (chunk.dataurl)
+            return chunk.dataurl;
+
+        /* The get_image_info call loads the chunk.content if possible. */
+        var info = get_image_info(val);
+        if (info && chunk.content) {
+            var mimetype = 'application/octet-stream';
+            if (chunk.type == 'JPEG')
+                mimetype = 'image/jpeg';
+            else if (chunk.type == 'PNG ')
+                mimetype = 'image/png';
+            var b64dat = window.btoa(chunk.content);
+            chunk.dataurl = 'data:'+mimetype+';base64,'+b64dat;
+            return chunk.dataurl;
+        }
+    }
+
+
     return null;
 }
 
@@ -597,7 +644,8 @@ return {
     load_run: load_run,
     find_data_chunk: find_data_chunk,
     get_metadata: get_metadata,
-    get_image_info: get_image_info
+    get_image_info: get_image_info,
+    get_image_url: get_image_url
 };
 
 }();
