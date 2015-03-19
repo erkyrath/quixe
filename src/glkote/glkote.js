@@ -890,9 +890,14 @@ function accept_one_content(arg) {
                  be. Margin-aligned images which do not follow a line
                  break should disappear. This will undoubtedly cause
                  headaches for portability someday. */
-              /*### reload URL if possible */
+              var imgurl = rdesc.url;
+              if (window.GiLoad && GiLoad.get_image_url) {
+                var newurl = GiLoad.get_image_url(rdesc.image);
+                if (newurl)
+                  imgurl = newurl;
+              }
               var el = $('<img>', 
-                { src:rdesc.url,
+                { src:imgurl,
                   width:''+rdesc.width, height:''+rdesc.height } );
               if (rdesc.alttext)
                 el.attr('alt', rdesc.alttext);
