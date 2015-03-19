@@ -91,8 +91,9 @@ var all_options = {
 };
 
 var gameurl = null;  /* The URL we are loading. */
+var blorbimage = null; /* The Blorb data that was passed in. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
-var datachunks = {}; /* Indexed by filenum -- loaded from Blorb */
+var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -380,7 +381,24 @@ function get_image_info(val) {
    functions.)
 */
 function find_data_chunk(val) {
-    return datachunks[val];
+    var chunk = blorbchunks['Data:'+val];
+    if (!chunk)
+        return null;
+
+    if (chunk.content === null) {
+        if (chunk.type == "FORM") {
+            chunk.content = blorbimage.slice(chunk.pos, chunk.pos+chunk.len+8);
+        }
+        else {
+            chunk.content = blorbimage.slice(chunk.pos+8, chunk.pos+chunk.len);
+        }
+    }
+
+    var returntype = chunk.type;
+    if (returntype == 'FORM')
+        returntype = 'BINA';
+
+    return { data:chunk.content, type:returntype };
 }
 
 /* Look through a Blorb file (provided as a byte array) and return the
@@ -444,16 +462,24 @@ function unpack_blorb(image) {
         var chunklen = (image[pos+0] << 24) | (image[pos+1] << 16) | (image[pos+2] << 8) | (image[pos+3]);
         pos += 4;
 
+        el.type = chunktype;
+        el.len = chunklen;
+
+        el.content = null;
+
         if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
             result = image.slice(pos, pos+chunklen);
         }
-        if (el.usage == "Data" && (chunktype == "TEXT" || chunktype == "BINA")) {
-            datachunks[el.num] = { data:image.slice(pos, pos+chunklen), type:chunktype };
-        }
-        if (el.usage == "Data" && (chunktype == "FORM")) {
-            datachunks[el.num] = { data:image.slice(pos-8, pos+chunklen), type:"BINA" };
+        else {
+            blorbchunks[el.usage+':'+el.num] = el;
         }
     }
+
+    /* There are rather a lot of cases where we don't need to save this.
+       (If the only image is the cover art, and no other resource data
+       is used by the game.) However, there's no perfect way to detect
+       this. So we'll always save it. Sorry about the waste of memory. */
+    blorbimage = image;
 
     return result;
 }
