@@ -42,6 +42,7 @@ GlkOte = function() {
 
 /* Module global variables */
 var game_interface = null;
+var dom_context = undefined;
 var windowport_id = 'windowport';
 var gameport_id = 'gameport';
 var generation = 0;
@@ -152,7 +153,7 @@ function glkote_init(iface) {
   if (iface.gameport)
       gameport_id = iface.gameport;
 
-  var el = $('#'+windowport_id);
+  var el = $('#'+windowport_id, dom_context);
   if (!el.length) {
     glkote_error('Cannot find windowport element #'+windowport_id+' in this document.');
     return;
@@ -244,41 +245,70 @@ function glkote_init(iface) {
      different point sizes)
    - the amount of padding space around buffer and grid window content
 
-   This stuff is determined by measuring the dimensions of the (invisible,
-   offscreen) windows in the layouttestpane div.
+   This stuff is determined by creating some invisible, offscreen windows
+   and measuring their dimensions.
 */
 function measure_window() {
   var metrics = {};
-  var el, linesize, winsize, line1size, line2size, spansize;
+  var winsize, line1size, line2size, spansize;
 
   /* We assume the gameport is the same size as the windowport, which
      is true on all browsers but IE7. Fortunately, on IE7 it's
      the windowport size that's wrong -- gameport is the size
      we're interested in. */
-  el = $('#'+gameport_id);
-  if (!el.length)
+  var gameport = $('#'+gameport_id, dom_context);
+  if (!gameport.length)
     return 'Cannot find gameport element #'+gameport_id+' in this document.';
 
   /* Exclude padding and border. */
-  metrics.width  = el.width();
-  metrics.height = el.height();
+  metrics.width  = gameport.width();
+  metrics.height = gameport.height();
 
-  el = $('#layouttest_grid');
-  if (!el.length)
-    return 'Cannot find layouttest_grid element for window measurement.';
+  metrics.width  = gameport.width();
+  metrics.height = gameport.height();
+
+  /* Create a dummy layout div containing a grid window and a buffer window,
+     each with two lines of text. */
+  var layout_test_pane = $('<div>').text('This should not be visible');
+  layout_test_pane.css({
+    /* "display:none" would make the pane not render at all, making it
+       impossible to measure. Instead, make it invisible and offscreen. */
+    position: 'absolute',
+    visibility: 'hidden',
+    left: '-1000px'
+  });
+  var line = $('<div>');
+  line.append($('<span>', {'class': "Style_normal"}).text('12345678'));
+
+  var gridwin = $('<div>', {'class': 'WindowFrame GridWindow'});
+  var gridline1 = line.clone().addClass('GridLine').appendTo(gridwin);
+  var gridline2 = line.clone().addClass('GridLine').appendTo(gridwin);
+  var gridspan = gridline1.children('span');
+  layout_test_pane.append(gridwin);
+
+  var bufwin = $('<div>', {'class': 'WindowFrame BufferWindow'});
+  var bufline1 = line.clone().addClass('BufferLine').appendTo(bufwin);
+  var bufline2 = line.clone().addClass('BufferLine').appendTo(bufwin);
+  var bufspan = bufline1.children('span');
+  layout_test_pane.append(bufwin);
+
+  gameport.append(layout_test_pane);
+
+  var get_size = function(el) {
+    return {
+      width: el.outerWidth(),
+      height: el.outerHeight()
+    };
+  };
 
   /* Here we will include padding and border. */
-  winsize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_gridspan');
-  spansize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_gridline');
-  line1size = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_gridline2');
-  line2size = { width:el.outerWidth(), height:el.outerHeight() };
+  winsize = get_size(gridwin);
+  spansize = get_size(gridspan);
+  line1size = get_size(gridline1);
+  line2size = get_size(gridline2);
 
-  metrics.gridcharheight = ($('#layouttest_gridline2').position().top
-    - $('#layouttest_gridline').position().top);
-  metrics.gridcharwidth = ($('#layouttest_gridspan').width() / 8);
+  metrics.gridcharheight = gridline2.position().top - gridline1.position().top;
+  metrics.gridcharwidth = gridspan.width() / 8;
   /* Yes, we can wind up with a non-integer charwidth value. */
 
   /* Find the total margin around the character grid (out to the window's
@@ -287,29 +317,24 @@ function measure_window() {
   metrics.gridmarginx = winsize.width - spansize.width;
   metrics.gridmarginy = winsize.height - (line1size.height + line2size.height);
 
-  el = $('#layouttest_buffer');
-  if (!el.length)
-    return 'Cannot find layouttest_buffer element for window measurement.';
-
   /* Here we will include padding and border. */
-  winsize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_bufferspan');
-  spansize = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_bufferline');
-  line1size = { width:el.outerWidth(), height:el.outerHeight() };
-  el = $('#layouttest_bufferline2');
-  line2size = { width:el.outerWidth(), height:el.outerHeight() };
+  winsize = get_size(bufwin);
+  spansize = get_size(bufspan);
+  line1size = get_size(bufline1);
+  line2size = get_size(bufline2);
 
-  metrics.buffercharheight = ($('#layouttest_bufferline2').position().top
-    - $('#layouttest_bufferline').position().top);
-  metrics.buffercharwidth = ($('#layouttest_bufferspan').width() / 8);
+  metrics.buffercharheight = bufline2.position().top - bufline1.position().top;
+  metrics.buffercharwidth = bufspan.width() / 8;
   /* Yes, we can wind up with a non-integer charwidth value. */
 
   /* Again, these values include both sides (left+right, top+bottom). */
   metrics.buffermarginx = winsize.width - spansize.width;
   metrics.buffermarginy = winsize.height - (line1size.height + line2size.height);
-
-  /* these values come from the game interface object */
+  
+  /* Now that we're done measuring, discard the pane. */
+  layout_test_pane.remove();
+  
+  /* These values come from the game interface object. */
   metrics.outspacingx = 0;
   metrics.outspacingy = 0;
   metrics.inspacingx = 0;
@@ -460,7 +485,7 @@ function glkote_update(arg) {
         }
 
         /* Add or remove the more prompt, based on the new needspaging flag. */
-        var moreel = $('#win'+win.id+'_moreprompt');
+        var moreel = $('#win'+win.id+'_moreprompt', dom_context);
         if (!win.needspaging) {
           if (moreel.length)
             moreel.remove();
@@ -474,7 +499,7 @@ function glkote_update(arg) {
             var morex = win.coords.right + 20;
             var morey = win.coords.bottom;
             moreel.css({ bottom:morey+'px', right:morex+'px' });
-            $('#'+windowport_id).append(moreel);
+            $('#'+windowport_id, dom_context).append(moreel);
           }
         }
       }
@@ -589,7 +614,7 @@ function accept_one_window(arg) {
     win.coords = { left:null, top:null, right:null, bottom:null };
     win.history = new Array();
     win.historypos = 0;
-    $('#'+windowport_id).append(frameel);
+    $('#'+windowport_id, dom_context).append(frameel);
   }
   else {
     frameel = win.frameel;
@@ -612,7 +637,7 @@ function accept_one_window(arg) {
     }
     if (arg.gridheight < win.gridheight) {
       for (ix=arg.gridheight; ix<win.gridheight; ix++) {
-        var el = $('#win'+win.id+'_ln'+ix);
+        var el = $('#win'+win.id+'_ln'+ix, dom_context);
         if (el.length)
           el.remove();
       }
@@ -674,7 +699,7 @@ function close_one_window(win) {
   delete windowdic[win.id];
   win.frameel = null;
 
-  var moreel = $('#win'+win.id+'_moreprompt');
+  var moreel = $('#win'+win.id+'_moreprompt', dom_context);
   if (moreel.length)
     moreel.remove();
 }
@@ -726,7 +751,7 @@ function accept_one_content(arg) {
       var linearg = lines[ix];
       var linenum = linearg.line;
       var content = linearg.content;
-      var lineel = $('#win'+win.id+'_ln'+linenum);
+      var lineel = $('#win'+win.id+'_ln'+linenum, dom_context);
       if (!lineel.length) {
         glkote_error('Got content for nonexistent line ' + linenum + ' of window ' + arg.id + '.');
         continue;
@@ -781,7 +806,7 @@ function accept_one_content(arg) {
         win.inputel.detach();
     }
 
-    var cursel = $('#win'+win.id+'_cursor');
+    var cursel = $('#win'+win.id+'_cursor', dom_context);
     if (cursel.length)
       cursel.remove();
     cursel = null;
@@ -1025,7 +1050,7 @@ function accept_inputset(arg) {
     }
 
     if (win.type == 'grid') {
-      var lineel = $('#win'+win.id+'_ln'+argi.ypos);
+      var lineel = $('#win'+win.id+'_ln'+argi.ypos, dom_context);
       if (!lineel.length) {
         glkote_error('Window ' + win.id + ' has requested input at unknown line ' + argi.ypos + '.');
         return;
@@ -1044,7 +1069,7 @@ function accept_inputset(arg) {
     }
 
     if (win.type == 'buffer') {
-      var cursel = $('#win'+win.id+'_cursor');
+      var cursel = $('#win'+win.id+'_cursor', dom_context);
       if (!cursel.length) {
         cursel = $('<span>',
           { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
@@ -1164,6 +1189,29 @@ function glkote_get_interface() {
   return game_interface;
 }
 
+/* Set the DOM context. This is the jQuery element within which all Glk
+   DOM elements are looked up. (#gameport, #windowport, etc.)
+
+   In normal usage this is always undefined (meaning, DOM elements are
+   searched for within the entire document). This is a fast case;
+   jQuery optimizes for it. However, some apps (not Quixe!) want to 
+   detach the Glk DOM and maintain it off-screen. That's possible if you 
+   set the DOM context to the detached element. I think (although I have
+   not tested) that this configuration is less well-optimized.
+
+   You cannot use this to maintain two separate Glk DOMs in the same
+   document. Sorry.
+*/
+function glkote_set_dom_context(val) {
+  dom_context = val;
+}
+
+/* Return the current DOM context. (Normally undefined.)
+*/
+function glkote_get_dom_context() {
+  return dom_context;
+}
+
 /* Log the message in the browser's error log, if it has one. (This shows
    up in Safari, in Opera, and in Firefox if you have Firebug installed.)
 */
@@ -1210,7 +1258,7 @@ function retry_update() {
 
 /* Hide the error pane. */
 function clear_error() {
-  $('#errorpane').hide();
+  $('#errorpane', dom_context).hide();
 }
 
 /* Hide the loading pane (the spinny compass), if it hasn't already been
@@ -1706,7 +1754,7 @@ function evhan_doc_keypress(ev) {
            if not... */
         if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
           win.needspaging = false;
-          var moreel = $('#win'+win.id+'_moreprompt');
+          var moreel = $('#win'+win.id+'_moreprompt', dom_context);
           if (moreel.length)
             moreel.remove();
           readjust_paging_focus(true);
@@ -2026,7 +2074,7 @@ function evhan_window_scroll(ev) {
 
   if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
     win.needspaging = false;
-    var moreel = $('#win'+win.id+'_moreprompt');
+    var moreel = $('#win'+win.id+'_moreprompt', dom_context);
     if (moreel.length)
       moreel.remove();
     readjust_paging_focus(true);
@@ -2063,6 +2111,8 @@ return {
   update:   glkote_update,
   extevent: glkote_extevent,
   getinterface: glkote_get_interface,
+  getdomcontext: glkote_get_dom_context,
+  setdomcontext: glkote_set_dom_context,
   log:      glkote_log,
   error:    glkote_error
 };

@@ -3671,6 +3671,8 @@ function glk_stream_open_memory(buf, fmode, rock) {
 function glk_stream_open_resource(filenum, rock) {
     var str;
 
+    if (!window.GiLoad || !GiLoad.find_data_chunk)
+        return null;
     var el = GiLoad.find_data_chunk(filenum);
     if (!el)
         return null;
@@ -3703,6 +3705,8 @@ function glk_stream_open_resource(filenum, rock) {
 function glk_stream_open_resource_uni(filenum, rock) {
     var str;
 
+    if (!window.GiLoad || !GiLoad.find_data_chunk)
+        return null;
     var el = GiLoad.find_data_chunk(filenum);
     if (!el)
         return null;
