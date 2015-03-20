@@ -68,6 +68,8 @@
  *   file, this returns undefined.
  *
  * GiLoad.get_image_info(NUM) -- ###
+ *
+ * GiLoad.get_image_url(NUM) -- ###
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -91,7 +93,6 @@ var all_options = {
 };
 
 var gameurl = null;  /* The URL we are loading. */
-var blorbimage = null; /* The Blorb data that was passed in. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
@@ -376,14 +377,6 @@ function get_image_info(val) {
 
     var chunk = blorbchunks['Pict:'+val];
     if (chunk) {
-        if (chunk.content === null) {
-            if (chunk.type == "FORM") {
-                chunk.content = blorbimage.slice(chunk.pos, chunk.pos+chunk.len+8);
-            }
-            else {
-                chunk.content = blorbimage.slice(chunk.pos+8, chunk.pos+chunk.len);
-            }
-        }
         var img = { image:val };
         if (chunk.type == 'JPEG')
             img.type = 'jpeg';
@@ -405,7 +398,6 @@ function get_image_url(val) {
         if (chunk.dataurl)
             return chunk.dataurl;
 
-        /* The get_image_info call loads the chunk.content if possible. */
         var info = get_image_info(val);
         if (info && chunk.content) {
             var mimetype = 'application/octet-stream';
@@ -419,7 +411,6 @@ function get_image_url(val) {
         }
     }
 
-
     return null;
 }
 
@@ -431,15 +422,6 @@ function find_data_chunk(val) {
     var chunk = blorbchunks['Data:'+val];
     if (!chunk)
         return null;
-
-    if (chunk.content === null) {
-        if (chunk.type == "FORM") {
-            chunk.content = blorbimage.slice(chunk.pos, chunk.pos+chunk.len+8);
-        }
-        else {
-            chunk.content = blorbimage.slice(chunk.pos+8, chunk.pos+chunk.len);
-        }
-    }
 
     var returntype = chunk.type;
     if (returntype == 'FORM')
@@ -501,6 +483,15 @@ function unpack_blorb(image) {
             pos++;
     }
 
+    /* We don't want to retain the original blorb image in memory; it's
+       enormous. We'll split out the addressable chunks (those with
+       usages) and retain those individually. Still enormous, but less
+       so.
+
+       (It's probably a waste to save the cover image -- that probably
+       won't ever be used by the game. But it might be.) 
+    */
+
     for (ix=0; ix<rindex.length; ix++) {
         var el = rindex[ix];
         pos = el.pos;
@@ -511,22 +502,21 @@ function unpack_blorb(image) {
 
         el.type = chunktype;
         el.len = chunklen;
-
         el.content = null;
 
         if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
             result = image.slice(pos, pos+chunklen);
         }
         else {
+            if (chunktype == "FORM") {
+                el.content = image.slice(pos-8, pos+chunklen);
+            }
+            else {
+                el.content = image.slice(pos, pos+chunklen);
+            }
             blorbchunks[el.usage+':'+el.num] = el;
         }
     }
-
-    /* There are rather a lot of cases where we don't need to save this.
-       (If the only image is the cover art, and no other resource data
-       is used by the game.) However, there's no perfect way to detect
-       this. So we'll always save it. Sorry about the waste of memory. */
-    blorbimage = image;
 
     return result;
 }
