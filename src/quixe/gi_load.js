@@ -591,7 +591,38 @@ if (window.btoa) {
 }
 else {
     encode_base64 = function(arr) {
-    /*###*/
+        var coder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        var res = [];
+        for (var ix=0; ix<arr.length; ix += 3) {
+            var byte0 = arr[ix];
+            var byte1 = arr[ix+1];
+            var byte2 = arr[ix+2];
+            var count = 3;
+            if (byte2 === undefined) {
+                byte2 = 0;
+                count = 2;
+            }
+            if (byte1 === undefined) {
+                byte1 = 0;
+                count = 1;
+            }
+            res.push(coder.charAt((byte0 >> 2) & 0x3F));
+            res.push(coder.charAt(((byte0 << 4) & 0x30) | ((byte1 >> 4) & 0x0F)));
+            if (count == 1) {
+                res.push('=');
+                res.push('=');
+            }
+            else {
+                res.push(coder.charAt(((byte1 << 2) & 0x3C) | ((byte2 >> 6) & 0x03)));
+                if (count == 2) {
+                    res.push('=');
+                }
+                else {
+                    res.push(coder.charAt((byte2) & 0x3F));
+                }
+            }
+        }
+        return res.join('');
     }
 }
 
