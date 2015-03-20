@@ -405,7 +405,7 @@ function get_image_url(val) {
                 mimetype = 'image/jpeg';
             else if (chunk.type == 'PNG ')
                 mimetype = 'image/png';
-            var b64dat = window.btoa(chunk.content);
+            var b64dat = encode_base64(chunk.content);
             chunk.dataurl = 'data:'+mimetype+';base64,'+b64dat;
             return chunk.dataurl;
         }
@@ -578,6 +578,20 @@ else {
         if (e3 == 64)
             out.pop();
         return out;
+    }
+}
+
+/* Convert an array of numeric byte values into a base64 string. (Converse
+   of the above.)
+*/
+if (window.btoa) {
+    encode_base64 = function(arr) {
+        return window.btoa(String.fromCharCode.apply(this, arr));
+    }
+}
+else {
+    encode_base64 = function(arr) {
+    /*###*/
     }
 }
 
