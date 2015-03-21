@@ -67,9 +67,11 @@
  *   no such field, or if the game was loaded from a non-blorb
  *   file, this returns undefined.
  *
- * GiLoad.get_image_info(NUM) -- ###
+ * GiLoad.get_image_info(NUM) -- returns an object describing an image,
+ *   or null.
  *
- * GiLoad.get_image_url(NUM) -- ###
+ * GiLoad.get_image_url(NUM) -- returns a URL describing an image, or
+ *   null.
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -367,7 +369,12 @@ function get_metadata(val) {
     return metadata[val];
 }
 
-/* ### */
+/* Return information describing an image. This might be loaded from static
+   data or from a Blorb file.
+   
+   The return value will be null or an object:
+   { image:VAL, type:STRING, alttext:STRING, width:NUMBER, height:NUMBER }
+*/
 function get_image_info(val) {
     if (window.GiLoadImages) {
         var img = window.GiLoadImages[val];
@@ -391,7 +398,11 @@ function get_image_info(val) {
     return null;
 }
 
-/*###*/
+/* Return a URL representing an image. This might be loaded from static
+   data or from a Blorb file.
+
+   The return value will be null or a URL. It might be a "data:..." URL.
+*/
 function get_image_url(val) {
     var chunk = blorbchunks['Pict:'+val];
     if (chunk) {
@@ -409,6 +420,12 @@ function get_image_url(val) {
             chunk.dataurl = 'data:'+mimetype+';base64,'+b64dat;
             return chunk.dataurl;
         }
+    }
+
+    if (window.GiLoadImages) {
+        var img = window.GiLoadImages[val];
+        if (img && img.url)
+            return img.url;
     }
 
     return null;
