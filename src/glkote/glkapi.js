@@ -4272,7 +4272,7 @@ function glk_image_get_info(imgid, widthref, heightref) {
         return null;
 
     var info = GiLoad.get_image_info(imgid);
-    if (info !== null) {
+    if (info) {
         if (widthref)
             widthref.set_value(info.width);
         if (heightref)
@@ -4293,7 +4293,7 @@ function glk_image_draw(win, imgid, val1, val2) {
     if (!window.GiLoad || !GiLoad.get_image_info)
         return 0;
     var info = GiLoad.get_image_info(imgid);
-    if (info === null)
+    if (!info)
         return 0;
 
     var img = { special:'image', image:imgid, 
@@ -4335,7 +4335,7 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
     if (!window.GiLoad || !GiLoad.get_image_info)
         return 0;
     var info = GiLoad.get_image_info(imgid);
-    if (info === null)
+    if (!info)
         return 0;
 
     /* Same as above, except we use the passed-in width and height
