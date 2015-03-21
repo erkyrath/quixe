@@ -511,6 +511,7 @@ function unpack_blorb(image) {
                 npos += 4;
                 var rdtext = String.fromCharCode.apply(this, image.slice(npos, npos+rdlen));
                 npos += rdlen;
+                /* ### Should UTF-8 decode rdtext! */
                 alttexts[rdusage+':'+rdnumber] = rdtext;
             }
         }
