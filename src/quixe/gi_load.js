@@ -97,6 +97,7 @@ var all_options = {
 var gameurl = null;  /* The URL we are loading. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
+var alttexts = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
@@ -391,7 +392,10 @@ function get_image_info(val) {
             img.type = 'png';
         else
             img.type = '????';
-        /* ### now we need to extract the alt text and the size! */
+        var rdtext = alttexts['Pict:'+val];
+        if (rdtext)
+            img.alttext = rdtext;
+        /* ### now we need to extract the size! */
         return img;
     }
 
@@ -492,6 +496,22 @@ function unpack_blorb(image) {
                     el = bibels[ix];
                     metadata[el.tagName.toLowerCase()] = el.textContent;
                 }
+            }
+        }
+        if (chunktype == "RDes") {
+            var npos = pos;
+            var numentries = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
+            npos += 4;
+            for (ix=0; ix<numentries; ix++) {
+                var rdusage = String.fromCharCode.apply(this, image.slice(npos, npos+4));
+                npos += 4;
+                var rdnumber = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
+                npos += 4;
+                var rdlen = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
+                npos += 4;
+                var rdtext = String.fromCharCode.apply(this, image.slice(npos, npos+rdlen));
+                npos += rdlen;
+                alttexts[rdusage+':'+rdnumber] = rdtext;
             }
         }
 
