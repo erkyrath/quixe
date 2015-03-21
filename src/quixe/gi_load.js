@@ -68,10 +68,10 @@
  *   file, this returns undefined.
  *
  * GiLoad.get_image_info(NUM) -- returns an object describing an image,
- *   or null.
+ *   or undefined.
  *
  * GiLoad.get_image_url(NUM) -- returns a URL describing an image, or
- *   null.
+ *   undefined.
  */
 
 /* Put everything inside the GiLoad namespace. */
@@ -395,7 +395,7 @@ function get_image_info(val) {
         return img;
     }
 
-    return null;
+    return undefined;
 }
 
 /* Return a URL representing an image. This might be loaded from static
@@ -428,7 +428,7 @@ function get_image_url(val) {
             return img.url;
     }
 
-    return null;
+    return undefined;
 }
 
 /* Return the Data chunk with the given number, or undefined if there
