@@ -90,6 +90,8 @@ on the web site), copy play-remote.html.
 - 2.0.# (###)
   - Remove the #layouttestpane from all the HTML templates.
   - Added the ability to send transcript data to an external server.
+  - Fixed a bug where non-ASCII characters in metadata were not properly
+    decoded. (This could affect the <title> of the browser window.)
 
 - 2.0.0 (February 12, 2015)
   - Switched from Prototype over to jQuery.
