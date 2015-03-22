@@ -7,7 +7,7 @@
     file for use by Parchment or Quixe. (It also works on Blorb files
     containing Z-code or Glulx data.)
 
-    Usage is as follows:
+    Usage is as follows (Python 2 and 3 both work):
 
         python game2js.py <game-file>
 
@@ -29,6 +29,7 @@
     embedding as a <script> line in the page; it is how the I7 interpreter
     template works.
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -42,19 +43,19 @@ if ('--giload' in args):
     format = 'giload'
 
 if len(args) != 1:
-    print __import__("__main__").__doc__
+    print(__import__("__main__").__doc__)
     sys.exit(-1)
 
 fl = open(args[0], "rb")
 contents = fl.read()
 fl.close()
 
-enc = base64.b64encode(contents)
+enc = base64.b64encode(contents).decode()
 
 if (format == 'base64z'):
-    print "processBase64Zcode('%s');" % (enc,)
+    print("processBase64Zcode('%s');" % (enc,))
 elif (format == 'giload'):
-    print "$(document).ready(function() {"
-    print "  GiLoad.load_run(null, '%s', 'base64');" % (enc,)
-    print "});"
+    print("$(document).ready(function() {")
+    print("  GiLoad.load_run(null, '%s', 'base64');" % (enc,))
+    print("});")
 
