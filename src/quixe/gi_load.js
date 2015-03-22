@@ -487,8 +487,7 @@ function unpack_blorb(image) {
         }
         if (chunktype == "IFmd") {
             var arr = image.slice(pos, pos+chunklen);
-            var dat = String.fromCharCode.apply(this, arr);
-            /* ### test UTF-8 here! */
+            var dat = encode_utf8_text(arr);
             var met = $('<metadata>').html(dat);
             var bibels = met.find('bibliographic').children();
             if (bibels.length) {
