@@ -392,10 +392,31 @@ function get_image_info(val) {
             img.type = 'png';
         else
             img.type = '????';
+
+        /* Extract the image size, if we don't have it cached already.
+           We could do this by creating an Image DOM element and measuring
+           it, but that could be slow. Instead, we'll parse the PNG or
+           JPEG data directly. It's easier than it sounds! */
+        if (chunk.imagesize === undefined) {
+            var imgsize = undefined;
+            if (chunk.type == 'JPEG') {
+                //###
+            }
+            else if (chunk.type == 'PNG ') {
+                imgsize = find_dimensions_png(chunk.content);
+            }
+            if (imgsize)
+                chunk.imagesize = imgsize;
+        }
+        if (chunk.imagesize) {
+            img.width = chunk.imagesize.width;
+            img.height = chunk.imagesize.height;
+        }
+
+        /* Extract the alt-text, if available. */
         var rdtext = alttexts['Pict:'+val];
         if (rdtext)
             img.alttext = rdtext;
-        /* ### now we need to extract the size! */
         return img;
     }
 
@@ -730,6 +751,37 @@ else {
         }
         return res.join('');
     }
+}
+
+/* Given a PNG file, extract its dimensions. Return a {width,height}
+   object, or undefined on error. 
+*/
+function find_dimensions_png(arr) {
+    var pos = 0;
+    if (arr[0] != 0x89 || String.fromCharCode.apply(this, arr.slice(1,4)) != 'PNG') {
+        GlkOte.log('find_dimensions_png: PNG signature does not match');
+        return undefined;
+    }
+    pos += 8;
+    while (pos < arr.length) {
+        var chunklen = (arr[pos+0] << 24) | (arr[pos+1] << 16) | (arr[pos+2] << 8) | (arr[pos+3]);
+        pos += 4;
+        var chunktype = String.fromCharCode.apply(this, arr.slice(pos,pos+4));
+        pos += 4;
+        if (chunktype == 'IHDR') {
+            var res = {};
+            res.width  = (arr[pos+0] << 24) | (arr[pos+1] << 16) | (arr[pos+2] << 8) | (arr[pos+3]);
+            pos += 4;
+            res.height = (arr[pos+0] << 24) | (arr[pos+1] << 16) | (arr[pos+2] << 8) | (arr[pos+3]);
+            pos += 4;
+            return res;
+        }
+        pos += chunklen;
+        pos += 4; /* skip CRC */
+    }
+
+    GlkOte.log('find_dimensions_png: no PNG header block found');
+    return undefined;
 }
 
 /* Start the game (after de-blorbing, if necessary).
