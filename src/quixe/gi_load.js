@@ -488,6 +488,7 @@ function unpack_blorb(image) {
         if (chunktype == "IFmd") {
             var arr = image.slice(pos, pos+chunklen);
             var dat = String.fromCharCode.apply(this, arr);
+            /* ### test UTF-8 here! */
             var met = $('<metadata>').html(dat);
             var bibels = met.find('bibliographic').children();
             if (bibels.length) {
@@ -509,9 +510,8 @@ function unpack_blorb(image) {
                 npos += 4;
                 var rdlen = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
                 npos += 4;
-                var rdtext = String.fromCharCode.apply(this, image.slice(npos, npos+rdlen));
+                var rdtext = encode_utf8_text(image.slice(npos, npos+rdlen));
                 npos += rdlen;
-                /* ### Should UTF-8 decode rdtext! */
                 alttexts[rdusage+':'+rdnumber] = rdtext;
             }
         }
@@ -559,6 +559,12 @@ function unpack_blorb(image) {
     return result;
 }
 
+/* In the following functions, "decode" means turning native string data
+   into an array of numbers; "encode" is the other direction. That's weird,
+   I know. It's because an array of byte values is the natural data format
+   of Glulx code.
+*/
+
 /* Convert a byte string into an array of numeric byte values. */
 function decode_raw_text(str) {
     var arr = Array(str.length);
@@ -567,6 +573,69 @@ function decode_raw_text(str) {
         arr[ix] = str.charCodeAt(ix) & 0xFF;
     }
     return arr;
+}
+
+/* Convert an array of numeric byte values (containing UTF-8 encoded text)
+   into a string.
+*/
+function encode_utf8_text(arr) {
+    var res = [];
+    var ch;
+    var pos = 0;
+
+    while (pos < arr.length) {
+        var val0, val1, val2, val3;
+        if (pos >= arr.length)
+            break;
+        val0 = arr[pos];
+        pos++;
+        if (val0 < 0x80) {
+            ch = val0;
+        }
+        else {
+            if (pos >= arr.length)
+                break;
+            val1 = arr[pos];
+            pos++;
+            if ((val1 & 0xC0) != 0x80)
+                break;
+            if ((val0 & 0xE0) == 0xC0) {
+                ch = (val0 & 0x1F) << 6;
+                ch |= (val1 & 0x3F);
+            }
+            else {
+                if (pos >= arr.length)
+                    break;
+                val2 = arr[pos];
+                pos++;
+                if ((val2 & 0xC0) != 0x80)
+                    break;
+                if ((val0 & 0xF0) == 0xE0) {
+                    ch = (((val0 & 0xF)<<12)  & 0x0000F000);
+                    ch |= (((val1 & 0x3F)<<6) & 0x00000FC0);
+                    ch |= (((val2 & 0x3F))    & 0x0000003F);
+                }
+                else if ((val0 & 0xF0) == 0xF0) {
+                    if (pos >= arr.length)
+                        break;
+                    val3 = arr[pos];
+                    pos++;
+                    if ((val3 & 0xC0) != 0x80)
+                        break;
+                    ch = (((val0 & 0x7)<<18)   & 0x1C0000);
+                    ch |= (((val1 & 0x3F)<<12) & 0x03F000);
+                    ch |= (((val2 & 0x3F)<<6)  & 0x000FC0);
+                    ch |= (((val3 & 0x3F))     & 0x00003F);
+                }
+                else {
+                    break;
+                }
+            }
+        }
+        res.push(ch);
+    }
+
+    return String.fromCharCode.apply(this, res);
 }
 
 /* Convert a base64 string into an array of numeric byte values. Some
