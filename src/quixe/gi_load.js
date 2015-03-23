@@ -129,7 +129,7 @@ function load_run(optobj, image, image_format) {
     if (!gameurl && image) {
         /* The story data is already loaded -- it's not an a URL at all. 
            Decode it, and then fire it off. */
-        GlkOte.log('### trying pre-loaded load (' + image_format + ')...');
+        GlkOte.log('GiLoad: trying pre-loaded load (' + image_format + ')...');
         switch (image_format) {
         case 'base64':
             image = decode_base64(image);
@@ -159,7 +159,7 @@ function load_run(optobj, image, image_format) {
         return;
     }
 
-    GlkOte.log('### gameurl: ' + gameurl); //###
+    //GlkOte.log('GiLoad: gameurl: ' + gameurl);
     /* The gameurl is now known. (It should not change after this point.)
        The next question is, how do we load it in? */
 
@@ -199,14 +199,14 @@ function load_run(optobj, image, image_format) {
        check for a ".js" suffix. */
     var old_js_url = gameurl.match(/[.]js$/i);
 
-    GlkOte.log('### is_relative=' + is_relative + ', same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
+    GlkOte.log('GiLoad: is_relative=' + is_relative + ', same_origin=' + same_origin + ', binary_supported=' + binary_supported + ', crossorigin_supported=' + crossorigin_supported);
 
     if (old_js_url && same_origin) {
         /* Old-fashioned Javascript file -- the output of Parchment's
            zcode2js tool. When loaded and eval'ed, this will call
            a global function processBase64Zcode() with base64 data
            as the argument. */
-        GlkOte.log('### trying old-fashioned load...');
+        GlkOte.log('GiLoad: trying old-fashioned load...');
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
@@ -225,7 +225,7 @@ function load_run(optobj, image, image_format) {
         /* Javascript file in a different domain. We'll insert it as a <script>
            tag; that will force it to load, and invoke a processBase64Zcode()
            function as above. */
-        GlkOte.log('### trying script load...');
+        GlkOte.log('GiLoad: trying script load...');
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
@@ -245,7 +245,7 @@ function load_run(optobj, image, image_format) {
 
     if (binary_supported && same_origin) {
         /* We can do an Ajax GET of the binary data. */
-        GlkOte.log('### trying binary load...');
+        GlkOte.log('GiLoad: trying binary load...');
         jQuery.ajax(gameurl, {
                 'type': 'GET',
                     beforeSend: function(jqxhr, settings) {
@@ -277,7 +277,7 @@ function load_run(optobj, image, image_format) {
     var absgameurl = gameurl;
     if (is_relative) {
         absgameurl = absolutize(gameurl);
-        GlkOte.log('### absolutize ' + gameurl + ' to ' + absgameurl);
+        GlkOte.log('GiLoad: absolutize ' + gameurl + ' to ' + absgameurl);
     }
 
     if (crossorigin_supported) {
@@ -285,7 +285,7 @@ function load_run(optobj, image, image_format) {
            domain. Either way, we'll go through the proxy, which will
            convert it to base64 for us. The proxy gives the right headers
            to make cross-origin Ajax work. */
-        GlkOte.log('### trying proxy load... (' + all_options.proxy_url + ')');
+        GlkOte.log('GiLoad: trying proxy load... (' + all_options.proxy_url + ')');
         jQuery.ajax(all_options.proxy_url, {
                 'type': 'GET',
                 data: { encode: 'base64', url: absgameurl },
@@ -306,7 +306,7 @@ function load_run(optobj, image, image_format) {
         /* Cross-origin Ajax isn't available. We can still use the proxy,
            but we'll have to insert a <script> tag to do it. */
         var fullurl = all_options.proxy_url + '?encode=base64&callback=processBase64Zcode&url=' + absgameurl;
-        GlkOte.log('### trying proxy-script load... (' + fullurl + ')');
+        GlkOte.log('GiLoad: trying proxy-script load... (' + fullurl + ')');
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
