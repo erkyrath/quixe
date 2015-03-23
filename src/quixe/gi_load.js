@@ -708,6 +708,9 @@ else {
     }
 }
 
+var encode_base64;
+var decode_base64;
+
 /* Convert an array of numeric byte values into a base64 string. (Converse
    of the above.)
 */
