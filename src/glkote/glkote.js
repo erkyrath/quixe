@@ -54,6 +54,7 @@ var currently_focussed = false;
 var last_known_focus = 0;
 var last_known_paging = 0;
 var windows_paging_count = 0;
+var graphics_draw_queue = [];
 var resize_timer = null;
 var retry_timer = null;
 var perform_paging = true;
@@ -597,6 +598,8 @@ function accept_one_window(arg) {
       typeclass = 'GridWindow';
     if (win.type == 'buffer')
       typeclass = 'BufferWindow';
+    if (win.type == 'graphics')
+      typeclass = 'GraphicsWindow';
     var rockclass = 'WindowRock_' + arg.rock;
     frameel = $('<div>',
       { id: 'window'+arg.id,
@@ -652,6 +655,44 @@ function accept_one_window(arg) {
 
   if (win.type == 'buffer') {
     /* Don't need anything? */
+  }
+
+  if (win.type == 'graphics') {
+    var el = $('#win'+win.id+'_canvas', dom_context);
+    if (!el.length) {
+      win.graphwidth = arg.width;
+      win.graphheight = arg.height;
+      win.defcolor = '#FFF';
+      el = $('<canvas>',
+        { id: 'win'+win.id+'_canvas' });
+      el.attr('width', win.graphwidth);
+      el.attr('height', win.graphheight);
+      win.frameel.append(el);
+    }
+    else {
+      if (win.graphwidth != arg.width || win.graphheight != arg.height) {
+        win.graphwidth = arg.width;
+        win.graphheight = arg.height;
+        el.attr('width', win.graphwidth);
+        el.attr('height', win.graphheight);
+        /* Clear to the default color, as if for a "fill" command. */
+        var canvas = el.get(0);
+        if (canvas && canvas.getContext) {
+          var ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = win.defcolor;
+            ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
+            ctx.fillStyle = '#000000';
+          }
+        }
+        win.frameel.css('background-color', win.defcolor);
+        /* We have to trigger a redraw event for this window. But we can't do
+           that from inside the accept handler. We'll set up a deferred
+           function call. */
+        var funcarg = win.id;
+        defer_func(function() { send_window_redraw(funcarg); });
+      }
+    }
   }
 
   /* The trick is that left/right/top/bottom are measured to the outside
@@ -1012,6 +1053,38 @@ function accept_one_content(arg) {
           left: '0px', top: '0px', width: width+'px' });
         cursel.append(inputel);
       }
+    }
+  }
+
+  if (win.type == 'graphics') {
+    /* Perform the requested draw operations. */
+    var draw = arg.draw;
+    var ix;
+    
+    /* Accept a missing draw field as doing nothing. */
+    if (draw === undefined)
+      draw = [];
+
+    /* Unfortunately, image-draw actions might take some time (if the image
+       data is not cached). So we can't do this with a simple synchronous loop.
+       Instead, we must add drawing ops to a queue, and then have a function
+       callback that executes them. (It's a global queue, not per-window.)
+       
+       We assume that if the queue is nonempty, a callback is already waiting
+       out there, so we don't have to set it up.
+    */
+
+    var docall = (graphics_draw_queue.length == 0);
+    for (ix=0; ix<draw.length; ix++) {
+      var op = draw[ix];
+      /* We'll be paranoid and clone the op object, throwing in a window
+         number. */
+      var newop = { winid:win.id };
+      jQuery.extend(newop, op);
+      graphics_draw_queue.push(newop);
+    }
+    if (docall && graphics_draw_queue.length > 0) {
+      perform_graphics_ops(null);
     }
   }
 }
@@ -1433,6 +1506,112 @@ function insert_text_detecting(el, val) {
   el.append(document.createTextNode(val));
 }
 
+/* This is responsible for drawing the queue of graphics operations.
+   It will do simple fills synchronously, but image draws must be
+   handled in a callback (because the image data might need to be pulled
+   from the server).
+
+   If the loadedimg argument is null, this was called to take care of
+   new drawing ops. On an image draw, we call back here with loadedimg
+   as the Image DOM object that succeeded (or failed).
+*/
+function perform_graphics_ops(loadedimg, loadedev) {
+  if (graphics_draw_queue.length == 0) {
+    glkote_log('perform_graphics_ops called with no queued ops' + (loadedimg ? ' (plus image!)' : ''));
+    return;
+  }
+  glkote_log('### perform_graphics_ops, ' + graphics_draw_queue.length + ' queued' + (loadedimg ? ' (plus image!)' : '') + '.'); /*###*/
+
+  /* Look at the first queue entry, execute it, and then shift it off.
+     On error we must be sure to shift anyway, or the queue will jam!
+     Note that if loadedimg is not null, the first queue entry should
+     be a matching 'image' draw. */
+
+  while (graphics_draw_queue.length) {
+    var op = graphics_draw_queue[0];
+    var win = windowdic[op.winid];
+    if (!win) {
+      glkote_log('perform_graphics_ops: op for nonexistent window ' + op.winid);
+      graphics_draw_queue.shift();
+      continue;
+    }
+
+    var ctx = undefined;
+    var canvas = undefined;
+    var el = $('#win'+win.id+'_canvas', dom_context);
+    if (el.length) {
+      canvas = el.get(0);
+      if (canvas && canvas.getContext)
+        ctx = canvas.getContext('2d');
+    }
+    if (!ctx) {
+      glkote_log('perform_graphics_ops: op for nonexistent canvas ' + win.id);
+      graphics_draw_queue.shift();
+      continue;
+    }
+
+    var optype = op.special;
+    
+    switch (optype) {
+      case 'setcolor':
+        /* Set the default color (no visible changes). */
+        win.defcolor = op.color;
+        break;
+      case 'fill':
+        /* Both color and geometry are optional here. */
+        if (op.color === undefined)
+          ctx.fillStyle = win.defcolor;
+        else
+          ctx.fillStyle = op.color;
+        if (op.x === undefined) {
+          /* Fill the whole canvas frame. Also set the background color,
+             so that future window resizes look nice. */
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          win.frameel.css('background-color', ctx.fillStyle);
+        }
+        else {
+          ctx.fillRect(op.x, op.y, op.width, op.height);
+        }
+        ctx.fillStyle = '#000000';
+        break;
+      case 'image':
+        /* This is the tricky case. If loadedimg is null, we have to
+           create an Image() and set up the loading callbacks. */
+        if (!loadedimg) {
+          var imgurl = op.url;
+          if (window.GiLoad && GiLoad.get_image_url) {
+            var newurl = GiLoad.get_image_url(op.image);
+            if (newurl)
+              imgurl = newurl;
+          }
+          glkote_log('### setting up callback with url ' + imgurl);
+          var newimg = new Image();
+          $(newimg).on('load', function(ev) { perform_graphics_ops(newimg, ev); });
+          $(newimg).on('error', function(ev) { perform_graphics_ops(newimg, null); });
+          /* Setting the src attribute will trigger one of the above
+             callbacks. */
+          newimg.src = imgurl;
+          return;
+        }
+        /* We were called back with an image. Hopefully it loaded ok. Note that
+           for the error callback, loadedev is null. */
+        if (loadedev) {
+          ctx.drawImage(loadedimg, op.x, op.y, op.width, op.height);
+        }
+        loadedev = null;
+        loadedimg = null;
+        /* Either way, continue with the queue. */
+        break;
+      default:
+        glkote_log('Unknown special entry in graphics content: ' + optype);
+        break;
+    }
+
+    graphics_draw_queue.shift();
+  }
+  glkote_log('### queue empty.');
+}
+
 /* Run a function (no arguments) in timeout seconds. */
 function delay_func(timeout, func)
 {
@@ -1537,6 +1716,9 @@ function send_response(type, win, val, val2) {
     res.response = val;
     res.value = val2;
   }
+  else if (type == 'redraw') {
+    res.window = win.id;
+  }
   else if (type == 'init' || type == 'arrange') {
     res.metrics = val;
   }
@@ -1620,7 +1802,7 @@ function recording_send(arg) {
       recording_state.input = '';
     }
     else {
-      /* Do not send 'arrange' events. */
+      /* Do not send 'arrange' or 'redraw' events. */
       send = false;
     }
 
@@ -1726,6 +1908,15 @@ function evhan_doc_resize(ev) {
 /* This executes when no new resize events have come along in the past
    0.20 seconds. (But if the UI is disabled, we delay again, because
    the game can't deal with events yet.)
+
+   Note that this sends a Glk "arrange" event, not a "redraw" event.
+   Those will follow soon if needed.
+
+   (What actually happens, and I apologize for this, is that the
+   "arrange" event causes the game to send new window sizes. The
+   accept handler sees a size change for a graphics window and queues
+   up a "redraw" event via send_window_redraw.)
+
    ### We really should distinguish between disabling the UI (delay
    resize events) from shutting down the UI (ignore resize events).
  */
@@ -1751,6 +1942,23 @@ function doc_resize_real() {
   }
   current_metrics = new_metrics;
   send_response('arrange', null, current_metrics);
+}
+
+/* Send a "redraw" event for the given (graphics) window. This is triggered
+   by the accept handler when it sees a graphics window change size.
+
+   (Not actually an event handler, but I put it down here with
+   doc_resize_real.)
+*/
+function send_window_redraw(winid) {
+  var win = windowdic[winid];
+
+  /* It's not likely that the window has been deleted since this function
+     was queued up. But we'll be paranoid. */
+  if (!win || win.type != 'graphics')
+    return;
+
+  send_response('redraw', win, null);
 }
 
 /* Event handler: keypress events on input fields.

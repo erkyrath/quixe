@@ -50,6 +50,10 @@ Glk = function() {
 /* The VM interface object. */
 var VM = null;
 
+/* Environment capabilities. (Checked at init time.) */
+var has_canvas;
+
+/* Library display state. */
 var has_exited = false;
 var ui_disabled = false;
 var ui_specialinput = null;
@@ -73,6 +77,9 @@ var current_partial_outputs = null;
    library sets that up for you.)
 */
 function init(vm_options) {
+    /* Check for canvas support. We don't rely on jquery here. */
+    has_canvas = (document.createElement('canvas').getContext != undefined);
+
     VM = vm_options.vm;
     if (window.GiDispa)
         GiDispa.set_vm(VM);
@@ -324,6 +331,9 @@ function update() {
                 obj.type = 'grid';
                 obj.gridwidth = win.gridwidth;
                 obj.gridheight = win.gridheight;
+                break;
+            case Const.wintype_Graphics:
+                obj.type = 'graphics';
                 break;
             }
 
@@ -3131,6 +3141,8 @@ function glk_gestalt_ext(sel, val, arr) {
     case 7: // gestalt_DrawImage
         if (val == Const.wintype_TextBuffer)
             return 1;
+        if (val == Const.wintype_Graphics && has_canvas)
+            return 1;
         return 0;
 
     case 8: // gestalt_Sound
@@ -3282,6 +3294,14 @@ function glk_window_open(splitwin, method, size, wintype, rock) {
         newwin.lines = [];
         newwin.cursorx = 0;
         newwin.cursory = 0;
+        break;
+    case Const.wintype_Graphics:
+        if (!has_canvas) {
+            /* Graphics windows not supported; silently return null */
+            gli_delete_window(newwin);
+            return null;
+        }
+        newwin.accum = [];
         break;
     case Const.wintype_Blank:
         break;
@@ -3436,6 +3456,7 @@ function glk_window_get_size(win, widthref, heightref) {
         hgt = Math.max(0, Math.floor((boxheight-content_metrics.buffermarginy) / content_metrics.buffercharheight));        
         break;
 
+        /*#### wintype_Graphics: compute, using graphicsmarginx/y */
     }
 
     if (widthref)
@@ -3555,6 +3576,7 @@ function glk_window_clear(win) {
             }
         }
         break;
+    /*#### wintype_Graphics: clear to background color */
     }
 }
 
@@ -4195,6 +4217,7 @@ function glk_request_char_event(win) {
     else {
         throw('glk_request_char_event: window does not support keyboard input');
     }
+    /*#### wintype_Graphics? */
 }
 
 function glk_cancel_char_event(win) {
@@ -4323,6 +4346,10 @@ function glk_image_draw(win, imgid, val1, val2) {
         img.alignment = alignment;
         gli_window_buffer_put_special(win, img);
         return 1;
+
+    case Const.wintype_Graphics:
+        /*#### wintype_Graphics: drop in an image special */
+        return 1;
     }
 
     return 0;
@@ -4367,6 +4394,10 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
         img.alignment = alignment;
         gli_window_buffer_put_special(win, img);
         return 1;
+
+    case Const.wintype_Graphics:
+        /*#### wintype_Graphics: drop in an image special */
+        return 1;
     }
 
     return 0;
@@ -4376,22 +4407,29 @@ function glk_window_flow_break(win) {
     if (!win)
         throw('glk_window_flow_break: invalid window');
 
-    gli_window_buffer_put_special(win, undefined, true);
+    if (win.type == Const.wintype_TextBuffer)
+        gli_window_buffer_put_special(win, undefined, true);
 }
 
 function glk_window_erase_rect(win, left, top, width, height) {
     if (!win)
         throw('glk_window_erase_rect: invalid window');
+    if (win.type != Const.wintype_Graphics)
+        throw('glk_window_erase_rect: not a graphics window');
 }
 
 function glk_window_fill_rect(win, color, left, top, width, height) {
     if (!win)
         throw('glk_window_fill_rect: invalid window');
+    if (win.type != Const.wintype_Graphics)
+        throw('glk_window_fill_rect: not a graphics window');
 }
 
 function glk_window_set_background_color(win, color) {
     if (!win)
         throw('glk_window_set_background_color: invalid window');
+    if (win.type != Const.wintype_Graphics)
+        throw('glk_window_set_background_color: not a graphics window');
 }
 
 
@@ -4903,6 +4941,7 @@ function glk_request_char_event_uni(win) {
         win.input_generation = event_generation;
     }
     else {
+        /*#### wintype_Graphics? */
         throw('glk_request_char_event: window does not support keyboard input');
     }
 }
