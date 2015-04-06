@@ -1584,7 +1584,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
             if (newurl)
               imgurl = newurl;
           }
-          glkote_log('### setting up callback with url ' + imgurl);
+          glkote_log('### setting up callback with url');
           var newimg = new Image();
           $(newimg).on('load', function(ev) { perform_graphics_ops(newimg, ev); });
           $(newimg).on('error', function(ev) { perform_graphics_ops(newimg, null); });
