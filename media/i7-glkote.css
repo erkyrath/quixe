@@ -136,6 +136,10 @@
   clear: both;
 }
 
+.GraphicsWindow canvas {
+  background-color: white;
+}
+
 /* The following are the standard Glk styles. */
 
 .Style_normal {
