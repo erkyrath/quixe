@@ -528,6 +528,7 @@ var Const = {
     gestalt_DateTime : 20,
     gestalt_Sound2 : 21,
     gestalt_ResourceStream : 22,
+    gestalt_GraphicsCharInput : 23,
 
     keycode_Unknown  : 0xffffffff,
     keycode_Left     : 0xfffffffe,
@@ -3214,6 +3215,9 @@ function glk_gestalt_ext(sel, val, arr) {
     case 22: // gestalt_ResourceStream
         return 1;
 
+    case 23: // gestalt_GraphicsCharInput
+        return 0;
+
     }
 
     return 0;
@@ -4238,9 +4242,9 @@ function glk_request_char_event(win) {
         win.input_generation = event_generation;
     }
     else {
+        /* ### wintype_Graphics could accept char input if we set up the focus to allow it. See gestalt_GraphicsCharInput. */
         throw('glk_request_char_event: window does not support keyboard input');
     }
-    /*#### wintype_Graphics? */
 }
 
 function glk_cancel_char_event(win) {
@@ -4983,7 +4987,7 @@ function glk_request_char_event_uni(win) {
         win.input_generation = event_generation;
     }
     else {
-        /*#### wintype_Graphics? */
+        /* ### wintype_Graphics could accept char input if we set up the focus to allow it. See gestalt_GraphicsCharInput. */
         throw('glk_request_char_event: window does not support keyboard input');
     }
 }
