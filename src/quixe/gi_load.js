@@ -360,6 +360,12 @@ function get_query_params() {
    (This uses DOM methods rather than jQuery.)
 */
 function absolutize(url) {
+    /* I don't know if this is slow (or safe) for data URLs. Might as
+       well skip out of the easy cases first, anyhow. */
+    if (url.match(/^(file|data|http|https):/i)) {
+        return url;
+    }
+
     var div = document.createElement('div');
     div.innerHTML = '<a></a>';
     div.firstChild.href = url;
@@ -436,7 +442,7 @@ function get_image_url(val) {
     if (all_options.image_info_map) {
         var img = all_options.image_info_map[val];
         if (img && img.url)
-            return img.url;
+            return absolutize(img.url);
     }
 
     var chunk = blorbchunks['Pict:'+val];
