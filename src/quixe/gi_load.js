@@ -50,7 +50,7 @@
  *     http://zcode.appspot.com/proxy/)
  *   image_info_map: An object which describes all the available
  *     images, if they are provided as static URL data. (If this is not
- *     provided, we rely on blorb resources.)
+ *     provided, we rely on Blorb resources.)
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
  *
@@ -60,14 +60,14 @@
  *   rethrow_exceptions, ...
  *
  * GiLoad.find_data_chunk(NUM) -- this finds the Data chunk of the
- *   given number from the blorb file. The returned object looks like
+ *   given number from the Blorb file. The returned object looks like
  *   { data:[...], type:"..." } (where the type is TEXT or BINA).
  *   If there was no such chunk, or if the game was loaded from a non-
- *   blorb file, this returns undefined.
+ *   Blorb file, this returns undefined.
  *
  * GiLoad.get_metadata(FIELD) -- this returns a metadata field (a
  *   string) from the iFiction <bibliographic> section. If there is
- *   no such field, or if the game was loaded from a non-blorb
+ *   no such field, or if the game was loaded from a non-Blorb
  *   file, this returns undefined.
  *
  * GiLoad.get_image_info(NUM) -- returns an object describing an image,
@@ -94,6 +94,7 @@ var all_options = {
     use_query_story: true, // use the ?story= URL parameter (if provided)
     default_story: null,   // story URL to use if not otherwise set
     set_page_title: true,  // set the window title to the game name
+    image_info_map: null,  // look for images in Blorb data
     proxy_url: 'http://zcode.appspot.com/proxy/'
 };
 
@@ -544,7 +545,7 @@ function unpack_blorb(image) {
             pos++;
     }
 
-    /* We don't want to retain the original blorb image in memory; it's
+    /* We don't want to retain the original Blorb image in memory; it's
        enormous. We'll split out the addressable chunks (those with
        usages) and retain those individually. Still enormous, but less
        so.
