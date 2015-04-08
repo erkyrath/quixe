@@ -147,6 +147,10 @@ function accept_ui_event(obj) {
         handle_arrange_input();
         break;
 
+    case 'redraw':
+        handle_redraw_input();
+        break;
+
     case 'specialresponse':
         if (obj.response == 'fileref_prompt') {
             gli_fileref_create_by_prompt_callback(obj);
@@ -160,6 +164,21 @@ function handle_arrange_input() {
         return;
 
     gli_selectref.set_field(0, Const.evtype_Arrange);
+    gli_selectref.set_field(1, null);
+    gli_selectref.set_field(2, 0);
+    gli_selectref.set_field(3, 0);
+
+    if (window.GiDispa)
+        GiDispa.prepare_resume(gli_selectref);
+    gli_selectref = null;
+    VM.resume();
+}
+
+function handle_redraw_input() {
+    if (!gli_selectref)
+        return;
+
+    gli_selectref.set_field(0, Const.evtype_Redraw);
     gli_selectref.set_field(1, null);
     gli_selectref.set_field(2, 0);
     gli_selectref.set_field(3, 0);
@@ -4476,6 +4495,9 @@ function glk_window_set_background_color(win, color) {
 */
 function gli_color_to_css(color) {
     var res = (color & 0xFFFFFF).toString(16);
+    while (res.length < 6) {
+        res = '0' + res;
+    }
     return '#' + res.toUpperCase();
 }
 
