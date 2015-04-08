@@ -48,6 +48,9 @@
  *   proxy_url: The URL of the web-app service which is used to convert
  *     binary data to Javascript, if the browser needs that. (default:
  *     http://zcode.appspot.com/proxy/)
+ *   image_info_map: An object which describes all the available
+ *     images, if they are provided as static URL data. (If this is not
+ *     provided, we rely on blorb resources.)
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
  *
@@ -377,8 +380,8 @@ function get_metadata(val) {
    { image:VAL, type:STRING, alttext:STRING, width:NUMBER, height:NUMBER }
 */
 function get_image_info(val) {
-    if (window.GiLoadImages) {
-        var img = window.GiLoadImages[val];
+    if (all_options.image_info_map != undefined) {
+        var img = all_options.image_info_map[val];
         if (img)
             return img;
     }
@@ -429,6 +432,12 @@ function get_image_info(val) {
    The return value will be null or a URL. It might be a "data:..." URL.
 */
 function get_image_url(val) {
+    if (all_options.image_info_map) {
+        var img = all_options.image_info_map[val];
+        if (img && img.url)
+            return img.url;
+    }
+
     var chunk = blorbchunks['Pict:'+val];
     if (chunk) {
         if (chunk.dataurl)
@@ -445,12 +454,6 @@ function get_image_url(val) {
             chunk.dataurl = 'data:'+mimetype+';base64,'+b64dat;
             return chunk.dataurl;
         }
-    }
-
-    if (window.GiLoadImages) {
-        var img = window.GiLoadImages[val];
-        if (img && img.url)
-            return img.url;
     }
 
     return undefined;
