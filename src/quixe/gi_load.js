@@ -50,7 +50,9 @@
  *     http://zcode.appspot.com/proxy/)
  *   image_info_map: An object which describes all the available
  *     images, if they are provided as static URL data. (If this is not
- *     provided, we rely on Blorb resources.)
+ *     provided, we rely on Blorb resources.) This can be an object
+ *     or a string; in the latter case, we look up a global object with
+ *     that name.
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
  *
@@ -119,6 +121,19 @@ function load_run(optobj, image, image_format) {
         optobj = window.game_options;
     if (optobj)
         jQuery.extend(all_options, optobj);
+
+    /* If the image_info_map is a string, look for a global object of
+       that name. If there isn't one, delete that option. (The 
+       image_info_map could also be an object already, in which case
+       we leave it as is.) */
+    if (all_options.image_info_map != undefined) {
+        if (jQuery.type(all_options.image_info_map) === 'string') {
+            if (window[all_options.image_info_map])
+                all_options.image_info_map = window[all_options.image_info_map];
+            else
+                all_options.image_info_map = undefined;
+        }
+    }
 
     /* The first question is, what's the game file URL? */
 
