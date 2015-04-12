@@ -245,7 +245,7 @@ function handle_mouse_input(disprock, xpos, ypos) {
     if (!win || !win.mouse_request)
         return;
 
-    gli_selectref.set_field(0, Const.evtype_Mouse);
+    gli_selectref.set_field(0, Const.evtype_MouseInput);
     gli_selectref.set_field(1, win);
     gli_selectref.set_field(2, xpos);
     gli_selectref.set_field(3, ypos);
@@ -4358,9 +4358,6 @@ function glk_set_terminators_line_event(win, arr) {
 function glk_request_mouse_event(win) {
     if (!win)
         throw('glk_request_mouse_event: invalid window');
-    if (win.mouse_request)
-        throw('glk_request_mouse_event: window already has mouse request');
-
     if (win.type == Const.wintype_TextGrid
         || win.type == Const.wintype_Graphics) {
         win.mouse_request = true;
