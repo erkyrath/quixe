@@ -88,7 +88,7 @@ on the web site), copy play-remote.html.
 * Version History
 
 - 2.0.# (###)
-  - Include GlkOte ### (image support). Thanks to Alex Munroe for original implementation.
+  - Include GlkOte ### (graphics windows; image display; mouse input). Thanks to Alex Munroe for original implementation.
   - Remove the #layouttestpane from all the HTML templates.
   - Added the ability to send transcript data to an external server.
   - Fixed a bug where non-ASCII characters in metadata were not properly
