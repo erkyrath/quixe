@@ -106,6 +106,11 @@ var recording_handler = null;
 var recording_handler_url = null;
 var recording_context = {};
 
+/* An image cache. This maps numbers to Image objects. These are used only
+   for painting in graphics (canvas) windows.
+*/
+var image_cache = {};
+
 /* This function becomes GlkOte.init(). The document calls this to begin
    the game. The simplest way to do this is to give the <body> tag an
    onLoad="GlkOte.init();" attribute.
@@ -1599,8 +1604,23 @@ function perform_graphics_ops(loadedimg, loadedev) {
         ctx.fillStyle = '#000000';
         break;
       case 'image':
-        /* This is the tricky case. If loadedimg is null, we have to
-           create an Image() and set up the loading callbacks. */
+        /* This is the tricky case. If this is a successful load callback,
+           loadedimg already contains the desired image. If it doesn't, we
+           check the cache. If that doesn't have it, we have to create a new
+           Image and set up the loading callbacks. */
+        if (!loadedimg) {
+          var oldimg = image_cache[op.image];
+          if (oldimg && oldimg.width > 0 && oldimg.height > 0) {
+            loadedimg = oldimg;
+            loadedev = true;
+            glkote_log('### found image in cache');
+          }
+          else {
+            /* This cached image is broken. I don't know if this can happen,
+               but if it does, drop it. */
+            delete image_cache[op.image];
+          }
+        }
         if (!loadedimg) {
           var imgurl = op.url;
           if (window.GiLoad && GiLoad.get_image_url) {
@@ -1620,6 +1640,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
         /* We were called back with an image. Hopefully it loaded ok. Note that
            for the error callback, loadedev is null. */
         if (loadedev) {
+          image_cache[op.image] = loadedimg;
           ctx.drawImage(loadedimg, op.x, op.y, op.width, op.height);
         }
         loadedev = null;
