@@ -400,6 +400,8 @@ function get_metadata(val) {
    
    The return value will be null or an object:
    { image:VAL, type:STRING, alttext:STRING, width:NUMBER, height:NUMBER }
+
+   (The alttext and type may be absent if not supplied.)
 */
 function get_image_info(val) {
     if (all_options.image_info_map != undefined) {
