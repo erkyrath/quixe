@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 2.0.0.
+Quixe Library: version 2.1.0.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -87,8 +87,9 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- 2.0.# (###)
-  - Include GlkOte ### (graphics windows; image display; mouse input). Thanks to Alex Munroe for original implementation.
+- 2.1.0 (###)
+  - Include GlkOte 2.1.0 (graphics windows; image display; mouse input).
+    Thanks to Alex Munroe for original implementation.
   - Remove the #layouttestpane from all the HTML templates.
   - Added the ability to send transcript data to an external server.
   - Fixed a bug where non-ASCII characters in metadata were not properly
