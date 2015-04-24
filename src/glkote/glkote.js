@@ -1549,7 +1549,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
     glkote_log('perform_graphics_ops called with no queued ops' + (loadedimg ? ' (plus image!)' : ''));
     return;
   }
-  glkote_log('### perform_graphics_ops, ' + graphics_draw_queue.length + ' queued' + (loadedimg ? ' (plus image!)' : '') + '.'); /*###*/
+  //glkote_log('### perform_graphics_ops, ' + graphics_draw_queue.length + ' queued' + (loadedimg ? ' (plus image!)' : '') + '.'); /*###*/
 
   /* Look at the first queue entry, execute it, and then shift it off.
      On error we must be sure to shift anyway, or the queue will jam!
@@ -1613,7 +1613,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
           if (oldimg && oldimg.width > 0 && oldimg.height > 0) {
             loadedimg = oldimg;
             loadedev = true;
-            glkote_log('### found image in cache');
+            //glkote_log('### found image in cache');
           }
           else {
             /* This cached image is broken. I don't know if this can happen,
@@ -1628,7 +1628,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
             if (newurl)
               imgurl = newurl;
           }
-          glkote_log('### setting up callback with url');
+          //glkote_log('### setting up callback with url');
           var newimg = new Image();
           $(newimg).on('load', function(ev) { perform_graphics_ops(newimg, ev); });
           $(newimg).on('error', function(ev) { perform_graphics_ops(newimg, null); });
@@ -1654,7 +1654,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
 
     graphics_draw_queue.shift();
   }
-  glkote_log('### queue empty.');
+  //glkote_log('### queue empty.');
 }
 
 /* Run a function (no arguments) in timeout seconds. */
