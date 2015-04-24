@@ -87,7 +87,7 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- 2.1.0 (###)
+- 2.1.0 (April 24, 2015)
   - Include GlkOte 2.1.0 (graphics windows; image display; mouse input).
     Thanks to Alex Munroe for original implementation.
   - Remove the #layouttestpane from all the HTML templates.
