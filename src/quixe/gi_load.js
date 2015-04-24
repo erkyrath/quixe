@@ -131,7 +131,7 @@ function load_run(optobj, image, image_format) {
             if (window[all_options.image_info_map])
                 all_options.image_info_map = window[all_options.image_info_map];
             else
-                all_options.image_info_map = undefined;
+                delete all_options.image_info_map;
         }
     }
 
