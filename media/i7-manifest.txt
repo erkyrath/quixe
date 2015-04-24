@@ -50,8 +50,11 @@ g
 <script src="interpreter/glkote.min.js" type="text/javascript"></script>
 <script src="interpreter/quixe.min.js" type="text/javascript"></script>
 
+<script src="interpreter/resourcemap.js" type="text/javascript"></script>
+
 <script type="text/javascript">
 game_options = {
+  image_info_map: 'StaticImageInfo',
   use_query_story: false,
   set_page_title: false,
   inspacing: 0,     // gap between windows
@@ -114,3 +117,4 @@ quixe.min.js
 dialog.css
 glkote.css
 waiting.gif
+resourcemap.js
