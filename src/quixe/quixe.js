@@ -9,9 +9,9 @@
  * For information on getting Quixe installed on a web page, see the
  * comments in the gi_load.js file.
  *
- * This library is intended to be standalone. However, it was developed
- * with Prototype available, and some Prototype-isms may have crept into
- * the code.
+ * This library makes use of jQuery utility functions (but it does not
+ * manipulate DOM). It has been tested with jQuery 1.11.2 (included),
+ * but should work equally well with jQuery 2.
  *
  *
  * Some interpreter behaviors can be customized by adding attributes to
