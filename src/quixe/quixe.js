@@ -488,9 +488,11 @@ function make_code(val, arg) {
     return _func;
 }
 
-/* The VMFunc class: Everything we know about a function. This includes the
-   layout of the local variables, the compiled paths for various start points
-   within the function, and the addresses known to be start points.
+/* Constructor: VMFunc
+
+   Everything we know about a function. This includes the layout of the local
+   variables, the compiled paths for various start points within the function,
+   and the addresses known to be start points.
 
    If the function is not in ROM, we still create this, but we will not
    add it to the permanent vmfunc_table.
@@ -556,7 +558,9 @@ function VMFunc(funcaddr, startpc, localsformat, rawformat) {
     this.locallen = locallen;
 }
 
-/* One stack frame on the execution stack. This includes local variables
+/* Constructor: StackFrame
+
+   One stack frame on the execution stack. This includes local variables
    and the value stack. It does not contain the spec-defined byte sequence
    for the stack frame; we generate that at save time.
 
@@ -716,7 +720,9 @@ function pop_deserialized_stackframe(arr) {
     return frame;
 }
 
-/* Represents all the cached string-table information for when stringtable
+/* Constructor: VMTextEnv
+
+   Represents all the cached string-table information for when stringtable
    is addr. This includes the decoding table, and the compiled strings
    for each address that's been printed.
 
@@ -744,6 +750,7 @@ var operandlist_table = null;
 
 /* This is called once, at startup time. */
 function setup_operandlist_table() {
+    /* Constructor: OperandList */
     function OperandList(formlist, argsize) {
         this.argsize = (argsize ? argsize : 4);
         this.numops = formlist.length;
@@ -5946,8 +5953,10 @@ function heap_get_start() {
     return heapstart;
 }
 
-/* Constructor. We never modify heap blocks, to ensure they can be reused
-   safely across saveundo() and restore().
+/* Constructor: HeapBlock
+
+   We never modify heap blocks, to ensure they can be reused safely across
+   saveundo() and restore().
 */
 function HeapBlock(addr, size) {
     this.addr = addr;
