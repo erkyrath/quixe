@@ -472,20 +472,25 @@ function fatal_error(msg) {
 }
 
 /* Turn a string containing JS statements into a function object that
-   executes those statements. If an arg is provided, it becomes the
-   function argument. (It can also be a comma-separated list of
-   arguments, if you want more than one.) 
+   executes those statements. The funcname must be a legal JS symbol;
+   it is only used for debugging.
+
+   If an arg is provided, it becomes the function argument. (It can also
+   be a comma-separated list of arguments, if you want more than one.)
 
    This uses eval(), rather than Function(), because it needs to
    return a closure inside the Quixe environment. (All the generated
    code assumes that it has the VM's internal variables in scope.)
 */
-function make_code(val, arg) {
+function make_code(val, funcname, arg) {
+    var func;
+    if (funcname === undefined)
+        funcname = '_func';
     if (arg === undefined)
-        eval("function _func() {\n" + val + "\n}");
+        func = eval("( function " + funcname + "() {\n" + val + "\n} )");
     else
-        eval("function _func("+arg+") {\n" + val + "\n}");
-    return _func;
+        func = eval("( function " + funcname + "("+arg+") {\n" + val + "\n} )");
+    return func;
 }
 
 /* Constructor: VMFunc
@@ -3472,7 +3477,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
     }
 
     //qlog("### code at " + startaddr.toString(16) + ":\n" + context.code.join("\n"));
-    return make_code(context.code.join("\n"));
+    return make_code(context.code.join("\n"), "_func_path_"+startaddr);
 }
 
 /* Prepare for execution of a new function. The argcount is the number
@@ -4966,7 +4971,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     else {
         oputil_flush_string(context);
         context.code.push("return " + retval + ";");
-        return make_code(context.code.join("\n"), "nextcp,substring");
+        return make_code(context.code.join("\n"), "_func_str_"+startaddr, "nextcp,substring");
     }
 }
 
