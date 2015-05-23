@@ -1231,7 +1231,7 @@ function oputil_perform_jump(context, operand, unconditional) {
             else {
                 ;;;context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //debug
             }
-            context.code.push("leave_function();");
+            context.code.push("if (leave_function()) return VMStopped;");
             context.code.push("pop_callstub("+val+");");
         }
         else {
@@ -1244,7 +1244,7 @@ function oputil_perform_jump(context, operand, unconditional) {
     else {
         oputil_unload_offstate(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
-        context.code.push("leave_function();");
+        context.code.push("if (leave_function()) return VMStopped;");
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
@@ -1519,7 +1519,7 @@ var opcode_table = {
         }
         /* Note that tailcall in the top-level function will not work.
            But why would you do that? */
-        context.code.push("leave_function();");
+        context.code.push("if (leave_function()) return VMStopped;");
         context.code.push("enter_function("+operands[0]+", "+operands[1]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -1570,7 +1570,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("leave_function();");
+        context.code.push("if (leave_function()) return VMStopped;");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -1992,8 +1992,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("done_executing = true; vm_stopped = true;");
-        context.code.push("return;");
+        context.code.push("return VMStopped;");
         context.path_ends = true;
     },
 
@@ -3329,6 +3328,11 @@ function compile_func(funcaddr) {
    starting there anyhow -- you can't jump into the middle of a JS
    function. So we avoid compiling those opcodes twice.)
 
+   The path function returns the special value VMStopped on @quit or 
+   if the top-level function exits. This will stop VM execution. 
+   (Note that glk_exit() doesn't cause this -- it technically leaves
+   the VM paused forever rather than stopped.)
+
    After executing a path, the VM state (pc, stack, etc) are set
    appropriately for the end of the path. However, we don't maintain
    that state opcode by opcode *inside* the path.
@@ -3550,17 +3554,21 @@ function enter_function(addr, argcount) {
     //qlog("### framestart " + frame.framestart + ", filled-in locals " + qobjdump(frame.locals) + ", valstack " + qobjdump(frame.valstack));
 }
 
-/* Dummy value, thrown as an exception by leave_function(). */
-var ReturnedFromMain = { dummy: 'The top-level function has returned.' };
+/* Dummy value, returned by path functions on @quit or when leave_function()
+   pops the top-level stack frame. */
+var VMStopped = { dummy: 'The top-level function has returned.' };
 
-/* Pop the current call frame off the stack. This is very simple. */
+/* Pop the current call frame off the stack. This is very simple.
+   Returns true if the top-level stack frame is popped (thus stopping
+   the VM).
+*/
 function leave_function() {
     var olddepth = frame.depth;
 
     stack.pop();
     if (stack.length == 0) {
         frame = null;
-        throw ReturnedFromMain;
+        return true;
     }
     frame = stack[stack.length-1];
 
@@ -6300,18 +6308,10 @@ function execute_loop() {
             }
         }
         total_path_calls++; //###stats
-        try {
-            path();
-        }
-        catch (ex) {
-            if (ex === ReturnedFromMain) {
-                done_executing = true;
-                vm_stopped = true;
-            }
-            else {
-                /* Some other exception. */
-                throw ex;
-            }
+        var res = path();
+        if (res === VMStopped) {
+            done_executing = true;
+            vm_stopped = true;
         }
     }
 
