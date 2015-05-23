@@ -697,8 +697,8 @@ function build_function(func) {
        return a closure inside the GiDispa environment. (All the generated
        code assumes that it has the internal variables in scope.)
     */
-    eval('function _func(callargs) {\n' + val + '\n}');
-    return _func;
+    var func = eval('( function _gidispa_' + func.name + '(callargs) {\n' + val + '\n} )');
+    return func;
 }
 
 /* Cache of all the dispatch functions we've compiled. */
