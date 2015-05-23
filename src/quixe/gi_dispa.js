@@ -11,23 +11,28 @@
  * to Quixe 32-bit numeric IDs.
  */
 
+//### Should split WriteWord into a WriteRefWord and WriteArrayWord,
+//### with different handling of -1. Etc.
+
 /* Put everything inside the GiDispa namespace. */
 
 GiDispa = function() {
 
-//### Should split WriteWord into a WriteRefWord and WriteArrayWord,
-//### with different handling of -1. Etc.
-
-/* The VM interface object. GiDispa needs this to load and store reference
-   arguments, from and to VM memory. When this layer is used with Quixe,
-   VM is just an alias for the Quixe interface object. */
-var VM = null;
+/* The namespace object bound to "this" for compiled functions.
+   This will provide access to many of the private variables in the
+   GiDispa namespace.
+   
+   It also contains the VM interface object. GiDispa needs this to load and
+   store reference arguments, from and to VM memory. When this layer is used
+   with Quixe, VM is just an alias for the Quixe interface object.
+*/
+var internal = { VM:null };
 
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
 */
 function set_vm(vm_api) {
-    VM = vm_api;
+    internal.VM = vm_api;
 }
 
 /* A table of the Glk classes, and their index numbers. This is derived from
@@ -364,6 +369,12 @@ var proto_map = {
 // End of auto-generated table.
 
 
+/* Make globals available to compiled functions. */
+internal.arg_int_unsigned  = arg_int_unsigned;
+internal.arg_int_signed    = arg_int_signed;
+internal.arg_char_unsigned = arg_char_unsigned;
+internal.arg_char_native   = arg_char_native;
+internal.arg_char_signed   = arg_char_signed;
 
 /* Convert one simple value (int, char, string, class) from a Glulx
    value (32-bit unsigned integer) into a Glk library value.
@@ -385,7 +396,7 @@ function convert_arg(arg, passin, val) {
             if (!arg.signed)
                 return val + ' & 0xFF';
             else
-                return 'cast_signed_char('+val+')'
+                return 'this.cast_signed_char('+val+')'
         }
         else {
             return '0';
@@ -393,7 +404,7 @@ function convert_arg(arg, passin, val) {
     }
     if (arg instanceof ArgClass) {
         if (passin) {
-            return 'class_obj_from_id("'+arg.name+'", '+val+')';
+            return 'this.class_obj_from_id("'+arg.name+'", '+val+')';
         }
         else {
             return 'null';
@@ -413,10 +424,10 @@ function unconvert_arg(arg, val) {
         if (!arg.signed)
             return val + ' & 0xFF';
         else
-            return 'uncast_signed_char('+val+')'
+            return 'this.uncast_signed_char('+val+')'
     }
     if (arg instanceof ArgClass) {
-        return 'class_obj_to_id("'+arg.name+'", '+val+')';
+        return 'this.class_obj_to_id("'+arg.name+'", '+val+')';
     }
     return '???';
 }
@@ -431,6 +442,7 @@ function cast_signed_char(val) {
         val -= 0x100;
     return val;
 }
+internal.cast_signed_char = cast_signed_char;
 
 /* The converse. */
 function uncast_signed_char(val) {
@@ -439,6 +451,7 @@ function uncast_signed_char(val) {
         val += 0xFFFFFF00;
     return val;
 }
+internal.uncast_signed_char = uncast_signed_char;
 
 /* Convert an opaque object (a window, stream, or whatever) to a Glulx value
    (an unsigned 32-bit number).
@@ -448,6 +461,7 @@ function class_obj_to_id(clas, val) {
         return 0;
     return val.disprock;
 }
+internal.class_obj_to_id = class_obj_to_id;
 
 /* The converse. */
 function class_obj_from_id(clas, val) {
@@ -455,6 +469,7 @@ function class_obj_from_id(clas, val) {
         return null;
     return class_map[clas][val];
 }
+internal.class_obj_from_id = class_obj_from_id;
 
 /* Convert a FuncSpec object into a Javascript function. The function,
    when called, should be passed exactly one argument: an array of
@@ -515,14 +530,14 @@ function build_function(func) {
                 || (refarg instanceof ArgChar)
                 || (refarg instanceof ArgClass)) {
                 out.push('  '+tmpvar+' = new Glk.RefBox();');
-                val = convert_arg(refarg, arg.passin, 'VM.ReadWord(callargs['+argpos+'])');
+                val = convert_arg(refarg, arg.passin, 'this.VM.ReadWord(callargs['+argpos+'])');
                 out.push('  '+tmpvar+'.set_value('+val+');');
             }
             else if (refarg instanceof ArgStruct) {
                 subargs = refarg.form.args;
                 out.push('  '+tmpvar+' = new Glk.RefStruct('+subargs.length+');');
                 for (jx=0; jx<subargs.length; jx++) {
-                    val = convert_arg(subargs[jx], arg.passin, 'VM.ReadStructField(callargs['+argpos+'], '+jx+')');
+                    val = convert_arg(subargs[jx], arg.passin, 'this.VM.ReadStructField(callargs['+argpos+'], '+jx+')');
                     out.push('  '+tmpvar+'.push_field('+val+');');
                 }
             }
@@ -547,15 +562,15 @@ function build_function(func) {
                 locals['ix'] = true;
                 locals['jx'] = true;
                 out.push('  for (ix=0, jx=callargs['+argpos+']; ix<glklen; ix++, jx+='+refarg.refsize+') {');
-                val = convert_arg(refarg, true, 'VM.Read'+refarg.macro+'(jx)');
+                val = convert_arg(refarg, true, 'this.VM.Read'+refarg.macro+'(jx)');
                 out.push('    '+tmpvar+'[ix] = '+val+';');
                 out.push('  }');
             }
             if (arg.retained) {
                 if (arraycount == 0)
-                    out.push('  temp_arg_arrays.length = 0;');
+                    out.push('  this.temp_arg_arrays.length = 0;');
                 arraycount += 1;
-                out.push('  make_arg_array('+tmpvar+', callargs['+argpos+'], glklen, '+refarg.literal+');');
+                out.push('  this.make_arg_array('+tmpvar+', callargs['+argpos+'], glklen, this.'+refarg.literal+');');
             }
             out.push('}');
             argpos += 2;
@@ -574,9 +589,9 @@ function build_function(func) {
             }
             out.push(tmpvar+' = Array();');
             out.push('jx = callargs['+argpos+'];');
-            out.push('if (VM.ReadByte(jx) != '+checkbyte+') throw("glk '+func.name+': string argument must be unencoded");');
+            out.push('if (this.VM.ReadByte(jx) != '+checkbyte+') throw("glk '+func.name+': string argument must be unencoded");');
             out.push('for (jx+='+arg.refsize+'; true; jx+='+arg.refsize+') {');
-            out.push('  ix = VM.Read'+arg.macro+'(jx);');
+            out.push('  ix = this.VM.Read'+arg.macro+'(jx);');
             out.push('  if (ix == 0) break;');
             out.push('  '+tmpvar+'.push(ix);');
             out.push('}');
@@ -605,7 +620,7 @@ function build_function(func) {
         /* If the call blocks, we need to stash away the arguments and
            then return early. */
         out.push('if (glkret === Glk.DidNotReturn) {');
-        out.push('  set_blocked_selector(' + func.id + ', callargs);');
+        out.push('  this.set_blocked_selector(' + func.id + ', callargs);');
         out.push('  return glkret;');
         out.push('}');
     }
@@ -630,13 +645,13 @@ function build_function(func) {
                     || (refarg instanceof ArgChar)
                     || (refarg instanceof ArgClass)) {
                     val = unconvert_arg(refarg, tmpvar+'.get_value()');
-                    out.push('  VM.WriteWord(callargs['+argpos+'], '+val+');');
+                    out.push('  this.VM.WriteWord(callargs['+argpos+'], '+val+');');
                 }
                 else if (refarg instanceof ArgStruct) {
                     subargs = refarg.form.args;
                     for (jx=0; jx<subargs.length; jx++) {
                         val = unconvert_arg(subargs[jx], tmpvar+'.get_field('+jx+')');
-                        out.push('  VM.WriteStructField(callargs['+argpos+'], '+jx+', '+val+');');
+                        out.push('  this.VM.WriteStructField(callargs['+argpos+'], '+jx+', '+val+');');
                     }
                 }
                 else {
@@ -654,7 +669,7 @@ function build_function(func) {
                 locals['jx'] = true;
                 out.push('  for (ix=0, jx=callargs['+argpos+']; ix<glklen; ix++, jx+='+refarg.refsize+') {');
                 val = unconvert_arg(refarg, tmpvar+'[ix]');
-                out.push('    VM.Write'+refarg.macro+'(jx, '+val+')');
+                out.push('    this.VM.Write'+refarg.macro+'(jx, '+val+')');
                 out.push('  }');
                 out.push('}');
             }
@@ -671,7 +686,7 @@ function build_function(func) {
     /* Discard any argument arrays. (Retained ones have already been
        added to retained_arrays.) */
     if (arraycount != 0)
-        out.push('temp_arg_arrays.length = 0;');
+        out.push('this.temp_arg_arrays.length = 0;');
 
     /* Return the return value. */
 
@@ -692,13 +707,11 @@ function build_function(func) {
         out[0] = 'var ' + ls.join(', ') + ';';
     val = out.join('\n');
 
-    /* Compile the function and return it. */
-    /* This uses eval(), rather than Function(), because it needs to
-       return a closure inside the GiDispa environment. (All the generated
-       code assumes that it has the internal variables in scope.)
-    */
-    var resfunc = eval('( function _gidispa_' + func.name + '(callargs) {\n' + val + '\n} )');
-    return resfunc;
+    /* Compile the function and return it. We bind the internal object as
+       its "this". */
+    var resfunc = new Function('callargs', val);
+    //var resfunc = eval('( function _gidispa_' + func.name + '(callargs) {\n' + val + '\n} )');
+    return resfunc.bind(internal);
 }
 
 /* Cache of all the dispatch functions we've compiled. */
@@ -737,6 +750,7 @@ function set_blocked_selector(sel, args) {
     blocked_selector = sel;
     blocked_callargs = args.slice(0);
 }
+internal.set_blocked_selector = set_blocked_selector;
 
 /* Prepare the VM to resume after a blocked function. The argument is
    the argument to the original blocked call. Our job is to unload
@@ -749,15 +763,15 @@ function prepare_resume(glka0) {
     if (blocked_selector == 0x0C0) {
         // glk_select
         if (blocked_callargs[0] != 0) {
-            VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
-            VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));
-            VM.WriteStructField(blocked_callargs[0], 2, glka0.get_field(2) >>> 0);
-            VM.WriteStructField(blocked_callargs[0], 3, glka0.get_field(3) >>> 0);
+            internal.VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
+            internal.VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));
+            internal.VM.WriteStructField(blocked_callargs[0], 2, glka0.get_field(2) >>> 0);
+            internal.VM.WriteStructField(blocked_callargs[0], 3, glka0.get_field(3) >>> 0);
         }
     }
     else if (blocked_selector == 0x062) {
         // glk_fileref_create_by_prompt
-        VM.SetResumeStore(class_obj_to_id("fileref", glka0));
+        internal.VM.SetResumeStore(class_obj_to_id("fileref", glka0));
     }
     blocked_selector = null;
     blocked_callargs = null;
@@ -766,6 +780,7 @@ function prepare_resume(glka0) {
 /* This lists all the array arguments during a Glk call (but not between
    calls). */
 var temp_arg_arrays = [];
+internal.temp_arg_arrays = temp_arg_arrays;
 
 /* List of retained arrays -- those that are being held by long-term
    Glk activities, like line input. Each entry in this list is an
@@ -775,6 +790,7 @@ var temp_arg_arrays = [];
    at the same time. I think this is safe.
 */
 var retained_arrays = [];
+internal.retained_arrays = retained_arrays;
 
 /* Create an argument array descriptor. The address and length are where it
    will go in VM memory. The arg is an ArgInt or ArgChar object, describing the
@@ -791,6 +807,7 @@ function make_arg_array(arr, addr, len, arg) {
     obj = { arr:arr, addr:addr, len:len, arg:arg };
     temp_arg_arrays.push(obj);
 }
+internal.make_arg_array = make_arg_array;
 
 /* Retain one array. This must have been passed to make_arg_array(),
    earlier in this Glk call.
@@ -839,18 +856,18 @@ function unretain_array(arr) {
 
     if (obj.arg instanceof ArgInt) {
         for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx+=4) {
-            VM.WriteWord(jx, obj.arr[ix] >>> 0);
+            internal.VM.WriteWord(jx, obj.arr[ix] >>> 0);
         }
     }
     else if (obj.arg instanceof ArgChar) {
         if (!obj.arg.signed) {
             for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx++) {
-                VM.WriteByte(jx, obj.arr[ix] & 0xFF);
+                internal.VM.WriteByte(jx, obj.arr[ix] & 0xFF);
             }
         }
         else {
             for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx++) {
-                VM.WriteByte(jx, uncast_signed_char(obj.arr[ix]));
+                internal.VM.WriteByte(jx, uncast_signed_char(obj.arr[ix]));
             }
         }
     }
