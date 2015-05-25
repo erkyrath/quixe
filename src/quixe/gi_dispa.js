@@ -14,25 +14,30 @@
 //### Should split WriteWord into a WriteRefWord and WriteArrayWord,
 //### with different handling of -1. Etc.
 
-/* Put everything inside the GiDispa namespace. */
+/* Put everything inside the GiDispa namespace.
+
+   Within this namespace, "self" is an internal secondary namespace. Many
+   of our private variables and functions will be copied into "self".
+   The "self" will be available inside compiled functions, and will give
+   them access to its contents.
+*/
 
 GiDispa = function() {
 
-/* The namespace object bound to "this" for compiled functions.
-   This will provide access to many of the private variables in the
-   GiDispa namespace.
-   
-   It also contains the VM interface object. GiDispa needs this to load and
+/* Create the "self" object. */
+var self = {};
+
+/* self.VM will store the VM interface object. GiDispa needs this to load and
    store reference arguments, from and to VM memory. When this layer is used
    with Quixe, VM is just an alias for the Quixe interface object.
 */
-var internal = { VM:null };
+self.VM = null;
 
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
 */
 function set_vm(vm_api) {
-    internal.VM = vm_api;
+    self.VM = vm_api;
 }
 
 /* A table of the Glk classes, and their index numbers. This is derived from
@@ -370,11 +375,11 @@ var proto_map = {
 
 
 /* Make globals available to compiled functions. */
-internal.arg_int_unsigned  = arg_int_unsigned;
-internal.arg_int_signed    = arg_int_signed;
-internal.arg_char_unsigned = arg_char_unsigned;
-internal.arg_char_native   = arg_char_native;
-internal.arg_char_signed   = arg_char_signed;
+self.arg_int_unsigned  = arg_int_unsigned;
+self.arg_int_signed    = arg_int_signed;
+self.arg_char_unsigned = arg_char_unsigned;
+self.arg_char_native   = arg_char_native;
+self.arg_char_signed   = arg_char_signed;
 
 /* Convert one simple value (int, char, string, class) from a Glulx
    value (32-bit unsigned integer) into a Glk library value.
@@ -442,7 +447,7 @@ function cast_signed_char(val) {
         val -= 0x100;
     return val;
 }
-internal.cast_signed_char = cast_signed_char;
+self.cast_signed_char = cast_signed_char;
 
 /* The converse. */
 function uncast_signed_char(val) {
@@ -451,7 +456,7 @@ function uncast_signed_char(val) {
         val += 0xFFFFFF00;
     return val;
 }
-internal.uncast_signed_char = uncast_signed_char;
+self.uncast_signed_char = uncast_signed_char;
 
 /* Convert an opaque object (a window, stream, or whatever) to a Glulx value
    (an unsigned 32-bit number).
@@ -461,7 +466,7 @@ function class_obj_to_id(clas, val) {
         return 0;
     return val.disprock;
 }
-internal.class_obj_to_id = class_obj_to_id;
+self.class_obj_to_id = class_obj_to_id;
 
 /* The converse. */
 function class_obj_from_id(clas, val) {
@@ -469,7 +474,7 @@ function class_obj_from_id(clas, val) {
         return null;
     return class_map[clas][val];
 }
-internal.class_obj_from_id = class_obj_from_id;
+self.class_obj_from_id = class_obj_from_id;
 
 /* Convert a FuncSpec object into a Javascript function. The function,
    when called, should be passed exactly one argument: an array of
@@ -496,6 +501,9 @@ function build_function(func) {
     retarg = null;
     if (form.retarg)
         retarg = form.retarg.arg;
+
+    /* The "self" object will be bound in via "this". */
+    out.push('var self = this;');
 
     /* If this is true, the call might return DidNotReturn. */
     mayblock = Glk.call_may_not_return(func.id);
@@ -710,8 +718,7 @@ function build_function(func) {
     /* Compile the function and return it. We bind the internal object as
        its "this". */
     var resfunc = new Function('callargs', val);
-    //var resfunc = eval('( function _gidispa_' + func.name + '(callargs) {\n' + val + '\n} )');
-    return resfunc.bind(internal);
+    return resfunc.bind(self);
 }
 
 /* Cache of all the dispatch functions we've compiled. */
@@ -750,7 +757,7 @@ function set_blocked_selector(sel, args) {
     blocked_selector = sel;
     blocked_callargs = args.slice(0);
 }
-internal.set_blocked_selector = set_blocked_selector;
+self.set_blocked_selector = set_blocked_selector;
 
 /* Prepare the VM to resume after a blocked function. The argument is
    the argument to the original blocked call. Our job is to unload
@@ -763,15 +770,15 @@ function prepare_resume(glka0) {
     if (blocked_selector == 0x0C0) {
         // glk_select
         if (blocked_callargs[0] != 0) {
-            internal.VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
-            internal.VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));
-            internal.VM.WriteStructField(blocked_callargs[0], 2, glka0.get_field(2) >>> 0);
-            internal.VM.WriteStructField(blocked_callargs[0], 3, glka0.get_field(3) >>> 0);
+            self.VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
+            self.VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));
+            self.VM.WriteStructField(blocked_callargs[0], 2, glka0.get_field(2) >>> 0);
+            self.VM.WriteStructField(blocked_callargs[0], 3, glka0.get_field(3) >>> 0);
         }
     }
     else if (blocked_selector == 0x062) {
         // glk_fileref_create_by_prompt
-        internal.VM.SetResumeStore(class_obj_to_id("fileref", glka0));
+        self.VM.SetResumeStore(class_obj_to_id("fileref", glka0));
     }
     blocked_selector = null;
     blocked_callargs = null;
@@ -780,7 +787,7 @@ function prepare_resume(glka0) {
 /* This lists all the array arguments during a Glk call (but not between
    calls). */
 var temp_arg_arrays = [];
-internal.temp_arg_arrays = temp_arg_arrays;
+self.temp_arg_arrays = temp_arg_arrays;
 
 /* List of retained arrays -- those that are being held by long-term
    Glk activities, like line input. Each entry in this list is an
@@ -790,7 +797,7 @@ internal.temp_arg_arrays = temp_arg_arrays;
    at the same time. I think this is safe.
 */
 var retained_arrays = [];
-internal.retained_arrays = retained_arrays;
+self.retained_arrays = retained_arrays;
 
 /* Create an argument array descriptor. The address and length are where it
    will go in VM memory. The arg is an ArgInt or ArgChar object, describing the
@@ -807,7 +814,7 @@ function make_arg_array(arr, addr, len, arg) {
     obj = { arr:arr, addr:addr, len:len, arg:arg };
     temp_arg_arrays.push(obj);
 }
-internal.make_arg_array = make_arg_array;
+self.make_arg_array = make_arg_array;
 
 /* Retain one array. This must have been passed to make_arg_array(),
    earlier in this Glk call.
@@ -856,18 +863,18 @@ function unretain_array(arr) {
 
     if (obj.arg instanceof ArgInt) {
         for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx+=4) {
-            internal.VM.WriteWord(jx, obj.arr[ix] >>> 0);
+            self.VM.WriteWord(jx, obj.arr[ix] >>> 0);
         }
     }
     else if (obj.arg instanceof ArgChar) {
         if (!obj.arg.signed) {
             for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx++) {
-                internal.VM.WriteByte(jx, obj.arr[ix] & 0xFF);
+                self.VM.WriteByte(jx, obj.arr[ix] & 0xFF);
             }
         }
         else {
             for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx++) {
-                internal.VM.WriteByte(jx, uncast_signed_char(obj.arr[ix]));
+                self.VM.WriteByte(jx, uncast_signed_char(obj.arr[ix]));
             }
         }
     }
