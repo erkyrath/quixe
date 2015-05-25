@@ -401,7 +401,7 @@ function convert_arg(arg, passin, val) {
             if (!arg.signed)
                 return val + ' & 0xFF';
             else
-                return 'this.cast_signed_char('+val+')'
+                return 'self.cast_signed_char('+val+')'
         }
         else {
             return '0';
@@ -409,7 +409,7 @@ function convert_arg(arg, passin, val) {
     }
     if (arg instanceof ArgClass) {
         if (passin) {
-            return 'this.class_obj_from_id("'+arg.name+'", '+val+')';
+            return 'self.class_obj_from_id("'+arg.name+'", '+val+')';
         }
         else {
             return 'null';
@@ -429,10 +429,10 @@ function unconvert_arg(arg, val) {
         if (!arg.signed)
             return val + ' & 0xFF';
         else
-            return 'this.uncast_signed_char('+val+')'
+            return 'self.uncast_signed_char('+val+')'
     }
     if (arg instanceof ArgClass) {
-        return 'this.class_obj_to_id("'+arg.name+'", '+val+')';
+        return 'self.class_obj_to_id("'+arg.name+'", '+val+')';
     }
     return '???';
 }
@@ -538,14 +538,14 @@ function build_function(func) {
                 || (refarg instanceof ArgChar)
                 || (refarg instanceof ArgClass)) {
                 out.push('  '+tmpvar+' = new Glk.RefBox();');
-                val = convert_arg(refarg, arg.passin, 'this.VM.ReadWord(callargs['+argpos+'])');
+                val = convert_arg(refarg, arg.passin, 'self.VM.ReadWord(callargs['+argpos+'])');
                 out.push('  '+tmpvar+'.set_value('+val+');');
             }
             else if (refarg instanceof ArgStruct) {
                 subargs = refarg.form.args;
                 out.push('  '+tmpvar+' = new Glk.RefStruct('+subargs.length+');');
                 for (jx=0; jx<subargs.length; jx++) {
-                    val = convert_arg(subargs[jx], arg.passin, 'this.VM.ReadStructField(callargs['+argpos+'], '+jx+')');
+                    val = convert_arg(subargs[jx], arg.passin, 'self.VM.ReadStructField(callargs['+argpos+'], '+jx+')');
                     out.push('  '+tmpvar+'.push_field('+val+');');
                 }
             }
@@ -570,15 +570,15 @@ function build_function(func) {
                 locals['ix'] = true;
                 locals['jx'] = true;
                 out.push('  for (ix=0, jx=callargs['+argpos+']; ix<glklen; ix++, jx+='+refarg.refsize+') {');
-                val = convert_arg(refarg, true, 'this.VM.Read'+refarg.macro+'(jx)');
+                val = convert_arg(refarg, true, 'self.VM.Read'+refarg.macro+'(jx)');
                 out.push('    '+tmpvar+'[ix] = '+val+';');
                 out.push('  }');
             }
             if (arg.retained) {
                 if (arraycount == 0)
-                    out.push('  this.temp_arg_arrays.length = 0;');
+                    out.push('  self.temp_arg_arrays.length = 0;');
                 arraycount += 1;
-                out.push('  this.make_arg_array('+tmpvar+', callargs['+argpos+'], glklen, this.'+refarg.literal+');');
+                out.push('  self.make_arg_array('+tmpvar+', callargs['+argpos+'], glklen, self.'+refarg.literal+');');
             }
             out.push('}');
             argpos += 2;
@@ -597,9 +597,9 @@ function build_function(func) {
             }
             out.push(tmpvar+' = Array();');
             out.push('jx = callargs['+argpos+'];');
-            out.push('if (this.VM.ReadByte(jx) != '+checkbyte+') throw("glk '+func.name+': string argument must be unencoded");');
+            out.push('if (self.VM.ReadByte(jx) != '+checkbyte+') throw("glk '+func.name+': string argument must be unencoded");');
             out.push('for (jx+='+arg.refsize+'; true; jx+='+arg.refsize+') {');
-            out.push('  ix = this.VM.Read'+arg.macro+'(jx);');
+            out.push('  ix = self.VM.Read'+arg.macro+'(jx);');
             out.push('  if (ix == 0) break;');
             out.push('  '+tmpvar+'.push(ix);');
             out.push('}');
@@ -628,7 +628,7 @@ function build_function(func) {
         /* If the call blocks, we need to stash away the arguments and
            then return early. */
         out.push('if (glkret === Glk.DidNotReturn) {');
-        out.push('  this.set_blocked_selector(' + func.id + ', callargs);');
+        out.push('  self.set_blocked_selector(' + func.id + ', callargs);');
         out.push('  return glkret;');
         out.push('}');
     }
@@ -653,13 +653,13 @@ function build_function(func) {
                     || (refarg instanceof ArgChar)
                     || (refarg instanceof ArgClass)) {
                     val = unconvert_arg(refarg, tmpvar+'.get_value()');
-                    out.push('  this.VM.WriteWord(callargs['+argpos+'], '+val+');');
+                    out.push('  self.VM.WriteWord(callargs['+argpos+'], '+val+');');
                 }
                 else if (refarg instanceof ArgStruct) {
                     subargs = refarg.form.args;
                     for (jx=0; jx<subargs.length; jx++) {
                         val = unconvert_arg(subargs[jx], tmpvar+'.get_field('+jx+')');
-                        out.push('  this.VM.WriteStructField(callargs['+argpos+'], '+jx+', '+val+');');
+                        out.push('  self.VM.WriteStructField(callargs['+argpos+'], '+jx+', '+val+');');
                     }
                 }
                 else {
@@ -677,7 +677,7 @@ function build_function(func) {
                 locals['jx'] = true;
                 out.push('  for (ix=0, jx=callargs['+argpos+']; ix<glklen; ix++, jx+='+refarg.refsize+') {');
                 val = unconvert_arg(refarg, tmpvar+'[ix]');
-                out.push('    this.VM.Write'+refarg.macro+'(jx, '+val+')');
+                out.push('    self.VM.Write'+refarg.macro+'(jx, '+val+')');
                 out.push('  }');
                 out.push('}');
             }
@@ -694,7 +694,7 @@ function build_function(func) {
     /* Discard any argument arrays. (Retained ones have already been
        added to retained_arrays.) */
     if (arraycount != 0)
-        out.push('this.temp_arg_arrays.length = 0;');
+        out.push('self.temp_arg_arrays.length = 0;');
 
     /* Return the return value. */
 
