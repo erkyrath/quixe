@@ -59,6 +59,9 @@
 
 Quixe = function() {
 
+/* Create the "self" object. (No relation to the Inform "self" global.) */
+var self = {};
+
 /* This is called by the page (or the page's loader library) when it
    starts up. It must be called before quixe_init().
 
@@ -1237,7 +1240,7 @@ function oputil_perform_jump(context, operand, unconditional) {
         else {
             oputil_unload_offstate(context, !unconditional);
             var newpc = (context.cp+val-2) >>>0;
-            context.code.push("pc = "+newpc+";");
+            context.code.push("self.pc = "+newpc+";");
             context.vmfunc.pathaddrs[newpc] = true;
         }
     }
@@ -1248,7 +1251,7 @@ function oputil_perform_jump(context, operand, unconditional) {
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
-        context.code.push("pc = ("+context.cp+"+("+operand+")-2) >>>0;");
+        context.code.push("self.pc = ("+context.cp+"+("+operand+")-2) >>>0;");
         context.code.push("}");
     }
     context.code.push("return;");
@@ -1380,11 +1383,11 @@ var opcode_table = {
     0x104: function(context, operands) { /* jumpabs */
         if (quot_isconstant(operands[0])) {
             var newpc = Number(operands[0]);
-            context.code.push("pc = "+newpc+";");
+            context.code.push("self.pc = "+newpc+";");
             context.vmfunc.pathaddrs[newpc] = true;
         }
         else {
-            context.code.push("pc = "+operands[0]+";");
+            context.code.push("self.pc = "+operands[0]+";");
         }
         oputil_unload_offstate(context);
         context.code.push("return;");
@@ -2031,7 +2034,7 @@ var opcode_table = {
         /* Failed to restore. Put back the PC, in case it got overwritten. */
         oputil_store(context, operands[1], "1");
         oputil_unload_offstate(context); // again
-        context.code.push("pc = "+context.cp+";");
+        context.code.push("self.pc = "+context.cp+";");
         context.code.push("}");
         context.code.push("return;");
         context.path_ends = true;
@@ -2057,7 +2060,7 @@ var opcode_table = {
         /* Failed to restore. Put back the PC, in case it got overwritten. */
         oputil_store(context, operands[0], "1");
         oputil_unload_offstate(context); // again
-        context.code.push("pc = "+context.cp+";");
+        context.code.push("self.pc = "+context.cp+";");
         context.code.push("}");
         context.code.push("return;");
         context.path_ends = true;
@@ -2246,7 +2249,7 @@ var opcode_table = {
             /* We can't compile with an unknown iosysmode. So, stop 
                compiling. */
             oputil_unload_offstate(context);
-            context.code.push("pc = "+context.cp+";");
+            context.code.push("self.pc = "+context.cp+";");
             context.code.push("return;");
             context.path_ends = true;
         }
@@ -2563,7 +2566,7 @@ var opcode_table = {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
             context.code.push("  resumefuncop = "+oputil_record_funcop(operands[2])+";");
             context.code.push("  resumevalue = 0;");
-            context.code.push("  pc = "+context.cp+";");
+            context.code.push("  self.pc = "+context.cp+";");
             context.code.push("  done_executing = true;");
             context.code.push("  return;");
             context.code.push("}");
@@ -3457,7 +3460,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
            address. If so, no need to compile further. */
         if (vmfunc.pathaddrs[cp] && !context.path_ends) {
             ;;;context.code.push("// reached jump-in point"); //debug
-            context.code.push("pc="+cp+";");
+            context.code.push("self.pc="+cp+";");
             oputil_unload_offstate(context);
             context.code.push("return;");
             context.path_ends = true;
@@ -3515,7 +3518,7 @@ function enter_function(addr, argcount) {
             vmfunc_table[addr] = vmfunc;
     }
 
-    pc = vmfunc.startpc;
+    self.pc = vmfunc.startpc;
 
     var newframe = new StackFrame(vmfunc);
     newframe.depth = stack.length;
@@ -3614,7 +3617,7 @@ function pop_callstub(val) {
     if (framestart != frame.framestart)
         fatal_error("Call stub frameptr (" + framestart + ") " +
             "does not match frame (" + frame.framestart + ")");
-    pc = frame.valstack.pop();
+    self.pc = frame.valstack.pop();
     destaddr = frame.valstack.pop();
     desttype = frame.valstack.pop();
 
@@ -3638,25 +3641,25 @@ function pop_callstub(val) {
     case 0x10:
         /* This call stub was pushed during a string-decoding operation!
            We have to restart it. (Note that the return value is discarded.) */
-        stream_string(0, pc, 0xE1, destaddr); 
+        stream_string(0, self.pc, 0xE1, destaddr); 
         return;
 
     case 0x12:
         /* This call stub was pushed during a number-printing operation.
            Restart that. (Return value discarded.) */
-        stream_num(0, pc, true, destaddr);
+        stream_num(0, self.pc, true, destaddr);
         return;
 
     case 0x13:
         /* This call stub was pushed during a C-string printing operation.
            We have to restart it. (Note that the return value is discarded.) */
-        stream_string(0, pc, 0xE0, destaddr); 
+        stream_string(0, self.pc, 0xE0, destaddr); 
         return;
 
     case 0x14:
         /* This call stub was pushed during a Unicode printing operation.
            We have to restart it. (Note that the return value is discarded.) */
-        stream_string(0, pc, 0xE2, destaddr); 
+        stream_string(0, self.pc, 0xE2, destaddr); 
         return;
 
     default:
@@ -4439,7 +4442,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
         /* String terminated. Carry out a pop_callstub_string(). */
         if (frame.valstack.pop() != frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
-        pc = frame.valstack.pop();
+        self.pc = frame.valstack.pop();
         destaddr = frame.valstack.pop();
         desttype = frame.valstack.pop();
         if (desttype != 0x11) 
@@ -4513,7 +4516,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         /* String terminated. Carry out a pop_callstub_string(). */
         if (frame.valstack.pop() != frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
-        pc = frame.valstack.pop();
+        self.pc = frame.valstack.pop();
         destaddr = frame.valstack.pop();
         desttype = frame.valstack.pop();
 
@@ -4528,7 +4531,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
             substring = true;
             bitnum = destaddr;
             inmiddle = 0xE1;
-            addr = pc;
+            addr = self.pc;
             //qlog("### end; pop to addr="+addr+"/"+inmiddle+"/"+bitnum);
         }
         else {
@@ -5359,7 +5362,7 @@ var origstringtable;
 var checksum;
 
 /* The VM registers. */
-var pc;
+self.pc = null;
 var stringtable;
 var endmem;        // always memmap.length
 var protectstart, protectend;
@@ -5397,7 +5400,7 @@ function setup_vm() {
     memmap = null;
     stack = [];
     frame = null;
-    pc = 0;
+    self.pc = 0;
 
     if (game_image.length < 36)
         fatal_error("This is too short to be a valid Glulx file.");
@@ -5476,7 +5479,7 @@ function vm_restart() {
 
     stack = [];
     frame = null;
-    pc = 0;
+    self.pc = 0;
     iosysmode = 0;
     iosysrock = 0;
     set_string_table(origstringtable);
@@ -5779,7 +5782,7 @@ function vm_saveundo() {
     var snapshot = {};
     snapshot.ram = memmap.slice(ramstart);
     snapshot.endmem = endmem;
-    snapshot.pc = pc;
+    snapshot.pc = self.pc;
     snapshot.stack = [];
     for (var i = 0; i < stack.length; i++) {
         snapshot.stack[i] = clone_stackframe(stack[i]);
@@ -5809,7 +5812,7 @@ function vm_restoreundo() {
     endmem = snapshot.endmem;
     stack = snapshot.stack;
     frame = stack[stack.length - 1];
-    pc = snapshot.pc;
+    self.pc = snapshot.pc;
 
     heapstart = snapshot.heapstart;
     usedlist = snapshot.usedlist;
@@ -6294,16 +6297,16 @@ function execute_loop() {
     pathstart = new Date().getTime(); //###stats
 
     while (!done_executing) {
-        //qlog("### pc now " + pc.toString(16));
+        //qlog("### pc now " + self.pc.toString(16));
         vmfunc = frame.vmfunc;
         pathtab = vmfunc[iosysmode];
-        path = pathtab[pc];
+        path = pathtab[self.pc];
         if (path === undefined) {
-            vmfunc.pathaddrs[pc] = true;
-            path = compile_path(vmfunc, pc, iosysmode);
+            vmfunc.pathaddrs[self.pc] = true;
+            path = compile_path(vmfunc, self.pc, iosysmode);
             paths_compiled++; //###stats
-            if (pc < ramstart) {
-                pathtab[pc] = path;
+            if (self.pc < ramstart) {
+                pathtab[self.pc] = path;
                 paths_cached++; //###stats
             }
         }
