@@ -2155,7 +2155,7 @@ var opcode_table = {
             oputil_unload_offstate(context);
             context.code.push("tempcallargs[0]=(("+operands[0]+")&0xff);");
             oputil_push_callstub(context, "0,0");
-            context.code.push("enter_function(iosysrock, 1);");
+            context.code.push("enter_function(self.iosysrock, 1);");
             context.code.push("return;");
             context.path_ends = true;
             break;
@@ -2216,7 +2216,7 @@ var opcode_table = {
             oputil_unload_offstate(context);
             context.code.push("tempcallargs[0]=("+operands[0]+");");
             oputil_push_callstub(context, "0,0");
-            context.code.push("enter_function(iosysrock, 1);");
+            context.code.push("enter_function(self.iosysrock, 1);");
             context.code.push("return;");
             context.path_ends = true;
             break;
@@ -2235,8 +2235,8 @@ var opcode_table = {
     },
 
     0x148: function(context, operands) { /* getiosys */
-        context.code.push(operands[0]+"iosysmode)");
-        context.code.push(operands[1]+"iosysrock)");
+        context.code.push(operands[0]+"self.iosysmode)");
+        context.code.push(operands[1]+"self.iosysrock)");
     },
 
     0x149: function(context, operands) { /* setiosys */
@@ -4281,7 +4281,7 @@ function set_string_table(addr) {
     }
 
     decoding_tree = textenv.decoding_tree;
-    vmstring_table = textenv.vmstring_tables[iosysmode];
+    vmstring_table = textenv.vmstring_tables[self.iosysmode];
 }
 
 /* Set the VM iosys, and adjust the vmstring_table register appropriately. 
@@ -4302,14 +4302,14 @@ function set_iosys(mode, rock) {
         break;
     }
 
-    iosysmode = mode;
-    iosysrock = rock;
+    self.iosysmode = mode;
+    self.iosysrock = rock;
 
     var textenv = vmtextenv_table[self.stringtable];
     if (textenv === undefined)
         vmstring_table = undefined;
     else
-        vmstring_table = textenv.vmstring_tables[iosysmode];
+        vmstring_table = textenv.vmstring_tables[self.iosysmode];
 }
 
 /* The form of the decoding tree is a tree of arrays and leaf objects.
@@ -4406,9 +4406,9 @@ function build_decoding_tree(cablist, nodeaddr, depth, mask) {
 function stream_num(nextcp, value, inmiddle, charnum) {
     var buf = (value & 0xffffffff).toString(10);
 
-    //qlog("### stream_num(" + nextcp + ", " + buf + ", " + inmiddle + ", " + charnum + ") iosys " + iosysmode);
+    //qlog("### stream_num(" + nextcp + ", " + buf + ", " + inmiddle + ", " + charnum + ") iosys " + self.iosysmode);
 
-    switch (iosysmode) {
+    switch (self.iosysmode) {
     case 2: /* glk */
         if (charnum)
             buf = buf.slice(charnum);
@@ -4428,7 +4428,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
             // push_callstub(0x12, charnum+1);
             frame.valstack.push(0x12, charnum+1, value, frame.framestart);
             tempcallargs[0] = ch;
-            enter_function(iosysrock, 1);
+            enter_function(self.iosysrock, 1);
             return true;
         }
         break;
@@ -4465,7 +4465,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
     var addrkey, strop, res;
     var desttype, destaddr;
 
-    //qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16)+" in iosys "+iosysmode);
+    //qlog("### stream_string("+addr+") from cp="+nextcp+" $"+nextcp.toString(16)+" in iosys "+self.iosysmode);
 
     while (true) {
         strop = undefined;
@@ -4477,14 +4477,14 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         if (vmstring_table !== undefined && addr < ramstart) {
             strop = vmstring_table[addrkey];
             if (strop === undefined) {
-                strop = compile_string(iosysmode, addr, inmiddle, bitnum);
+                strop = compile_string(self.iosysmode, addr, inmiddle, bitnum);
                 vmstring_table[addrkey] = strop;
                 strings_compiled++; //###stats
                 strings_cached++; //###stats
             }
         }
         else {
-            strop = compile_string(iosysmode, addr, inmiddle, bitnum);
+            strop = compile_string(self.iosysmode, addr, inmiddle, bitnum);
             strings_compiled++; //###stats
         }
 
@@ -4653,7 +4653,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         oputil_push_substring_callstub(context);
                         oputil_push_callstub(context, "0x10,"+bitnum, addr);
                         context.code.push("tempcallargs[0]="+cab.value+";");
-                        context.code.push("enter_function(iosysrock, 1);");
+                        context.code.push("enter_function(self.iosysrock, 1);");
                         retval = true;
                         done = true;
                         break;
@@ -4795,7 +4795,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         oputil_push_substring_callstub(context);
                         oputil_push_callstub(context, "0x10,"+bitnum, addr);
                         context.code.push("tempcallargs[0]="+ch+";");
-                        context.code.push("enter_function(iosysrock, 1);");
+                        context.code.push("enter_function(self.iosysrock, 1);");
                         retval = true;
                         done = true;
                         break;
@@ -4813,7 +4813,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         oputil_push_substring_callstub(context);
                         oputil_push_callstub(context, "0x10,"+bitnum, addr);
                         context.code.push("tempcallargs[0]="+ch+";");
-                        context.code.push("enter_function(iosysrock, 1);");
+                        context.code.push("enter_function(self.iosysrock, 1);");
                         retval = true;
                         done = true;
                         break;
@@ -4926,7 +4926,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             if (ch != 0) {
                 oputil_push_callstub(context, "0x13,0", addr);
                 context.code.push("tempcallargs[0]="+ch+";");
-                context.code.push("enter_function(iosysrock, 1);");
+                context.code.push("enter_function(self.iosysrock, 1);");
                 retval = true;
             }
             else {
@@ -4955,7 +4955,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             if (ch != 0) {
                 oputil_push_callstub(context, "0x14,0", addr);
                 context.code.push("tempcallargs[0]="+ch+";");
-                context.code.push("enter_function(iosysrock, 1);");
+                context.code.push("enter_function(self.iosysrock, 1);");
                 retval = true;
             }
             else {
@@ -5367,7 +5367,8 @@ self.stringtable = null;
 self.endmem = null;        // always memmap.length
 self.protectstart = null;
 self.protectend = null;
-var iosysmode, iosysrock;
+self.iosysmode = null;
+self.iosysrock = null;
 
 var undostack;     // array of VM state snapshots.
 var resumefuncop, resumevalue;
@@ -5481,8 +5482,8 @@ function vm_restart() {
     stack = [];
     frame = null;
     self.pc = 0;
-    iosysmode = 0;
-    iosysrock = 0;
+    self.iosysmode = 0;
+    self.iosysrock = 0;
     set_string_table(origstringtable);
 
     /* Note that we do not reset the protection range. */
@@ -5598,7 +5599,7 @@ function vm_save(streamid) {
     ;;;    fatal_error("Memory length was incorrect before save."); //assert
     ;;;}
 
-    if (iosysmode != 2)
+    if (self.iosysmode != 2)
         fatal_error("Streams are only available in Glk I/O system.");
 
     var str = GiDispa.class_obj_from_id('stream', streamid);
@@ -5650,7 +5651,7 @@ function vm_save(streamid) {
    Returns true on success.
 */
 function vm_restore(streamid) {
-    if (iosysmode != 2)
+    if (self.iosysmode != 2)
         fatal_error("Streams are only available in Glk I/O system.");
 
     var str = GiDispa.class_obj_from_id('stream', streamid);
@@ -6300,11 +6301,11 @@ function execute_loop() {
     while (!done_executing) {
         //qlog("### pc now " + self.pc.toString(16));
         vmfunc = frame.vmfunc;
-        pathtab = vmfunc[iosysmode];
+        pathtab = vmfunc[self.iosysmode];
         path = pathtab[self.pc];
         if (path === undefined) {
             vmfunc.pathaddrs[self.pc] = true;
-            path = compile_path(vmfunc, self.pc, iosysmode);
+            path = compile_path(vmfunc, self.pc, self.iosysmode);
             paths_compiled++; //###stats
             if (self.pc < ramstart) {
                 pathtab[self.pc] = path;
