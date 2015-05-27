@@ -2227,7 +2227,7 @@ var opcode_table = {
     },
 
     0x140: function(context, operands) { /* getstringtbl */
-        context.code.push(operands[0]+"stringtable)");
+        context.code.push(operands[0]+"self.stringtable)");
     },
 
     0x141: function(context, operands) { /* setstringtbl */
@@ -4242,7 +4242,7 @@ function accel_helper_get_prop_new(obj, id)
 
 /* Set the current table address, and rebuild decoding tree. */
 function set_string_table(addr) {
-    if (stringtable == addr)
+    if (self.stringtable == addr)
         return;
 
     /* Drop the existing cache and tree. */
@@ -4250,23 +4250,23 @@ function set_string_table(addr) {
     vmstring_table = undefined;
 
     /* Set the register. */
-    stringtable = addr;
+    self.stringtable = addr;
 
-    if (stringtable == 0) {
+    if (self.stringtable == 0) {
         return;
     }
 
-    var textenv = vmtextenv_table[stringtable];
+    var textenv = vmtextenv_table[self.stringtable];
     if (textenv === undefined) {
         /* We will need a new VMTextEnv. */
         /* If the table is entirely in ROM, we can build a decoding tree.
            If not, leave it undefined in the VMTextEnv. */
         var dectab = undefined;
-        var tablelen = Mem4(stringtable);
-        var rootaddr = Mem4(stringtable+8);
-        var cache_stringtable = (stringtable+tablelen <= ramstart);
+        var tablelen = Mem4(self.stringtable);
+        var rootaddr = Mem4(self.stringtable+8);
+        var cache_stringtable = (self.stringtable+tablelen <= ramstart);
         if (cache_stringtable) {
-            //qlog("building decoding table at " + stringtable.toString(16) + ", length " + tablelen.toString(16));
+            //qlog("building decoding table at " + self.stringtable.toString(16) + ", length " + tablelen.toString(16));
             var tmparray = Array(1);
             //var pathstart = new Date().getTime(); //debug
             build_decoding_tree(tmparray, rootaddr, 4 /*CACHEBITS*/, 0);
@@ -4276,8 +4276,8 @@ function set_string_table(addr) {
             //qlog("done building; time = " + ((new Date().getTime())-pathstart) + " ms"); //debug
         }
 
-        textenv = new VMTextEnv(stringtable, dectab);
-        vmtextenv_table[stringtable] = textenv;
+        textenv = new VMTextEnv(self.stringtable, dectab);
+        vmtextenv_table[self.stringtable] = textenv;
     }
 
     decoding_tree = textenv.decoding_tree;
@@ -4305,7 +4305,7 @@ function set_iosys(mode, rock) {
     iosysmode = mode;
     iosysrock = rock;
 
-    var textenv = vmtextenv_table[stringtable];
+    var textenv = vmtextenv_table[self.stringtable];
     if (textenv === undefined)
         vmstring_table = undefined;
     else
@@ -4753,13 +4753,13 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             var node, byt, nodetype;
             var done = false;
             
-            if (!stringtable)
+            if (!self.stringtable)
                 fatal_error("Attempted to print a compressed string with no table set.");
             /* bitnum is already set right */
             byt = Mem1(addr);
             if (bitnum)
                 byt >>= bitnum;
-            node = Mem4(stringtable+8);
+            node = Mem4(self.stringtable+8);
 
             while (!done) {
                 nodetype = Mem1(node);
@@ -4800,7 +4800,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         done = true;
                         break;
                     }
-                    node = Mem4(stringtable+8);
+                    node = Mem4(self.stringtable+8);
                     break;
                 case 0x04: /* single Unicode character */
                     ch = Mem4(node);
@@ -4818,7 +4818,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         done = true;
                         break;
                     }
-                    node = Mem4(stringtable+8);
+                    node = Mem4(self.stringtable+8);
                     break;
                 case 0x03: /* C string */
                     switch (curiosys) {
@@ -4839,7 +4839,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         done = true;
                         break;
                     }
-                    node = Mem4(stringtable+8);
+                    node = Mem4(self.stringtable+8);
                     break;
                 case 0x05: /* C Unicode string */
                     switch (curiosys) {
@@ -4860,7 +4860,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         done = true;
                         break;
                     }
-                    node = Mem4(stringtable+8);
+                    node = Mem4(self.stringtable+8);
                     break;
                 case 0x08:
                 case 0x09:
@@ -5363,7 +5363,7 @@ var checksum;
 
 /* The VM registers. */
 self.pc = null;
-var stringtable;
+self.stringtable = null;
 var endmem;        // always memmap.length
 var protectstart, protectend;
 var iosysmode, iosysrock;
@@ -5445,7 +5445,7 @@ function setup_vm() {
     set_random(0);
 
     endmem = origendmem;
-    stringtable = 0;
+    self.stringtable = 0;
 
     undostack = [];
 
