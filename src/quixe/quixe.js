@@ -2067,10 +2067,10 @@ var opcode_table = {
     },
 
     0x127: function(context, operands) { /* protect */
-        context.code.push("protectstart="+operands[0]+";");
-        context.code.push("protectend=protectstart+("+operands[1]+");");
-        context.code.push("if (protectstart==protectend) {")
-        context.code.push("  protectstart=0; protectend=0;");
+        context.code.push("self.protectstart="+operands[0]+";");
+        context.code.push("self.protectend=self.protectstart+("+operands[1]+");");
+        context.code.push("if (self.protectstart==self.protectend) {")
+        context.code.push("  self.protectstart=0; self.protectend=0;");
         context.code.push("}");
     },
 
@@ -5365,7 +5365,8 @@ var checksum;
 self.pc = null;
 self.stringtable = null;
 self.endmem = null;        // always memmap.length
-var protectstart, protectend;
+self.protectstart = null;
+self.protectend = null;
 var iosysmode, iosysrock;
 
 var undostack;     // array of VM state snapshots.
@@ -5424,8 +5425,8 @@ function setup_vm() {
     checksum = ByteRead4(game_image, 32);
 
     /* Set the protection range to (0, 0), meaning "off". */
-    protectstart = 0;
-    protectend = 0;
+    self.protectstart = 0;
+    self.protectend = 0;
 
     if (ramstart < 0x100 
         || endgamefile < ramstart 
@@ -5862,16 +5863,16 @@ function change_memsize(newlen, internal) {
    then call paste_protected_range() afterwards.
 */
 function copy_protected_range() {
-    if (protectstart >= protectend)
+    if (self.protectstart >= self.protectend)
         return null;
 
-    var len = protectend - protectstart;
+    var len = self.protectend - self.protectstart;
     var obj = {
-        start: protectstart,
-        end: protectend,
+        start: self.protectstart,
+        end: self.protectend,
         len: len
     };
-    var arr = memmap.slice(protectstart, protectend);
+    var arr = memmap.slice(self.protectstart, self.protectend);
 
     /* It is legal to protect a range that falls outside of memory; the
        extra bits are presumed to be zero. */
