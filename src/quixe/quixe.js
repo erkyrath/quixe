@@ -104,7 +104,7 @@ function quixe_prepare(image, all_options) {
    be called first. Sorry about that.)
 */
 function quixe_init() {
-    if (vm_started) {
+    if (self.vm_started) {
         Glk.fatal_error("Quixe was inited twice!");
         return;
     }
@@ -130,7 +130,7 @@ function quixe_init() {
 */
 function quixe_resume() {
     try {
-        done_executing = vm_stopped;
+        self.done_executing = self.vm_stopped;
         execute_loop();
     }
     catch (ex) {
@@ -2567,7 +2567,7 @@ var opcode_table = {
             context.code.push("  resumefuncop = "+oputil_record_funcop(operands[2])+";");
             context.code.push("  resumevalue = 0;");
             context.code.push("  self.pc = "+context.cp+";");
-            context.code.push("  done_executing = true;");
+            context.code.push("  self.done_executing = true;");
             context.code.push("  return;");
             context.code.push("}");
         }
@@ -5337,11 +5337,11 @@ var opt_rethrow_exceptions = null;
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
-var vm_started = false; /* Quixe is initialized */
-var vm_stopped = false; /* Quixe has shut down */
+self.vm_started = false; /* Quixe is initialized */
+self.vm_stopped = false; /* Quixe has shut down */
 self.tempcallargs = null; /* only used momentarily, for enter_function() */
 self.tempglkargs = null; /* only used momentarily, for the @glk opcode */
-var done_executing; /* signals that we've quit *or* paused for interaction */
+self.done_executing = null; /* signals that we've quit *or* paused for interaction */
 
 var vmfunc_table; /* maps addresses to VMFuncs */
 var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
@@ -5396,7 +5396,7 @@ function setup_vm() {
     if (!game_image)
         fatal_error("There is no Glulx game file loaded.");
 
-    vm_started = true;
+    self.vm_started = true;
     resumefuncop = null;
     resumevalue = 0;
     memmap = null;
@@ -5437,7 +5437,7 @@ function setup_vm() {
     if (endgamefile != game_image.length)
         fatal_error("The game file length does not agree with the header.");
 
-    done_executing = false;
+    self.done_executing = false;
     vmfunc_table = {};
     vmtextenv_table = {};
     decoding_tree = undefined;
@@ -6298,7 +6298,7 @@ function execute_loop() {
 
     pathstart = new Date().getTime(); //###stats
 
-    while (!done_executing) {
+    while (!self.done_executing) {
         //qlog("### pc now " + self.pc.toString(16));
         vmfunc = frame.vmfunc;
         pathtab = vmfunc[self.iosysmode];
@@ -6315,15 +6315,15 @@ function execute_loop() {
         total_path_calls++; //###stats
         var res = path();
         if (res === VMStopped) {
-            done_executing = true;
-            vm_stopped = true;
+            self.done_executing = true;
+            self.vm_stopped = true;
         }
     }
 
     pathend = new Date().getTime(); //###stats
     total_execution_time += (pathend-pathstart) / 1000.0; //###stats
 
-    if (vm_stopped) {
+    if (self.vm_stopped) {
         /* If the library resumes us after exiting, we'll call glk_exit()
            again. That's the library's problem. */
         Glk.glk_exit();
