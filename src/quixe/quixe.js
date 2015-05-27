@@ -351,42 +351,42 @@ function QuoteMem4(addr) {
 
 function ReadArgByte(addr) {
     if (addr == 0xffffffff)
-        return frame.valstack.pop() & 0xFF;
+        return self.frame.valstack.pop() & 0xFF;
     else
         return Mem1(addr);
 }
 
 function WriteArgByte(addr, val) {
     if (addr == 0xffffffff)
-        frame.valstack.push(val & 0xFF);
+        self.frame.valstack.push(val & 0xFF);
     else
         MemW1(addr, val);
 }
 
 function ReadArgWord(addr) {
     if (addr == 0xffffffff)
-        return frame.valstack.pop();
+        return self.frame.valstack.pop();
     else
         return Mem4(addr);
 }
 
 function WriteArgWord(addr, val) {
     if (addr == 0xffffffff)
-        frame.valstack.push(val);
+        self.frame.valstack.push(val);
     else
         MemW4(addr, val);
 }
 
 function ReadStructField(addr, fieldnum) {
     if (addr == 0xffffffff)
-        return frame.valstack.pop();
+        return self.frame.valstack.pop();
     else
         return Mem4(addr + 4*fieldnum);
 }
 
 function WriteStructField(addr, fieldnum, val) {
     if (addr == 0xffffffff)
-        frame.valstack.push(val);
+        self.frame.valstack.push(val);
     else
         MemW4(addr + 4*fieldnum, val);
 }
@@ -1045,13 +1045,13 @@ function oputil_store(context, funcop, operand) {
         store_offloc_value(context, funcop.addr, undefined);
         /* Store directly to the locals array. */
         if (funcop.argsize == 4) {
-            context.code.push("frame.locals["+funcop.addr+"]=("+operand+");");
+            context.code.push("self.frame.locals["+funcop.addr+"]=("+operand+");");
         }
         else if (funcop.argsize == 2) {
-            context.code.push("frame.locals["+funcop.addr+"]=(0xffff &"+operand+");");
+            context.code.push("self.frame.locals["+funcop.addr+"]=(0xffff &"+operand+");");
         }
         else {
-            context.code.push("frame.locals["+funcop.addr+"]=(0xff &"+operand+");");
+            context.code.push("self.frame.locals["+funcop.addr+"]=(0xff &"+operand+");");
         }
         return;
 
@@ -1082,7 +1082,7 @@ function oputil_store(context, funcop, operand) {
 function oputil_push_callstub(context, operand, addr) {
     if (addr === undefined)
         addr = context.cp;
-    context.code.push("frame.valstack.push("+operand+","+addr+",frame.framestart);");
+    context.code.push("self.frame.valstack.push("+operand+","+addr+",self.frame.framestart);");
 }
 
 /* Conditionally push a type-0x11 call stub. This logically happens at
@@ -1095,7 +1095,7 @@ function oputil_push_callstub(context, operand, addr) {
 */
 function oputil_push_substring_callstub(context) {
     context.code.push("if (!substring) { substring=true;");
-    context.code.push("frame.valstack.push(0x11,0,nextcp,frame.framestart);");
+    context.code.push("self.frame.valstack.push(0x11,0,nextcp,self.frame.framestart);");
     context.code.push("}");
 }
 
@@ -1112,12 +1112,12 @@ function oputil_unload_offstate(context, keepstack) {
     var ix;
     ;;;context.code.push("// unload offstate: " + context.offstack.length + " stack" + (context.offloc.length ? ", plus locs" : "") + (keepstack ? " (conditional)" : "")); //debug
     if (context.offstack.length) {
-        context.code.push("frame.valstack.push("+context.offstack.join(",")+");");
+        context.code.push("self.frame.valstack.push("+context.offstack.join(",")+");");
     }
     if (context.offloc.length) {
         for (ix=0; ix<context.offloc.length; ix++) {
             if (context.offloc[ix] !== undefined && context.offlocdirty[ix]) {
-                context.code.push("frame.locals["+ix+"]="+context.offloc[ix]+";");
+                context.code.push("self.frame.locals["+ix+"]="+context.offloc[ix]+";");
             }
         }
     }
@@ -1484,7 +1484,7 @@ var opcode_table = {
                     context.code.push("self.tempcallargs["+ix+"]="+holdvar+";");
                 }
                 else {
-                    context.code.push("self.tempcallargs["+ix+"]=frame.valstack.pop();");
+                    context.code.push("self.tempcallargs["+ix+"]=self.frame.valstack.pop();");
                 }
             }
             oputil_unload_offstate(context);
@@ -1492,7 +1492,7 @@ var opcode_table = {
         else {
             context.varsused["ix"] = true;
             oputil_unload_offstate(context);
-            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempcallargs[ix]=frame.valstack.pop(); }");
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempcallargs[ix]=self.frame.valstack.pop(); }");
         }
         oputil_push_callstub(context, operands[2]);
         context.code.push("enter_function("+operands[0]+", "+operands[1]+");");
@@ -1510,7 +1510,7 @@ var opcode_table = {
                     context.code.push("self.tempcallargs["+ix+"]="+holdvar+";");
                 }
                 else {
-                    context.code.push("self.tempcallargs["+ix+"]=frame.valstack.pop();");
+                    context.code.push("self.tempcallargs["+ix+"]=self.frame.valstack.pop();");
                 }
             }
             oputil_unload_offstate(context);
@@ -1518,7 +1518,7 @@ var opcode_table = {
         else {
             context.varsused["ix"] = true;
             oputil_unload_offstate(context);
-            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempcallargs[ix]=frame.valstack.pop(); }");
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempcallargs[ix]=self.frame.valstack.pop(); }");
         }
         /* Note that tailcall in the top-level function will not work.
            But why would you do that? */
@@ -1582,7 +1582,7 @@ var opcode_table = {
     0x32: function(context, operands) { /* catch */
         oputil_unload_offstate(context);
         oputil_push_callstub(context, operands[0]);
-        context.code.push("store_operand("+operands[0]+",frame.framestart+frame.framelen+4*frame.valstack.length);");
+        context.code.push("store_operand("+operands[0]+",self.frame.framestart+self.frame.framelen+4*self.frame.valstack.length);");
         oputil_perform_jump(context, operands[1], true);
         context.path_ends = true;
     },
@@ -1859,9 +1859,9 @@ var opcode_table = {
         var val;
         var count = context.offstack.length;
         if (count)
-            val = "frame.valstack.length+" + count;
+            val = "self.frame.valstack.length+" + count;
         else
-            val = "frame.valstack.length";
+            val = "self.frame.valstack.length";
         oputil_store(context, operands[0], val);
     },
 
@@ -1873,12 +1873,12 @@ var opcode_table = {
                 val = context.offstack[context.offstack.length-(pos+1)];
             }
             else {
-                val = "frame.valstack[frame.valstack.length-"+((pos+1)-context.offstack.length)+"]";
+                val = "self.frame.valstack[self.frame.valstack.length-"+((pos+1)-context.offstack.length)+"]";
             }
         }
         else {
             oputil_unload_offstate(context);
-            val = "frame.valstack[frame.valstack.length-("+operands[0]+"+1)]";
+            val = "self.frame.valstack[self.frame.valstack.length-("+operands[0]+"+1)]";
         }
         oputil_store(context, operands[1], val);
     },
@@ -1910,9 +1910,9 @@ var opcode_table = {
         context.code.push("vals1 = "+sign0+" - (-("+sign1+")) % "+sign0+";");
         context.code.push("}");
         context.code.push("if (vals1) {");
-        context.code.push("pos = frame.valstack.length - "+sign0+";");
-        context.code.push("roll = frame.valstack.slice(frame.valstack.length-vals1, frame.valstack.length).concat(frame.valstack.slice(pos, frame.valstack.length-vals1));");
-        context.code.push("for (ix=0; ix<"+sign0+"; ix++) { frame.valstack[pos+ix] = roll[ix]; }");
+        context.code.push("pos = self.frame.valstack.length - "+sign0+";");
+        context.code.push("roll = self.frame.valstack.slice(self.frame.valstack.length-vals1, self.frame.valstack.length).concat(self.frame.valstack.slice(pos, self.frame.valstack.length-vals1));");
+        context.code.push("for (ix=0; ix<"+sign0+"; ix++) { self.frame.valstack[pos+ix] = roll[ix]; }");
         context.code.push("roll = undefined;");
         context.code.push("}");
         context.code.push("}");
@@ -1926,14 +1926,14 @@ var opcode_table = {
             for (ix=0; ix<pos; ix++) {
                 holdvar = alloc_holdvar(context, true);
                 context.offstack.push(holdvar);
-                context.code.push(holdvar+"=frame.valstack[frame.valstack.length-"+(pos-ix)+"];");
+                context.code.push(holdvar+"=self.frame.valstack[self.frame.valstack.length-"+(pos-ix)+"];");
             }
         }
         else {
             context.varsused["ix"] = true;
             context.varsused["jx"] = true;
-            context.code.push("jx = frame.valstack.length-("+operands[0]+");");
-            context.code.push("for (ix=0; ix<"+operands[0]+"; ix++) { frame.valstack.push(frame.valstack[jx+ix]); }");
+            context.code.push("jx = self.frame.valstack.length-("+operands[0]+");");
+            context.code.push("for (ix=0; ix<"+operands[0]+"; ix++) { self.frame.valstack.push(self.frame.valstack[jx+ix]); }");
         }
     },
 
@@ -2546,7 +2546,7 @@ var opcode_table = {
                     context.code.push("self.tempglkargs["+ix+"]="+holdvar+";");
                 }
                 else {
-                    context.code.push("self.tempglkargs["+ix+"]=frame.valstack.pop();");
+                    context.code.push("self.tempglkargs["+ix+"]=self.frame.valstack.pop();");
                 }
             }
             oputil_unload_offstate(context);
@@ -2554,7 +2554,7 @@ var opcode_table = {
         else {
             context.varsused["ix"] = true;
             oputil_unload_offstate(context);
-            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempglkargs[ix]=frame.valstack.pop(); }");
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempglkargs[ix]=self.frame.valstack.pop(); }");
         }
         /* In the blocking case, we don't perform a normal store; we write a
            literal form of operands[2] into a global and get out. Fortunately
@@ -2676,7 +2676,7 @@ function transfer_to_offstack(context, count) {
     while (context.offstack.length < count) {
         holdvar = alloc_holdvar(context, true);
         context.offstack.unshift(holdvar);
-        context.code.push(holdvar+"=frame.valstack.pop();");
+        context.code.push(holdvar+"=self.frame.valstack.pop();");
     }
 }
 
@@ -2775,7 +2775,7 @@ function parse_operands(context, cp, oplist, operands) {
                 }
                 else {
                     holdvar = alloc_holdvar(context);
-                    context.code.push(holdvar+"=frame.valstack.pop();");
+                    context.code.push(holdvar+"=self.frame.valstack.pop();");
                     operands[ix] = holdvar;
                 }
                 continue;
@@ -2827,13 +2827,13 @@ function parse_operands(context, cp, oplist, operands) {
                 }
 
                 if (oplist.argsize == 4) {
-                    value = "frame.locals["+addr+"]";
+                    value = "self.frame.locals["+addr+"]";
                 }
                 else if (oplist.argsize == 2) {
-                    value = "frame.locals["+addr+"] & 0xffff";
+                    value = "self.frame.locals["+addr+"] & 0xffff";
                 }
                 else {
-                    value = "frame.locals["+addr+"] & 0xff";
+                    value = "self.frame.locals["+addr+"] & 0xff";
                 }
                 holdvar = alloc_holdvar(context, true);
                 context.code.push(holdvar+"=("+value+");");
@@ -2902,7 +2902,7 @@ function parse_operands(context, cp, oplist, operands) {
                     operands[ix] = pop_offstack_holdvar(context);
                 }
                 else {
-                    operands[ix] = "frame.valstack.pop()";
+                    operands[ix] = "self.frame.valstack.pop()";
                 }
                 continue;
                 
@@ -2953,13 +2953,13 @@ function parse_operands(context, cp, oplist, operands) {
                 }
 
                 if (oplist.argsize == 4) {
-                    value = "frame.locals["+addr+"]";
+                    value = "self.frame.locals["+addr+"]";
                 }
                 else if (oplist.argsize == 2) {
-                    value = "frame.locals["+addr+"] & 0xffff";
+                    value = "self.frame.locals["+addr+"] & 0xffff";
                 }
                 else {
-                    value = "frame.locals["+addr+"] & 0xff";
+                    value = "self.frame.locals["+addr+"] & 0xff";
                 }
                 holdvar = alloc_holdvar(context, true);
                 context.code.push(holdvar+"=("+value+");");
@@ -3055,11 +3055,11 @@ function parse_operands(context, cp, oplist, operands) {
                 }
                 else if (oplist.argsize == 2) {
                     store_offloc_value(context, addr, undefined);
-                    operands[ix] = "frame.locals["+addr+"]=(0xffff &";
+                    operands[ix] = "self.frame.locals["+addr+"]=(0xffff &";
                 }
                 else {
                     store_offloc_value(context, addr, undefined);
-                    operands[ix] = "frame.locals["+addr+"]=(0xff &";
+                    operands[ix] = "self.frame.locals["+addr+"]=(0xff &";
                 }
                 continue;
             }
@@ -3525,16 +3525,16 @@ function enter_function(addr, argcount) {
     if (stack.length == 0)
         newframe.framestart = 0;
     else
-        newframe.framestart = frame.framestart + frame.framelen + 4*frame.valstack.length;
+        newframe.framestart = self.frame.framestart + self.frame.framelen + 4*self.frame.valstack.length;
     stack.push(newframe);
-    frame = newframe;
+    self.frame = newframe;
 
     if (vmfunc.functype == 0xC0) {
         /* Push the function arguments on the stack. The locals have already
            been zeroed. */
         for (ix=argcount-1; ix >= 0; ix--)
-            frame.valstack.push(self.tempcallargs[ix]);
-        frame.valstack.push(argcount);
+            self.frame.valstack.push(self.tempcallargs[ix]);
+        self.frame.valstack.push(argcount);
     }
     else {
         /* Copy in function arguments. This is a bit gross, since we have to
@@ -3546,15 +3546,15 @@ function enter_function(addr, argcount) {
             if (form === undefined)
                 break;
             if (form.size == 4)
-                frame.locals[form.pos] = self.tempcallargs[ix];
+                self.frame.locals[form.pos] = self.tempcallargs[ix];
             else if (form.size == 2)
-                frame.locals[form.pos] = self.tempcallargs[ix] & 0xFFFF;
+                self.frame.locals[form.pos] = self.tempcallargs[ix] & 0xFFFF;
             else if (form.size == 1)
-                frame.locals[form.pos] = self.tempcallargs[ix] & 0xFF;
+                self.frame.locals[form.pos] = self.tempcallargs[ix] & 0xFF;
         }
     }
 
-    //qlog("### framestart " + frame.framestart + ", filled-in locals " + qobjdump(frame.locals) + ", valstack " + qobjdump(frame.valstack));
+    //qlog("### framestart " + self.frame.framestart + ", filled-in locals " + qobjdump(self.frame.locals) + ", valstack " + qobjdump(self.frame.valstack));
 }
 
 /* Dummy value, returned by path functions on @quit or when leave_function()
@@ -3566,16 +3566,16 @@ var VMStopped = { dummy: 'The top-level function has returned.' };
    the VM).
 */
 function leave_function() {
-    var olddepth = frame.depth;
+    var olddepth = self.frame.depth;
 
     stack.pop();
     if (stack.length == 0) {
-        frame = null;
+        self.frame = null;
         return true;
     }
-    frame = stack[stack.length-1];
+    self.frame = stack[stack.length-1];
 
-    if (frame.depth != olddepth-1)
+    if (self.frame.depth != olddepth-1)
         fatal_error("Stack inconsistent after function exit.");
 }
 
@@ -3586,18 +3586,18 @@ function pop_stack_to(val) {
         stack.pop();
     if (stack.length == 0)
         fatal_error("Stack evaporated during throw.");
-    frame = stack[stack.length-1];
+    self.frame = stack[stack.length-1];
 
-    val -= (frame.framestart+frame.framelen);
+    val -= (self.frame.framestart+self.frame.framelen);
     if (val < 0)
         fatal_error("Attempted to throw below the frame value stack.");
     if (val & 3)
         fatal_error("Attempted to throw to an unaligned address.");
     val >>>= 2;
-    if (val > frame.valstack.length)
+    if (val > self.frame.valstack.length)
         fatal_error("Attempted to throw beyond the frame value stack.");
     /* Down to the correct position in the valstack. */
-    frame.valstack.length = val;
+    self.frame.valstack.length = val;
 }
 
 /* Pop a callstub off the stack, and store a value at the appropriate 
@@ -3613,13 +3613,13 @@ function pop_callstub(val) {
     if (isNaN(val))
         fatal_error("Function returned undefined value.");
 
-    var framestart = frame.valstack.pop();
-    if (framestart != frame.framestart)
+    var framestart = self.frame.valstack.pop();
+    if (framestart != self.frame.framestart)
         fatal_error("Call stub frameptr (" + framestart + ") " +
-            "does not match frame (" + frame.framestart + ")");
-    self.pc = frame.valstack.pop();
-    destaddr = frame.valstack.pop();
-    desttype = frame.valstack.pop();
+            "does not match frame (" + self.frame.framestart + ")");
+    self.pc = self.frame.valstack.pop();
+    destaddr = self.frame.valstack.pop();
+    desttype = self.frame.valstack.pop();
 
     switch (desttype) {
     case 0:
@@ -3628,10 +3628,10 @@ function pop_callstub(val) {
         MemW4(destaddr, val);
         return;
     case 2:
-        frame.locals[destaddr] = val;
+        self.frame.locals[destaddr] = val;
         return;
     case 3:
-        frame.valstack.push(val);
+        self.frame.valstack.push(val);
         return;
 
     case 0x11:
@@ -3678,10 +3678,10 @@ function store_operand(desttype, destaddr, val) {
         MemW4(destaddr, val);
         return;
     case 2:
-        frame.locals[destaddr] = val;
+        self.frame.locals[destaddr] = val;
         return;
     case 3:
-        frame.valstack.push(val);
+        self.frame.valstack.push(val);
         return;
     default:
         fatal_error("Unrecognized desttype in callstub.", desttype);
@@ -3698,7 +3698,7 @@ function store_operand_by_funcop(funcop, val) {
     switch (funcop.mode) {
 
     case 8: /* push on stack */
-        frame.valstack.push(val);
+        self.frame.valstack.push(val);
         return;
 
     case 0: /* discard value */
@@ -3706,13 +3706,13 @@ function store_operand_by_funcop(funcop, val) {
 
     case 11: /* The local-variable cases. */
         if (funcop.argsize == 4) {
-            frame.locals[funcop.addr] = (val);
+            self.frame.locals[funcop.addr] = (val);
         }
         else if (funcop.argsize == 2) {
-            frame.locals[funcop.addr] = (0xffff & val);
+            self.frame.locals[funcop.addr] = (0xffff & val);
         }
         else {
-            frame.locals[funcop.addr] = (0xff & val);
+            self.frame.locals[funcop.addr] = (0xff & val);
         }
         return;
 
@@ -4418,7 +4418,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
     case 1: /* filter */
         if (!inmiddle) {
             // push_callstub(0x11, 0);
-            frame.valstack.push(0x11, 0, nextcp, frame.framestart);
+            self.frame.valstack.push(0x11, 0, nextcp, self.frame.framestart);
             inmiddle = true;
         }
         if (charnum < buf.length) {
@@ -4426,7 +4426,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
             /* Note that value is unsigned here -- only unsigned values
                go on the stack. */
             // push_callstub(0x12, charnum+1);
-            frame.valstack.push(0x12, charnum+1, value, frame.framestart);
+            self.frame.valstack.push(0x12, charnum+1, value, self.frame.framestart);
             self.tempcallargs[0] = ch;
             enter_function(self.iosysrock, 1);
             return true;
@@ -4440,11 +4440,11 @@ function stream_num(nextcp, value, inmiddle, charnum) {
     if (inmiddle) {
         var desttype, destaddr;
         /* String terminated. Carry out a pop_callstub_string(). */
-        if (frame.valstack.pop() != frame.framestart)
+        if (self.frame.valstack.pop() != self.frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
-        self.pc = frame.valstack.pop();
-        destaddr = frame.valstack.pop();
-        desttype = frame.valstack.pop();
+        self.pc = self.frame.valstack.pop();
+        destaddr = self.frame.valstack.pop();
+        desttype = self.frame.valstack.pop();
         if (desttype != 0x11) 
             fatal_error("String-on-string call stub while printing number.");
     }
@@ -4514,11 +4514,11 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         }
         
         /* String terminated. Carry out a pop_callstub_string(). */
-        if (frame.valstack.pop() != frame.framestart)
+        if (self.frame.valstack.pop() != self.frame.framestart)
             fatal_error("Call stub frameptr does not match frame.");
-        self.pc = frame.valstack.pop();
-        destaddr = frame.valstack.pop();
-        desttype = frame.valstack.pop();
+        self.pc = self.frame.valstack.pop();
+        destaddr = self.frame.valstack.pop();
+        desttype = self.frame.valstack.pop();
 
         if (desttype == 0x11) {
             /* The call stub for the top-level string. Return to the main
@@ -5346,7 +5346,7 @@ var opt_rethrow_exceptions = null;
 
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
-var frame; /* the top of the stack */
+self.frame = null; /* the top of the stack */
 self.vm_started = false; /* Quixe is initialized */
 self.vm_stopped = false; /* Quixe has shut down */
 self.tempcallargs = null; /* only used momentarily, for enter_function() */
@@ -5412,7 +5412,7 @@ function setup_vm() {
     self.resumevalue = 0;
     memmap = null;
     stack = [];
-    frame = null;
+    self.frame = null;
     self.pc = 0;
 
     if (game_image.length < 36)
@@ -5491,7 +5491,7 @@ function vm_restart() {
     paste_protected_range(protect);
 
     stack = [];
-    frame = null;
+    self.frame = null;
     self.pc = 0;
     self.iosysmode = 0;
     self.iosysrock = 0;
@@ -5735,16 +5735,16 @@ function vm_restore(streamid) {
     var stackchunk = chunks["Stks"];
     stack = [];
     while (stackchunk.length) {
-        frame = pop_deserialized_stackframe(stackchunk);
-        if (!frame) {
+        self.frame = pop_deserialized_stackframe(stackchunk);
+        if (!self.frame) {
             fatal_error("vm_restore failed: bad stack frame");
         }
-        stack.unshift(frame);
+        stack.unshift(self.frame);
     }
     for (var i = 0; i < stack.length; i++) {
         stack[i].depth = i;
     }
-    frame = stack[stack.length - 1];
+    self.frame = stack[stack.length - 1];
 
     var heapchunk = chunks["MAll"];
     if (heapchunk && heapchunk.length >= 8) {
@@ -5824,7 +5824,7 @@ function vm_restoreundo() {
     memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
     self.endmem = snapshot.endmem;
     stack = snapshot.stack;
-    frame = stack[stack.length - 1];
+    self.frame = stack[stack.length - 1];
     self.pc = snapshot.pc;
 
     heapstart = snapshot.heapstart;
@@ -6311,7 +6311,7 @@ function execute_loop() {
 
     while (!self.done_executing) {
         //qlog("### pc now " + self.pc.toString(16));
-        vmfunc = frame.vmfunc;
+        vmfunc = self.frame.vmfunc;
         pathtab = vmfunc[self.iosysmode];
         path = pathtab[self.pc];
         if (path === undefined) {
