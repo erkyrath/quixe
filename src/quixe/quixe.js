@@ -5325,6 +5325,16 @@ function encode_float(val) {
         return (expo << 23) | (fbits);
 }
 
+/* ----------------------------------------------------------------- */
+
+/* Now we declare all the VM global variables and constants.
+
+   Some of these are (private) variables; some live in the self object.
+   There's no real difference, except for the rule that JIT-compiled
+   functions cannot access private variables. I could have put all
+   of them in self, but I was lazy.
+*/
+
 /* Parameters set at prepare() time, including the game image and any
    execution options. */
 
@@ -5332,7 +5342,7 @@ var game_image = null; /* the original game image, as an array of bytes */
 var game_signature = null; /* string, containing the first 64 bytes of image */
 var opt_rethrow_exceptions = null;
 
-/* The VM state variables */
+/* The VM state variables. */
 
 var memmap; /* array of bytes */
 var stack; /* array of StackFrames */
