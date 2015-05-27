@@ -1947,7 +1947,7 @@ var opcode_table = {
     },
 
     0x102: function(context, operands) { /* getmemsize */
-        context.code.push(operands[0]+"endmem);");
+        context.code.push(operands[0]+"self.endmem);");
     },
 
     0x103: function(context, operands) { /* setmemsize */
@@ -3806,7 +3806,7 @@ var accel_func_map = {
         var addr = argv[0];
         if (addr < 36)
             return 0;
-        if (addr >= endmem)
+        if (addr >= self.endmem)
             return 0;
 
         var tb = Mem1(addr);
@@ -5364,7 +5364,7 @@ var checksum;
 /* The VM registers. */
 self.pc = null;
 self.stringtable = null;
-var endmem;        // always memmap.length
+self.endmem = null;        // always memmap.length
 var protectstart, protectend;
 var iosysmode, iosysrock;
 
@@ -5444,7 +5444,7 @@ function setup_vm() {
     tempglkargs = Array(1);
     set_random(0);
 
-    endmem = origendmem;
+    self.endmem = origendmem;
     self.stringtable = 0;
 
     undostack = [];
@@ -5471,7 +5471,7 @@ function vm_restart() {
     /* Build (or rebuild) main memory array. */
     memmap = null; // garbage-collect old memmap
     memmap = game_image.slice(0, endgamefile);
-    endmem = memmap.length;
+    self.endmem = memmap.length;
     change_memsize(origendmem, false);
     /* endmem is now origendmem */
 
@@ -5593,7 +5593,7 @@ function unpack_iff_chunks(bytes) {
    on success. 
 */
 function vm_save(streamid) {
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length != self.endmem) {
     ;;;    fatal_error("Memory length was incorrect before save."); //assert
     ;;;}
 
@@ -5615,7 +5615,7 @@ function vm_save(streamid) {
     cmem = compress_bytes(cmem);
     cmem.splice(0, 0, 0,0,0,0); // prepend four zeroes
     // Write in the endmem value
-    ByteWrite4(cmem, 0, endmem);
+    ByteWrite4(cmem, 0, self.endmem);
     chunks.push({key:"CMem", chunk:cmem});
     
     var stkschunk = [];
@@ -5715,7 +5715,7 @@ function vm_restore(streamid) {
         memmap[i] ^= game_image[i];
     }
 
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length != self.endmem) {
     ;;;    fatal_error("Memory length was incorrect after restore."); //assert
     ;;;}
 
@@ -5752,7 +5752,7 @@ function vm_restore(streamid) {
         for (var i = 0; i < usedlist.length; i++) {
             var addr = usedlist[i].addr;
             var size = usedlist[i].size;
-            if (addr < heapend || (addr + size) > endmem) {
+            if (addr < heapend || (addr + size) > self.endmem) {
                 fatal_error("vm_restore failed: corrupt dynamic heap");
             }
             if (addr > heapend) {
@@ -5760,8 +5760,8 @@ function vm_restore(streamid) {
             }
             heapend = addr + size;
         }
-        if (heapend < endmem) {
-            freelist.push(new HeapBlock(heapend, endmem - heapend));
+        if (heapend < self.endmem) {
+            freelist.push(new HeapBlock(heapend, self.endmem - heapend));
         }
     }
 
@@ -5775,13 +5775,13 @@ function vm_restore(streamid) {
    many on the stack, throw away the oldest.
 */
 function vm_saveundo() {
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length != self.endmem) {
     ;;;    fatal_error("Memory length was incorrect before saveundo."); //assert
     ;;;}
 
     var snapshot = {};
     snapshot.ram = memmap.slice(ramstart);
-    snapshot.endmem = endmem;
+    snapshot.endmem = self.endmem;
     snapshot.pc = self.pc;
     snapshot.stack = [];
     for (var i = 0; i < stack.length; i++) {
@@ -5809,7 +5809,7 @@ function vm_restoreundo() {
     var protect = copy_protected_range();
 
     memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
-    endmem = snapshot.endmem;
+    self.endmem = snapshot.endmem;
     stack = snapshot.stack;
     frame = stack[stack.length - 1];
     self.pc = snapshot.pc;
@@ -5820,7 +5820,7 @@ function vm_restoreundo() {
     
     paste_protected_range(protect);
 
-    ;;;if (memmap.length != endmem) {
+    ;;;if (memmap.length != self.endmem) {
     ;;;    fatal_error("Memory length was incorrect after undo."); //assert
     ;;;}
     ;;;assert_heap_valid(); //assert
@@ -5834,7 +5834,7 @@ function vm_restoreundo() {
 function change_memsize(newlen, internal) {
     var lx;
 
-    if (newlen == endmem)
+    if (newlen == self.endmem)
         return;
 
     if ((!internal) && heap_is_active())
@@ -5845,13 +5845,13 @@ function change_memsize(newlen, internal) {
         fatal_error("Can only resize Glulx memory space to a 256-byte boundary.");
 
     memmap.length = newlen;
-    if (newlen > endmem) {
-        for (lx=endmem; lx<newlen; lx++) {
+    if (newlen > self.endmem) {
+        for (lx=self.endmem; lx<newlen; lx++) {
             memmap[lx] = 0;
         }
     }
 
-    endmem = newlen;    
+    self.endmem = newlen;    
 }
 
 /* Return an object which represents the protected-memory range and its
@@ -5892,8 +5892,8 @@ function paste_protected_range(obj) {
     var arr = obj.mem;
     var start = obj.start;
     var end = obj.end;
-    if (end > endmem)
-        end = endmem;
+    if (end > self.endmem)
+        end = self.endmem;
 
     for (ix=0, addr=start; addr<end; ix++, addr++) {
         memmap[addr] = arr[ix];
@@ -5999,7 +5999,7 @@ function heap_binary_search(list, addr) {
 
 function heap_malloc(size) {
     if (!heap_is_active()) {
-        heapstart = endmem;
+        heapstart = self.endmem;
     }
     
     for (var i = 0, max = freelist.length; i < max; i++) {
@@ -6018,9 +6018,9 @@ function heap_malloc(size) {
     }
 
     // No free block is big enough. Grow the heap.
-    var addr = endmem;
+    var addr = self.endmem;
     var rounded_up_size = ((size + 0xFF) & 0xFFFFFF00);
-    change_memsize(endmem + rounded_up_size, true);
+    change_memsize(self.endmem + rounded_up_size, true);
     if (rounded_up_size > size) {
         freelist.push(new HeapBlock(addr + size, rounded_up_size - size));
     }
@@ -6103,7 +6103,7 @@ function assert_heap_valid() {
         }
     }
     
-    if (addr != endmem)
+    if (addr != self.endmem)
         fatal_error("Heap inconsistency: overrun at end of heap");
 }
 
