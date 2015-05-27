@@ -299,6 +299,13 @@ function MemW4(addr, val) {
     memmap[addr+3] = val & 0xFF;
 }
 
+self.Mem1 = Mem1;
+self.Mem2 = Mem2;
+self.Mem4 = Mem4;
+self.MemW1 = MemW1;
+self.MemW2 = MemW2;
+self.MemW4 = MemW4;
+
 function BytePushString(arr, str) {
     for (var ix = 0; ix < str.length; ix++) {
         arr.push(str.charCodeAt(ix));
@@ -6355,6 +6362,7 @@ return {
     get_signature: quixe_get_signature,
     get_statistics: quixe_get_statistics,
     get_debuginfo: quixe_get_debuginfo,
+    self: self, /* ### debugging */
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
