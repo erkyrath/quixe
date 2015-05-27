@@ -1965,22 +1965,22 @@ var opcode_table = {
         if (quot_isconstant(operands[0])) {
             var val = Number(operands[0]) & 0xffffffff; /* signed */
             if (val == 0)
-                expr = "(Math.floor(random_func() * 0x10000) | (Math.floor(random_func() * 0x10000) << 16)) >>>0";
+                expr = "(Math.floor(self.random_func() * 0x10000) | (Math.floor(self.random_func() * 0x10000) << 16)) >>>0";
             else if (val > 0)
-                expr = "Math.floor(random_func() * "+val+")";
+                expr = "Math.floor(self.random_func() * "+val+")";
             else
-                expr = "-Math.floor(random_func() * "+(-val)+")";
+                expr = "-Math.floor(self.random_func() * "+(-val)+")";
         }
         else {
             var sign0 = oputil_signify_operand(context, operands[0], true);
             var holdvar = alloc_holdvar(context);
             expr = holdvar;
             context.code.push("if ("+sign0+" > 0)");
-            context.code.push(holdvar+" = Math.floor(random_func() * "+sign0+");");
+            context.code.push(holdvar+" = Math.floor(self.random_func() * "+sign0+");");
             context.code.push("else if ("+sign0+" < 0)");
-            context.code.push(holdvar+" = -Math.floor(random_func() * -"+sign0+");");
+            context.code.push(holdvar+" = -Math.floor(self.random_func() * -"+sign0+");");
             context.code.push("else");
-            context.code.push(holdvar+" = (Math.floor(random_func() * 0x10000) | (Math.floor(random_func() * 0x10000) << 16)) >>>0;");
+            context.code.push(holdvar+" = (Math.floor(self.random_func() * 0x10000) | (Math.floor(self.random_func() * 0x10000) << 16)) >>>0;");
         }
         context.code.push(operands[1]+expr+");");
     },
@@ -3739,11 +3739,11 @@ function store_operand_by_funcop(funcop, val) {
 */
 function set_random(val) {
     if (val == 0) {
-        random_func = Math.random;
+        self.random_func = Math.random;
     }
     else {
         srand_set_seed(val);
-        random_func = srand_get_random;
+        self.random_func = srand_get_random;
     }
 }
 
@@ -5350,7 +5350,7 @@ var vmtextenv_table; /* maps stringtable addresses to VMTextEnvs */
 var decoding_tree; /* binary tree of string nodes */
 var vmstring_table; /* maps addresses to functions or strings */
 
-var random_func; /* Math.random or deterministic equivalent */
+self.random_func = null; /* Math.random or deterministic equivalent */
 
 /* Header constants. */
 var ramstart;
