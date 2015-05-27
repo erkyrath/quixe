@@ -1481,10 +1481,10 @@ var opcode_table = {
             for (ix=0; ix<argc; ix++) {
                 if (context.offstack.length) {
                     var holdvar = pop_offstack_holdvar(context);
-                    context.code.push("tempcallargs["+ix+"]="+holdvar+";");
+                    context.code.push("self.tempcallargs["+ix+"]="+holdvar+";");
                 }
                 else {
-                    context.code.push("tempcallargs["+ix+"]=frame.valstack.pop();");
+                    context.code.push("self.tempcallargs["+ix+"]=frame.valstack.pop();");
                 }
             }
             oputil_unload_offstate(context);
@@ -1492,7 +1492,7 @@ var opcode_table = {
         else {
             context.varsused["ix"] = true;
             oputil_unload_offstate(context);
-            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempcallargs[ix]=frame.valstack.pop(); }");
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempcallargs[ix]=frame.valstack.pop(); }");
         }
         oputil_push_callstub(context, operands[2]);
         context.code.push("enter_function("+operands[0]+", "+operands[1]+");");
@@ -1507,10 +1507,10 @@ var opcode_table = {
             for (ix=0; ix<argc; ix++) {
                 if (context.offstack.length) {
                     var holdvar = pop_offstack_holdvar(context);
-                    context.code.push("tempcallargs["+ix+"]="+holdvar+";");
+                    context.code.push("self.tempcallargs["+ix+"]="+holdvar+";");
                 }
                 else {
-                    context.code.push("tempcallargs["+ix+"]=frame.valstack.pop();");
+                    context.code.push("self.tempcallargs["+ix+"]=frame.valstack.pop();");
                 }
             }
             oputil_unload_offstate(context);
@@ -1518,7 +1518,7 @@ var opcode_table = {
         else {
             context.varsused["ix"] = true;
             oputil_unload_offstate(context);
-            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempcallargs[ix]=frame.valstack.pop(); }");
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempcallargs[ix]=frame.valstack.pop(); }");
         }
         /* Note that tailcall in the top-level function will not work.
            But why would you do that? */
@@ -1538,7 +1538,7 @@ var opcode_table = {
 
     0x161: function(context, operands) { /* callfi */
         oputil_unload_offstate(context);
-        context.code.push("tempcallargs[0]=("+operands[1]+");");
+        context.code.push("self.tempcallargs[0]=("+operands[1]+");");
         oputil_push_callstub(context, operands[2]);
         context.code.push("enter_function("+operands[0]+", 1);");
         context.code.push("return;");
@@ -1547,8 +1547,8 @@ var opcode_table = {
 
     0x162: function(context, operands) { /* callfii */
         oputil_unload_offstate(context);
-        context.code.push("tempcallargs[0]=("+operands[1]+");");
-        context.code.push("tempcallargs[1]=("+operands[2]+");");
+        context.code.push("self.tempcallargs[0]=("+operands[1]+");");
+        context.code.push("self.tempcallargs[1]=("+operands[2]+");");
         oputil_push_callstub(context, operands[3]);
         context.code.push("enter_function("+operands[0]+", 2);");
         context.code.push("return;");
@@ -1557,9 +1557,9 @@ var opcode_table = {
 
     0x163: function(context, operands) { /* callfiii */
         oputil_unload_offstate(context);
-        context.code.push("tempcallargs[0]=("+operands[1]+");");
-        context.code.push("tempcallargs[1]=("+operands[2]+");");
-        context.code.push("tempcallargs[2]=("+operands[3]+");");
+        context.code.push("self.tempcallargs[0]=("+operands[1]+");");
+        context.code.push("self.tempcallargs[1]=("+operands[2]+");");
+        context.code.push("self.tempcallargs[2]=("+operands[3]+");");
         oputil_push_callstub(context, operands[4]);
         context.code.push("enter_function("+operands[0]+", 3);");
         context.code.push("return;");
@@ -2153,7 +2153,7 @@ var opcode_table = {
             break;
         case 1: /* filter */
             oputil_unload_offstate(context);
-            context.code.push("tempcallargs[0]=(("+operands[0]+")&0xff);");
+            context.code.push("self.tempcallargs[0]=(("+operands[0]+")&0xff);");
             oputil_push_callstub(context, "0,0");
             context.code.push("enter_function(self.iosysrock, 1);");
             context.code.push("return;");
@@ -2214,7 +2214,7 @@ var opcode_table = {
             break;
         case 1: /* filter */
             oputil_unload_offstate(context);
-            context.code.push("tempcallargs[0]=("+operands[0]+");");
+            context.code.push("self.tempcallargs[0]=("+operands[0]+");");
             oputil_push_callstub(context, "0,0");
             context.code.push("enter_function(self.iosysrock, 1);");
             context.code.push("return;");
@@ -2536,17 +2536,17 @@ var opcode_table = {
             mayblock = Glk.call_may_not_return(Number(operands[0]));
         else
             mayblock = true;
-        context.code.push("tempglkargs.length = " + operands[1] + ";");
+        context.code.push("self.tempglkargs.length = " + operands[1] + ";");
         if (quot_isconstant(operands[1])) {
             var ix;
             var argc = Number(operands[1]);
             for (ix=0; ix<argc; ix++) {
                 if (context.offstack.length) {
                     var holdvar = pop_offstack_holdvar(context);
-                    context.code.push("tempglkargs["+ix+"]="+holdvar+";");
+                    context.code.push("self.tempglkargs["+ix+"]="+holdvar+";");
                 }
                 else {
-                    context.code.push("tempglkargs["+ix+"]=frame.valstack.pop();");
+                    context.code.push("self.tempglkargs["+ix+"]=frame.valstack.pop();");
                 }
             }
             oputil_unload_offstate(context);
@@ -2554,14 +2554,14 @@ var opcode_table = {
         else {
             context.varsused["ix"] = true;
             oputil_unload_offstate(context);
-            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { tempglkargs[ix]=frame.valstack.pop(); }");
+            context.code.push("for (ix=0; ix<"+operands[1]+"; ix++) { self.tempglkargs[ix]=frame.valstack.pop(); }");
         }
         /* In the blocking case, we don't perform a normal store; we write a
            literal form of operands[2] into a global and get out. Fortunately
            we just unloaded the offstack. The non-blocking case is a normal
            store. */
         context.varsused["glkret"] = true;
-        context.code.push("glkret = GiDispa.get_function("+operands[0]+")(tempglkargs);");
+        context.code.push("glkret = GiDispa.get_function("+operands[0]+")(self.tempglkargs);");
         if (mayblock) {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
             context.code.push("  resumefuncop = "+oputil_record_funcop(operands[2])+";");
@@ -3506,7 +3506,7 @@ function enter_function(addr, argcount) {
     var accelfunc = accel_address_map[addr];
     if (accelfunc !== undefined) {
         accel_function_calls++; //###stats
-        var val = accelfunc(argcount, tempcallargs);
+        var val = accelfunc(argcount, self.tempcallargs);
         pop_callstub(val);
         return;
     }
@@ -3533,7 +3533,7 @@ function enter_function(addr, argcount) {
         /* Push the function arguments on the stack. The locals have already
            been zeroed. */
         for (ix=argcount-1; ix >= 0; ix--)
-            frame.valstack.push(tempcallargs[ix]);
+            frame.valstack.push(self.tempcallargs[ix]);
         frame.valstack.push(argcount);
     }
     else {
@@ -3546,11 +3546,11 @@ function enter_function(addr, argcount) {
             if (form === undefined)
                 break;
             if (form.size == 4)
-                frame.locals[form.pos] = tempcallargs[ix];
+                frame.locals[form.pos] = self.tempcallargs[ix];
             else if (form.size == 2)
-                frame.locals[form.pos] = tempcallargs[ix] & 0xFFFF;
+                frame.locals[form.pos] = self.tempcallargs[ix] & 0xFFFF;
             else if (form.size == 1)
-                frame.locals[form.pos] = tempcallargs[ix] & 0xFF;
+                frame.locals[form.pos] = self.tempcallargs[ix] & 0xFF;
         }
     }
 
@@ -4427,7 +4427,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
                go on the stack. */
             // push_callstub(0x12, charnum+1);
             frame.valstack.push(0x12, charnum+1, value, frame.framestart);
-            tempcallargs[0] = ch;
+            self.tempcallargs[0] = ch;
             enter_function(self.iosysrock, 1);
             return true;
         }
@@ -4652,7 +4652,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         oputil_flush_string(context);
                         oputil_push_substring_callstub(context);
                         oputil_push_callstub(context, "0x10,"+bitnum, addr);
-                        context.code.push("tempcallargs[0]="+cab.value+";");
+                        context.code.push("self.tempcallargs[0]="+cab.value+";");
                         context.code.push("enter_function(self.iosysrock, 1);");
                         retval = true;
                         done = true;
@@ -4734,7 +4734,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     if (cab.type == 0x0A || cab.type == 0x0B) {
                         argc = Mem4(cab.addr+4);
                         for (var ix=0; ix<argc; ix++)
-                            context.code.push("tempcallargs["+ix+"]="+Mem4(cab.addr+8+4*ix)+";");
+                            context.code.push("self.tempcallargs["+ix+"]="+Mem4(cab.addr+8+4*ix)+";");
                     }
                     context.code.push("enter_function(oaddr, "+argc+");");
                     context.code.push("retval = true;");
@@ -4794,7 +4794,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         oputil_flush_string(context);
                         oputil_push_substring_callstub(context);
                         oputil_push_callstub(context, "0x10,"+bitnum, addr);
-                        context.code.push("tempcallargs[0]="+ch+";");
+                        context.code.push("self.tempcallargs[0]="+ch+";");
                         context.code.push("enter_function(self.iosysrock, 1);");
                         retval = true;
                         done = true;
@@ -4812,7 +4812,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                         oputil_flush_string(context);
                         oputil_push_substring_callstub(context);
                         oputil_push_callstub(context, "0x10,"+bitnum, addr);
-                        context.code.push("tempcallargs[0]="+ch+";");
+                        context.code.push("self.tempcallargs[0]="+ch+";");
                         context.code.push("enter_function(self.iosysrock, 1);");
                         retval = true;
                         done = true;
@@ -4890,7 +4890,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     if (nodetype == 0x0A || nodetype == 0x0B) {
                         argc = Mem4(node+4);
                         for (var ix=0; ix<argc; ix++)
-                            context.code.push("tempcallargs["+ix+"]="+Mem4(node+8+4*ix)+";");
+                            context.code.push("self.tempcallargs["+ix+"]="+Mem4(node+8+4*ix)+";");
                     }
                     context.code.push("enter_function(oaddr, "+argc+");");
                     context.code.push("retval = true;");
@@ -4925,7 +4925,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             addr++;
             if (ch != 0) {
                 oputil_push_callstub(context, "0x13,0", addr);
-                context.code.push("tempcallargs[0]="+ch+";");
+                context.code.push("self.tempcallargs[0]="+ch+";");
                 context.code.push("enter_function(self.iosysrock, 1);");
                 retval = true;
             }
@@ -4954,7 +4954,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
             addr+=4;
             if (ch != 0) {
                 oputil_push_callstub(context, "0x14,0", addr);
-                context.code.push("tempcallargs[0]="+ch+";");
+                context.code.push("self.tempcallargs[0]="+ch+";");
                 context.code.push("enter_function(self.iosysrock, 1);");
                 retval = true;
             }
@@ -5339,8 +5339,8 @@ var stack; /* array of StackFrames */
 var frame; /* the top of the stack */
 var vm_started = false; /* Quixe is initialized */
 var vm_stopped = false; /* Quixe has shut down */
-var tempcallargs; /* only used momentarily, for enter_function() */
-var tempglkargs; /* only used momentarily, for the @glk opcode */
+self.tempcallargs = null; /* only used momentarily, for enter_function() */
+self.tempglkargs = null; /* only used momentarily, for the @glk opcode */
 var done_executing; /* signals that we've quit *or* paused for interaction */
 
 var vmfunc_table; /* maps addresses to VMFuncs */
@@ -5442,8 +5442,8 @@ function setup_vm() {
     vmtextenv_table = {};
     decoding_tree = undefined;
     vmstring_table = undefined;
-    tempcallargs = Array(8);
-    tempglkargs = Array(1);
+    self.tempcallargs = Array(8);
+    self.tempglkargs = Array(8);
     set_random(0);
 
     self.endmem = origendmem;
