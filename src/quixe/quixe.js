@@ -398,7 +398,7 @@ function WriteStructField(addr, fieldnum, val) {
    since it's the only non-void blocking Glk call.)
 */
 function SetResumeStore(val) {
-    resumevalue = val;
+    self.resumevalue = val;
 }
 
 /* Convert a 32-bit Unicode value to a JS string. */
@@ -2564,8 +2564,8 @@ var opcode_table = {
         context.code.push("glkret = GiDispa.get_function("+operands[0]+")(self.tempglkargs);");
         if (mayblock) {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
-            context.code.push("  resumefuncop = "+oputil_record_funcop(operands[2])+";");
-            context.code.push("  resumevalue = 0;");
+            context.code.push("  self.resumefuncop = "+oputil_record_funcop(operands[2])+";");
+            context.code.push("  self.resumevalue = 0;");
             context.code.push("  self.pc = "+context.cp+";");
             context.code.push("  self.done_executing = true;");
             context.code.push("  return;");
@@ -5371,7 +5371,8 @@ self.iosysmode = null;
 self.iosysrock = null;
 
 var undostack;     // array of VM state snapshots.
-var resumefuncop, resumevalue;
+self.resumefuncop = null;
+self.resumevalue = null;
 
 /* Memory allocation heap. Blocks have "addr" and "size" properties. */
 var heapstart;     // Start address of the heap.
@@ -5397,8 +5398,8 @@ function setup_vm() {
         fatal_error("There is no Glulx game file loaded.");
 
     self.vm_started = true;
-    resumefuncop = null;
-    resumevalue = 0;
+    self.resumefuncop = null;
+    self.resumevalue = 0;
     memmap = null;
     stack = [];
     frame = null;
@@ -6289,11 +6290,11 @@ function execute_loop() {
     var vmfunc, pathtab, path;
     var pathstart, pathend;
 
-    if (resumefuncop) {
-        //qlog("### at resume time, storing value " + resumevalue + " at funcop " + resumefuncop.key);
-        store_operand_by_funcop(resumefuncop, resumevalue);
-        resumefuncop = null;
-        resumevalue = 0;
+    if (self.resumefuncop) {
+        //qlog("### at resume time, storing value " + self.resumevalue + " at funcop " + self.resumefuncop.key);
+        store_operand_by_funcop(self.resumefuncop, self.resumevalue);
+        self.resumefuncop = null;
+        self.resumevalue = 0;
     }
 
     pathstart = new Date().getTime(); //###stats
