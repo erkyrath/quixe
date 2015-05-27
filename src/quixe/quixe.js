@@ -947,7 +947,7 @@ function setup_operandlist_table() {
 
 /* Some utility functions for opcode handlers. */
 
-var funcop_cache = {};
+self.funcop_cache = {};
 
 /* Return a Javascript literal representing a funcop. The funcop can be used
    later with store_operand_by_funcop(). For efficiency, this represents a
@@ -972,13 +972,13 @@ function oputil_record_funcop(funcop) {
     if (funcop.addr != null)
         key = key + "a" + funcop.addr;
 
-    if (funcop_cache.key)
-        return "funcop_cache."+key;
+    if (self.funcop_cache.key)
+        return "self.funcop_cache."+key;
 
     var obj = { key: key, 
         mode: funcop.mode, argsize: funcop.argsize, addr: funcop.addr };
-    funcop_cache[key] = obj;
-    return "funcop_cache."+key;
+    self.funcop_cache[key] = obj;
+    return "self.funcop_cache."+key;
 }
 
 /* Store the result of an opcode, using the information specified in
