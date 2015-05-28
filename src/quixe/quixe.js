@@ -2112,13 +2112,13 @@ var opcode_table = {
     },
 
     0x178: function(context, operands) { /* malloc */
-        var expr = "heap_malloc("+operands[0]+")";
+        var expr = "self.heap_malloc("+operands[0]+")";
         context.code.push(operands[1]+expr+");");
         ;;;context.code.push("self.assert_heap_valid();"); //assert
     },
     
     0x179: function(context, operands) { /* mfree */
-        context.code.push("heap_free("+operands[0]+");");
+        context.code.push("self.heap_free("+operands[0]+");");
         ;;;context.code.push("self.assert_heap_valid();"); //assert
     },
 
@@ -6069,6 +6069,7 @@ function heap_malloc(size) {
     usedlist.push(new HeapBlock(addr, size));
     return addr;
 }
+self.heap_malloc = heap_malloc;
 
 function heap_free(addr) {
     var pos = heap_binary_search(usedlist, addr);
@@ -6105,6 +6106,7 @@ function heap_free(addr) {
     
     freelist.splice(pos, 0, block);
 }
+self.heap_free = heap_free;
 
 /* Check that the heap state is consistent. This is slow, so we only
    call it in debug assertions.
