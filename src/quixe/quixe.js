@@ -1212,7 +1212,7 @@ function oputil_decode_float(context, operand, hold) {
         return ""+decode_float(val);
     }
 
-    val = "decode_float("+operand+")";
+    val = "self.decode_float("+operand+")";
     if (hold) {
         var holdvar = alloc_holdvar(context);
         context.code.push(holdvar+"="+val+";");
@@ -2269,7 +2269,7 @@ var opcode_table = {
             context.code.push(operands[1]+encode_float(val)+");");
         }
         else {
-            context.code.push(operands[1]+"encode_float("+sign0+"));");
+            context.code.push(operands[1]+"self.encode_float("+sign0+"));");
         }
     },
 
@@ -2313,36 +2313,36 @@ var opcode_table = {
 
     0x198: function(context, operands) { /* ceil */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.ceil("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.ceil("+valf+")));");
     },
 
     0x199: function(context, operands) { /* floor */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.floor("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.floor("+valf+")));");
     },
 
     0x1A0: function(context, operands) { /* fadd */
         var valf0 = oputil_decode_float(context, operands[0]);
         var valf1 = oputil_decode_float(context, operands[1]);
-        context.code.push(operands[2]+"encode_float("+valf0+" + "+valf1+"));");
+        context.code.push(operands[2]+"self.encode_float("+valf0+" + "+valf1+"));");
     },
 
     0x1A1: function(context, operands) { /* fsub */
         var valf0 = oputil_decode_float(context, operands[0]);
         var valf1 = oputil_decode_float(context, operands[1]);
-        context.code.push(operands[2]+"encode_float("+valf0+" - "+valf1+"));");
+        context.code.push(operands[2]+"self.encode_float("+valf0+" - "+valf1+"));");
     },
 
     0x1A2: function(context, operands) { /* fmul */
         var valf0 = oputil_decode_float(context, operands[0]);
         var valf1 = oputil_decode_float(context, operands[1]);
-        context.code.push(operands[2]+"encode_float("+valf0+" * "+valf1+"));");
+        context.code.push(operands[2]+"self.encode_float("+valf0+" * "+valf1+"));");
     },
 
     0x1A3: function(context, operands) { /* fdiv */
         var valf0 = oputil_decode_float(context, operands[0]);
         var valf1 = oputil_decode_float(context, operands[1]);
-        context.code.push(operands[2]+"encode_float("+valf0+" / "+valf1+"));");
+        context.code.push(operands[2]+"self.encode_float("+valf0+" / "+valf1+"));");
     },
 
     0x1A4: function(context, operands) { /* fmod */
@@ -2351,30 +2351,30 @@ var opcode_table = {
         context.varsused["modv"] = true;
         context.varsused["quov"] = true;
         context.code.push("modv=("+valf0+" % "+valf1+");");
-        context.code.push("quov=encode_float(("+valf0+" - modv) / "+valf1+");");
+        context.code.push("quov=self.encode_float(("+valf0+" - modv) / "+valf1+");");
         context.code.push("if (quov == 0x0 || quov == 0x80000000) {");
         /* When the quotient is zero, the sign has been lost in the
            shuffle. We'll set that by hand, based on the original
            arguments. */
         context.code.push("  quov = (("+operands[0]+" ^ "+operands[1]+") & 0x80000000) >>>0;");
         context.code.push("}");
-        context.code.push(operands[2]+"encode_float(modv));");
+        context.code.push(operands[2]+"self.encode_float(modv));");
         context.code.push(operands[3]+"quov);");
     },
 
     0x1A8: function(context, operands) { /* sqrt */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.sqrt("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.sqrt("+valf+")));");
     },
 
     0x1A9: function(context, operands) { /* exp */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.exp("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.exp("+valf+")));");
     },
 
     0x1AA: function(context, operands) { /* log */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.log("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.log("+valf+")));");
     },
 
     0x1AB: function(context, operands) { /* pow */
@@ -2388,45 +2388,45 @@ var opcode_table = {
         /* pow(-1, infinity) is 1 */
         context.code.push("  valf = 0x3f800000;");
         context.code.push("} else {");
-        context.code.push("  valf=encode_float(Math.pow("+valf0+", "+valf1+"));");
+        context.code.push("  valf=self.encode_float(Math.pow("+valf0+", "+valf1+"));");
         context.code.push("}");
         context.code.push(operands[2]+"valf);");
     },
 
     0x1B0: function(context, operands) { /* sin */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.sin("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.sin("+valf+")));");
     },
 
     0x1B1: function(context, operands) { /* cos */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.cos("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.cos("+valf+")));");
     },
 
     0x1B2: function(context, operands) { /* tan */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.tan("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.tan("+valf+")));");
     },
 
     0x1B3: function(context, operands) { /* asin */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.asin("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.asin("+valf+")));");
     },
 
     0x1B4: function(context, operands) { /* acos */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.acos("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.acos("+valf+")));");
     },
 
     0x1B5: function(context, operands) { /* atan */
         var valf = oputil_decode_float(context, operands[0]);
-        context.code.push(operands[1]+"encode_float(Math.atan("+valf+")));");
+        context.code.push(operands[1]+"self.encode_float(Math.atan("+valf+")));");
     },
 
     0x1B6: function(context, operands) { /* atan2 */
         var valf0 = oputil_decode_float(context, operands[0]);
         var valf1 = oputil_decode_float(context, operands[1]);
-        context.code.push(operands[2]+"encode_float(Math.atan2("+valf0+", "+valf1+")));");
+        context.code.push(operands[2]+"self.encode_float(Math.atan2("+valf0+", "+valf1+")));");
     },
 
     0x1C0: function(context, operands) { /* jfeq */
@@ -2447,7 +2447,7 @@ var opcode_table = {
             valf2 = "" + decode_float(val & 0x7fffffff);
         }
         else {
-            val = "decode_float(("+operands[2]+") & 0x7fffffff)";
+            val = "self.decode_float(("+operands[2]+") & 0x7fffffff)";
             valf2 = alloc_holdvar(context);
             context.code.push(valf2+"="+val+";");
         }
@@ -2479,7 +2479,7 @@ var opcode_table = {
             valf2 = "" + decode_float(val & 0x7fffffff);
         }
         else {
-            val = "decode_float(("+operands[2]+") & 0x7fffffff)";
+            val = "self.decode_float(("+operands[2]+") & 0x7fffffff)";
             valf2 = alloc_holdvar(context);
             context.code.push(valf2+"="+val+";");
         }
@@ -5331,6 +5331,9 @@ function encode_float(val) {
     else
         return (expo << 23) | (fbits);
 }
+
+self.decode_float = decode_float;
+self.encode_float = encode_float;
 
 /* ----------------------------------------------------------------- */
 
