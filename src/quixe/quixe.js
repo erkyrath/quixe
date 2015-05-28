@@ -2123,12 +2123,12 @@ var opcode_table = {
     },
 
     0x180: function(context, operands) { /* accelfunc */
-        context.code.push("accel_address_map["+operands[1]+"] = accel_func_map["+operands[0]+"];");
+        context.code.push("self.accel_address_map["+operands[1]+"] = self.accel_func_map["+operands[0]+"];");
     },
     
     0x181: function(context, operands) { /* accelparam */
         context.code.push("if ("+operands[0]+" < 9) {");
-        context.code.push("  accel_params["+operands[0]+"] = "+operands[1]+";");
+        context.code.push("  self.accel_params["+operands[0]+"] = "+operands[1]+";");
         context.code.push("}");
     },
     
@@ -3798,11 +3798,13 @@ function srand_get_random() {
     return srand_table[srand_index1] / 0x100000000;
 }
 
-/* Maps VM addresses to the (native) functions used to accelerate them. */
+/* Maps VM addresses to the (native) functions used to accelerate them. This is also referenced from self. */
 var accel_address_map = {};
+self.accel_address_map = accel_address_map;
 
 /* A list of the nine parameter fields used by the accelerated functions. */
 var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+self.accel_params = accel_params;
 
 /* The code for all the functions we can accelerate. Remember that there may
    be fewer arguments than expected, and any beyond argc should be taken as 
@@ -4155,6 +4157,7 @@ var accel_func_map = {
         return ((accel_func_map[9](argc, argv)) ? 1 : 0);
     }
 };
+self.accel_func_map = accel_func_map;
 
 var accel_helper_temp_args = [ 0, 0 ];
 
