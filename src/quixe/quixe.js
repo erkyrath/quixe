@@ -2008,7 +2008,7 @@ var opcode_table = {
     },
 
     0x121: function(context, operands) { /* verify */
-        context.code.push(operands[0]+"perform_verify());");
+        context.code.push(operands[0]+"self.perform_verify());");
     },
 
     0x122: function(context, operands) { /* restart */
@@ -2134,17 +2134,17 @@ var opcode_table = {
     
 
     0x150: function(context, operands) { /* linearsearch */
-        var expr = "linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
+        var expr = "self.linear_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
         context.code.push(operands[7]+expr+");");
     },
 
     0x151: function(context, operands) { /* binarysearch */
-        var expr = "binary_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
+        var expr = "self.binary_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"),("+operands[6]+"))";
         context.code.push(operands[7]+expr+");");
     },
 
     0x152: function(context, operands) { /* linkedsearch */
-        var expr = "linked_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"))";
+        var expr = "self.linked_search(("+operands[0]+"),("+operands[1]+"),("+operands[2]+"),("+operands[3]+"),("+operands[4]+"),("+operands[5]+"))";
         context.code.push(operands[6]+expr+");");
     },
 
@@ -5217,6 +5217,10 @@ function linked_search(key, keysize, start,
     return 0;
 }
 
+self.linear_search = linear_search;
+self.binary_search = binary_search;
+self.linked_search = linked_search;
+
 /* Convert an integer (in IEEE-754 single-precision format) into a
    Javascript number.
 */
@@ -5951,6 +5955,7 @@ function perform_verify() {
 
     return 0;
 }
+self.perform_verify = perform_verify;
 
 /* Return the game image signature. This is used as a fingerprint on save
    files, to ensure that you can't save in one game and restore in a 
