@@ -1242,7 +1242,7 @@ function oputil_perform_jump(context, operand, unconditional) {
             else {
                 ;;;context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //debug
             }
-            context.code.push("if (self.leave_function()) return VMStopped;");
+            context.code.push("if (self.leave_function()) return self.VMStopped;");
             context.code.push("pop_callstub("+val+");");
         }
         else {
@@ -1255,7 +1255,7 @@ function oputil_perform_jump(context, operand, unconditional) {
     else {
         oputil_unload_offstate(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
-        context.code.push("if (self.leave_function()) return VMStopped;");
+        context.code.push("if (self.leave_function()) return self.VMStopped;");
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
@@ -1530,7 +1530,7 @@ var opcode_table = {
         }
         /* Note that tailcall in the top-level function will not work.
            But why would you do that? */
-        context.code.push("if (self.leave_function()) return VMStopped;");
+        context.code.push("if (self.leave_function()) return self.VMStopped;");
         context.code.push("self.enter_function("+operands[0]+", "+operands[1]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -1581,7 +1581,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("if (self.leave_function()) return VMStopped;");
+        context.code.push("if (self.leave_function()) return self.VMStopped;");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -2003,7 +2003,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("return VMStopped;");
+        context.code.push("return self.VMStopped;");
         context.path_ends = true;
     },
 
@@ -3565,10 +3565,6 @@ function enter_function(addr, argcount) {
     //qlog("### framestart " + self.frame.framestart + ", filled-in locals " + qobjdump(self.frame.locals) + ", valstack " + qobjdump(self.frame.valstack));
 }
 self.enter_function = enter_function;
-
-/* Dummy value, returned by path functions on @quit or when leave_function()
-   pops the top-level stack frame. */
-var VMStopped = { dummy: 'The top-level function has returned.' };
 
 /* Pop the current call frame off the stack. This is very simple.
    Returns true if the top-level stack frame is popped (thus stopping
@@ -6309,6 +6305,10 @@ function parse_inform_debug_data(datachunknum) {
     }
 }
 
+/* Dummy value, returned by path functions on @quit or when leave_function()
+   pops the top-level stack frame. */
+self.VMStopped = { dummy: 'The top-level function has returned.' };
+
 /* Begin executing code, compiling as necessary. When glk_select is invoked,
    or the game ends, this calls Glk.update() and exits.
 */
@@ -6341,7 +6341,7 @@ function execute_loop() {
         }
         total_path_calls++; //###stats
         var res = path();
-        if (res === VMStopped) {
+        if (res === self.VMStopped) {
             self.done_executing = true;
             self.vm_stopped = true;
         }
