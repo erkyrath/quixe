@@ -2187,7 +2187,7 @@ var opcode_table = {
             break;
         case 1: /* filter */
             oputil_unload_offstate(context);
-            context.code.push("stream_num("+context.cp+","+operands[0]+", false, 0);");
+            context.code.push("self.stream_num("+context.cp+","+operands[0]+", false, 0);");
             /* stream_num always creates a new frame in filter mode. */
             context.code.push("return;");
             context.path_ends = true;
@@ -2206,7 +2206,7 @@ var opcode_table = {
            determined to be a function, we can unload and return.)
         */
         oputil_unload_offstate(context);
-        context.code.push("if (stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
+        context.code.push("if (self.stream_string("+context.cp+","+operands[0]+", 0, 0)) return;");
     },
 
     0x73: function(context, operands) { /* streamunichar */
@@ -4460,6 +4460,7 @@ function stream_num(nextcp, value, inmiddle, charnum) {
             fatal_error("String-on-string call stub while printing number.");
     }
 }
+self.stream_num = stream_num;
 
 /* Look up a string, and print or execute it.
 
@@ -4550,6 +4551,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         }
     }
 }
+self.stream_string = stream_string;
 
 /* Generate a function which outputs the string, or rather one path of it.
    Like function paths, a string path only runs up to the first internal
