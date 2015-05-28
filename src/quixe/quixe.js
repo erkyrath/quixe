@@ -490,9 +490,11 @@ self.fatal_error = fatal_error;
    If arg1, arg2 are provided, they become the function arguments.
    Currently limited to two.
 
-   This uses eval(), rather than Function(), because it needs to
-   return a closure inside the Quixe environment. (All the generated
-   code assumes that it has the VM's internal variables in scope.)
+   The function runs in global scope, rather than our Quixe environment.
+   Private Quixe variables are not available. To help work around this, the
+   function's "this" is bound to the "self" object. Typically you'll start
+   the function with "var self = this;" so that generated code can be
+   written in the usual idiom.
 */
 function make_code(val, funcname, arg1, arg2) {
     var func;
