@@ -1959,7 +1959,7 @@ var opcode_table = {
     },
 
     0x103: function(context, operands) { /* setmemsize */
-        context.code.push("change_memsize("+operands[0]+",false);");
+        context.code.push("self.change_memsize("+operands[0]+",false);");
         /* An allocation failure is a fatal error, so we always return 
            success. */
         context.code.push(operands[1]+"0);");
@@ -2248,7 +2248,7 @@ var opcode_table = {
     },
 
     0x149: function(context, operands) { /* setiosys */
-        context.code.push("set_iosys("+operands[0]+","+operands[1]+");");
+        context.code.push("self.set_iosys("+operands[0]+","+operands[1]+");");
         if (quot_isconstant(operands[0])) {
             var val = Number(operands[0]);
             context.curiosys = val;
@@ -4321,6 +4321,7 @@ function set_iosys(mode, rock) {
     else
         vmstring_table = textenv.vmstring_tables[self.iosysmode];
 }
+self.set_iosys = set_iosys;
 
 /* The form of the decoding tree is a tree of arrays and leaf objects.
    An array always has 16 entries (2^CACHESIZE). Every object, including
@@ -5890,6 +5891,7 @@ function change_memsize(newlen, internal) {
 
     self.endmem = newlen;    
 }
+self.change_memsize = change_memsize;
 
 /* Return an object which represents the protected-memory range and its
    contents. This can later be pasted back into the VM. If there is no
