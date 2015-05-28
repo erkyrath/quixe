@@ -480,6 +480,7 @@ function fatal_error(msg) {
     qlog(msg);//###debug
     throw(msg);
 }
+self.fatal_error = fatal_error;
 
 /* Turn a string containing JS statements into a function object that
    executes those statements. The funcname must be a legal JS symbol;
@@ -1301,7 +1302,7 @@ var opcode_table = {
         var sign1 = oputil_signify_operand(context, operands[1]);
         var holdvar = alloc_holdvar(context);
         context.code.push(holdvar+"=(("+sign0+")/("+sign1+"));");
-        context.code.push("if (!isFinite("+holdvar+")) fatal_error('Division by zero.');");
+        context.code.push("if (!isFinite("+holdvar+")) self.fatal_error('Division by zero.');");
         context.code.push(operands[2]+"("+holdvar+">=0)?Math.floor("+holdvar+"):(-Math.floor(-"+holdvar+") >>>0));");
     },
 
@@ -1312,7 +1313,7 @@ var opcode_table = {
         var sign1 = oputil_signify_operand(context, operands[1]);
         var holdvar = alloc_holdvar(context);
         context.code.push(holdvar+"=(("+sign0+")%("+sign1+"));");
-        context.code.push("if (!isFinite("+holdvar+")) fatal_error('Modulo division by zero.');");
+        context.code.push("if (!isFinite("+holdvar+")) self.fatal_error('Modulo division by zero.');");
         context.code.push(operands[2]+holdvar+" >>>0);");
     },
 
@@ -1950,7 +1951,7 @@ var opcode_table = {
     },
 
     0x101: function(context, operands) { /* debugtrap */
-        context.code.push("fatal_error('User debugtrap encountered.', "+operands[0]+");");
+        context.code.push("self.fatal_error('User debugtrap encountered.', "+operands[0]+");");
     },
 
     0x102: function(context, operands) { /* getmemsize */
@@ -4747,7 +4748,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("retval = true;");
                     context.code.push("}");
                     context.code.push("else {");
-                    context.code.push("fatal_error('Unknown object while decoding string indirect reference.', otype);");
+                    context.code.push("self.fatal_error('Unknown object while decoding string indirect reference.', otype);");
                     context.code.push("}");
                     break;
                 default:
@@ -4903,7 +4904,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("retval = true;");
                     context.code.push("}");
                     context.code.push("else {");
-                    context.code.push("fatal_error('Unknown object while decoding string indirect reference.', otype);");
+                    context.code.push("self.fatal_error('Unknown object while decoding string indirect reference.', otype);");
                     context.code.push("}");
                     break;
                 default:
