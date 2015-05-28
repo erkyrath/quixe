@@ -1590,7 +1590,7 @@ var opcode_table = {
     0x32: function(context, operands) { /* catch */
         oputil_unload_offstate(context);
         oputil_push_callstub(context, operands[0]);
-        context.code.push("store_operand("+operands[0]+",self.frame.framestart+self.frame.framelen+4*self.frame.valstack.length);");
+        context.code.push("self.store_operand("+operands[0]+",self.frame.framestart+self.frame.framelen+4*self.frame.valstack.length);");
         oputil_perform_jump(context, operands[1], true);
         context.path_ends = true;
     },
