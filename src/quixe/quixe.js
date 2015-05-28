@@ -1242,7 +1242,7 @@ function oputil_perform_jump(context, operand, unconditional) {
             else {
                 ;;;context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //debug
             }
-            context.code.push("if (leave_function()) return VMStopped;");
+            context.code.push("if (self.leave_function()) return VMStopped;");
             context.code.push("pop_callstub("+val+");");
         }
         else {
@@ -1255,7 +1255,7 @@ function oputil_perform_jump(context, operand, unconditional) {
     else {
         oputil_unload_offstate(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
-        context.code.push("if (leave_function()) return VMStopped;");
+        context.code.push("if (self.leave_function()) return VMStopped;");
         context.code.push("pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
@@ -1530,7 +1530,7 @@ var opcode_table = {
         }
         /* Note that tailcall in the top-level function will not work.
            But why would you do that? */
-        context.code.push("if (leave_function()) return VMStopped;");
+        context.code.push("if (self.leave_function()) return VMStopped;");
         context.code.push("self.enter_function("+operands[0]+", "+operands[1]+");");
         context.code.push("return;");
         context.path_ends = true;
@@ -1581,7 +1581,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("if (leave_function()) return VMStopped;");
+        context.code.push("if (self.leave_function()) return VMStopped;");
         context.code.push("pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
