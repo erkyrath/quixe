@@ -483,25 +483,28 @@ function fatal_error(msg) {
 self.fatal_error = fatal_error;
 
 /* Turn a string containing JS statements into a function object that
-   executes those statements. The funcname must be a legal JS symbol;
-   it is only used for debugging.
+   executes those statements. The funcname is unfortunately not used.
+   (This function used to use eval(), which let you sneak the funcname
+   in for debugging purposes.)
 
-   If an arg is provided, it becomes the function argument. (It can also
-   be a comma-separated list of arguments, if you want more than one.)
+   If arg1, arg2 are provided, they become the function arguments.
+   Currently limited to two.
 
    This uses eval(), rather than Function(), because it needs to
    return a closure inside the Quixe environment. (All the generated
    code assumes that it has the VM's internal variables in scope.)
 */
-function make_code(val, funcname, arg) {
+function make_code(val, funcname, arg1, arg2) {
     var func;
     if (funcname === undefined)
         funcname = '_func';
-    if (arg === undefined)
-        func = eval("( function " + funcname + "() {\n" + val + "\n} )");
+    if (arg1 === undefined)
+        func = new Function(val);
+    else if (arg2 === undefined)
+        func = new Function(arg1, val);
     else
-        func = eval("( function " + funcname + "("+arg+") {\n" + val + "\n} )");
-    return func;
+        func = new Function(arg1, arg2, val);
+    return func.bind(self);
 }
 
 /* Constructor: VMFunc
@@ -3404,6 +3407,9 @@ function compile_path(vmfunc, startaddr, startiosys) {
 
     context.code.push(""); /* May be replaced by the _hold var declarations. */
 
+    /* The "self" object will be bound in via "this". */
+    context.code.push("var self = this;");
+
     while (!context.path_ends) {
 
         /* Fetch the opcode number. */
@@ -4589,6 +4595,9 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         code: []
     }
 
+    /* The "self" object will be bound in via "this". */
+    context.code.push("var self = this;");
+
     if (inmiddle == 0) {
         type = Mem1(addr);
         if (type == 0xE2)
@@ -4991,7 +5000,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     if (!retval) {
         /* The simple case; retval is false or undefined. Equivalent to a
            function that prints text and returns false. */
-        ;;;if (context.code.length) {
+        ;;;if (context.code.length > 1) {
         ;;;    fatal_error("Simple-case string generated code."); //assert
         ;;;}
         return context.buffer.join("");
@@ -4999,7 +5008,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
     else {
         oputil_flush_string(context);
         context.code.push("return " + retval + ";");
-        return make_code(context.code.join("\n"), "_func_str_"+startaddr, "nextcp,substring");
+        return make_code(context.code.join("\n"), "_func_str_"+startaddr, "nextcp", "substring");
     }
 }
 
