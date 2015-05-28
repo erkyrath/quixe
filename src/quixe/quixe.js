@@ -1064,13 +1064,13 @@ function oputil_store(context, funcop, operand) {
 
     case 15: /* The main-memory cases. */
         if (funcop.argsize == 4) {
-            context.code.push("MemW4("+funcop.addr+","+operand+");");
+            context.code.push("self.MemW4("+funcop.addr+","+operand+");");
         }
         else if (funcop.argsize == 2) {
-            context.code.push("MemW2("+funcop.addr+","+operand+");");
+            context.code.push("self.MemW2("+funcop.addr+","+operand+");");
         }
         else {
-            context.code.push("MemW1("+funcop.addr+","+operand+");");
+            context.code.push("self.MemW1("+funcop.addr+","+operand+");");
         }
         return;
 
@@ -1649,18 +1649,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]) * 4;
-                val = "Mem4("+(addr >>>0)+")";
+                val = "self.Mem4("+(addr >>>0)+")";
             }
             else {
                 var addr = Number(operands[1]) * 4;
                 if (addr)
-                    val = "Mem4(("+operands[0]+"+"+addr+") >>>0)";
+                    val = "self.Mem4(("+operands[0]+"+"+addr+") >>>0)";
                 else
-                    val = "Mem4("+operands[0]+")";
+                    val = "self.Mem4("+operands[0]+")";
             }
         }
         else {
-            val = "Mem4(("+operands[0]+"+4*"+operands[1]+") >>>0)";
+            val = "self.Mem4(("+operands[0]+"+4*"+operands[1]+") >>>0)";
         }
         context.code.push(operands[2]+val+");");
     },
@@ -1671,18 +1671,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]) * 2;
-                val = "Mem2("+(addr >>>0)+")";
+                val = "self.Mem2("+(addr >>>0)+")";
             }
             else {
                 var addr = Number(operands[1]) * 2;
                 if (addr)
-                    val = "Mem2(("+operands[0]+"+"+addr+") >>>0)";
+                    val = "self.Mem2(("+operands[0]+"+"+addr+") >>>0)";
                 else
-                    val = "Mem2("+operands[0]+")";
+                    val = "self.Mem2("+operands[0]+")";
             }
         }
         else {
-            val = "Mem2(("+operands[0]+"+2*"+operands[1]+") >>>0)";
+            val = "self.Mem2(("+operands[0]+"+2*"+operands[1]+") >>>0)";
         }
         context.code.push(operands[2]+val+");");
     },
@@ -1693,18 +1693,18 @@ var opcode_table = {
             if (quot_isconstant(operands[0])) {
                 /* Both operands constant */
                 addr = Number(operands[0]) + Number(operands[1]);
-                val = "Mem1("+(addr >>>0)+")";
+                val = "self.Mem1("+(addr >>>0)+")";
             }
             else {
                 var addr = Number(operands[1]);
                 if (addr)
-                    val = "Mem1(("+operands[0]+"+"+addr+") >>>0)";
+                    val = "self.Mem1(("+operands[0]+"+"+addr+") >>>0)";
                 else
-                    val = "Mem1("+operands[0]+")";
+                    val = "self.Mem1("+operands[0]+")";
             }
         }
         else {
-            val = "Mem1(("+operands[0]+"+"+operands[1]+") >>>0)";
+            val = "self.Mem1(("+operands[0]+"+"+operands[1]+") >>>0)";
         }
         context.code.push(operands[2]+val+");");
     },
@@ -1728,7 +1728,7 @@ var opcode_table = {
         else {
             val = "("+operands[0]+"+4*"+operands[1]+") >>>0"+",";
         }
-        context.code.push("MemW4("+val+operands[2]+")"+";");
+        context.code.push("self.MemW4("+val+operands[2]+")"+";");
     },
 
     0x4d: function(context, operands) { /* astores */
@@ -1750,7 +1750,7 @@ var opcode_table = {
         else {
             val = "("+operands[0]+"+2*"+operands[1]+") >>>0"+",";
         }
-        context.code.push("MemW2("+val+operands[2]+")"+";");
+        context.code.push("self.MemW2("+val+operands[2]+")"+";");
     },
 
     0x4e: function(context, operands) { /* astoreb */
@@ -1772,7 +1772,7 @@ var opcode_table = {
         else {
             val = "("+operands[0]+"+"+operands[1]+") >>>0"+",";
         }
-        context.code.push("MemW1("+val+operands[2]+")"+";");
+        context.code.push("self.MemW1("+val+operands[2]+")"+";");
     },
 
     0x4b: function(context, operands) { /* aloadbit */
@@ -1800,7 +1800,7 @@ var opcode_table = {
                     addrx = (operands[0]+"-"+(1+((-1-bitnum)>>3)));
                 }
             }
-            context.code.push(operands[2]+"(Mem1("+addrx+") & "+(1<<bitx)+")?1:0);");
+            context.code.push(operands[2]+"(self.Mem1("+addrx+") & "+(1<<bitx)+")?1:0);");
         }
         else {
             context.varsused["bitx"] = true;
@@ -1809,7 +1809,7 @@ var opcode_table = {
             context.code.push("bitx = "+sign1+"&7;");
             context.code.push("if ("+sign1+">=0) addrx = "+operands[0]+" + ("+sign1+">>3);");
             context.code.push("else addrx = "+operands[0]+" - (1+((-1-("+sign1+"))>>3));");
-            context.code.push(operands[2]+"(Mem1(addrx) & (1<<bitx))?1:0);");
+            context.code.push(operands[2]+"(self.Mem1(addrx) & (1<<bitx))?1:0);");
         }
     },
 
@@ -1852,13 +1852,13 @@ var opcode_table = {
         }
         if (quot_isconstant(operands[2])) {
             if (Number(operands[2]))
-                context.code.push("MemW1("+addrx+", Mem1("+addrx+") | "+mask+");");
+                context.code.push("self.MemW1("+addrx+", self.Mem1("+addrx+") | "+mask+");");
             else
-                context.code.push("MemW1("+addrx+", Mem1("+addrx+") & ~("+mask+"));");
+                context.code.push("self.MemW1("+addrx+", self.Mem1("+addrx+") & ~("+mask+"));");
         }
         else {
-            context.code.push("if ("+operands[2]+") MemW1("+addrx+", Mem1("+addrx+") | "+mask+");");
-            context.code.push("else MemW1("+addrx+", Mem1("+addrx+") & ~("+mask+"));");
+            context.code.push("if ("+operands[2]+") self.MemW1("+addrx+", self.Mem1("+addrx+") | "+mask+");");
+            context.code.push("else self.MemW1("+addrx+", self.Mem1("+addrx+") & ~("+mask+"));");
         }
     },
 
@@ -2087,7 +2087,7 @@ var opcode_table = {
         context.varsused["ix"] = true;
         context.code.push("mlen="+operands[0]+";");
         context.code.push("maddr="+operands[1]+";");
-        context.code.push("for (ix=0; ix<mlen; ix++, maddr++) MemW1(maddr, 0);");
+        context.code.push("for (ix=0; ix<mlen; ix++, maddr++) self.MemW1(maddr, 0);");
     },
 
     0x171: function(context, operands) { /* mcopy */
@@ -2103,10 +2103,10 @@ var opcode_table = {
            But for a rarely-used opcode, it's not really worth it. 
         */
         context.code.push("if (mdest < msrc) {");
-        context.code.push("for (ix=0; ix<mlen; ix++, msrc++, mdest++) MemW1(mdest, Mem1(msrc));");
+        context.code.push("for (ix=0; ix<mlen; ix++, msrc++, mdest++) self.MemW1(mdest, self.Mem1(msrc));");
         context.code.push("} else {");
         context.code.push("msrc += (mlen-1); mdest += (mlen-1);");
-        context.code.push("for (ix=0; ix<mlen; ix++, msrc--, mdest--) MemW1(mdest, Mem1(msrc));");
+        context.code.push("for (ix=0; ix<mlen; ix++, msrc--, mdest--) self.MemW1(mdest, self.Mem1(msrc));");
         context.code.push("}");
     },
 
@@ -2887,13 +2887,13 @@ function parse_operands(context, cp, oplist, operands) {
 
             /* The main-memory cases. */
             if (oplist.argsize == 4) {
-                value = "Mem4("+addr+")";
+                value = "self.Mem4("+addr+")";
             }
             else if (oplist.argsize == 2) {
-                value = "Mem2("+addr+")";
+                value = "self.Mem2("+addr+")";
             }
             else {
-                value = "Mem1("+addr+")";
+                value = "self.Mem1("+addr+")";
             }
             holdvar = alloc_holdvar(context);
             context.code.push(holdvar+"=("+value+");");
@@ -3013,13 +3013,13 @@ function parse_operands(context, cp, oplist, operands) {
 
             /* The main-memory cases. */
             if (oplist.argsize == 4) {
-                value = "Mem4("+addr+")";
+                value = "self.Mem4("+addr+")";
             }
             else if (oplist.argsize == 2) {
-                value = "Mem2("+addr+")";
+                value = "self.Mem2("+addr+")";
             }
             else {
-                value = "Mem1("+addr+")";
+                value = "self.Mem1("+addr+")";
             }
             operands[ix] = value;
             continue;
@@ -3108,13 +3108,13 @@ function parse_operands(context, cp, oplist, operands) {
 
             /* The main-memory cases. */
             if (oplist.argsize == 4) {
-                value = "MemW4("+addr+",";
+                value = "self.MemW4("+addr+",";
             }
             else if (oplist.argsize == 2) {
-                value = "MemW2("+addr+",";
+                value = "self.MemW2("+addr+",";
             }
             else {
-                value = "MemW1("+addr+",";
+                value = "self.MemW1("+addr+",";
             }
             operands[ix] = value;
             continue;
@@ -4725,10 +4725,10 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("var otype, retval;");
                     context.code.push("var oaddr = "+(cab.addr)+";");
                     if (cab.type >= 0x09)
-                        context.code.push("oaddr = Mem4(oaddr);");
+                        context.code.push("oaddr = self.Mem4(oaddr);");
                     if (cab.type == 0x0B)
-                        context.code.push("oaddr = Mem4(oaddr);");
-                    context.code.push("otype = Mem1(oaddr);");
+                        context.code.push("oaddr = self.Mem4(oaddr);");
+                    context.code.push("otype = self.Mem1(oaddr);");
                     retval = "retval";
                     done = true;
 
@@ -4883,8 +4883,8 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
                     context.code.push("var otype, retval;");
                     context.code.push("var oaddr = "+Mem4(node)+";");
                     if (nodetype == 0x09 || nodetype == 0x0B)
-                        context.code.push("oaddr = Mem4(oaddr);");
-                    context.code.push("otype = Mem1(oaddr);");
+                        context.code.push("oaddr = self.Mem4(oaddr);");
+                    context.code.push("otype = self.Mem1(oaddr);");
                     retval = "retval";
                     done = true;
 
