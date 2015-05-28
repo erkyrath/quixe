@@ -2017,7 +2017,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("vm_restart();");
+        context.code.push("self.vm_restart();");
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -2026,7 +2026,7 @@ var opcode_table = {
         oputil_unload_offstate(context);
         context.varsused["ix"] = true;
         oputil_push_callstub(context, operands[1]);
-        context.code.push("ix = vm_save("+operands[0]+");");
+        context.code.push("ix = self.vm_save("+operands[0]+");");
         context.code.push("self.pop_callstub(ix ? 0 : 1);");
         context.code.push("return;");
         context.path_ends = true;
@@ -2034,7 +2034,7 @@ var opcode_table = {
 
     0x124: function(context, operands) { /* restore */
         oputil_unload_offstate(context);
-        context.code.push("if (vm_restore("+operands[0]+")) {");
+        context.code.push("if (self.vm_restore("+operands[0]+")) {");
         /* Succeeded. Pop the call stub that save pushed, using -1
            to indicate success. */
         context.code.push("self.pop_callstub((-1)>>>0);");
@@ -2051,7 +2051,7 @@ var opcode_table = {
     0x125: function(context, operands) { /* saveundo */
         oputil_unload_offstate(context);
         oputil_push_callstub(context, operands[0]);
-        context.code.push("vm_saveundo();");
+        context.code.push("self.vm_saveundo();");
         /* Any failure was a fatal error, so we return success. */
         context.code.push("self.pop_callstub(0);");
         context.code.push("return;");
@@ -2060,7 +2060,7 @@ var opcode_table = {
 
     0x126: function(context, operands) { /* restoreundo */
         oputil_unload_offstate(context);
-        context.code.push("if (vm_restoreundo()) {");
+        context.code.push("if (self.vm_restoreundo()) {");
         /* Succeeded. Pop the call stub that saveundo pushed, using -1
            to indicate success. */
         context.code.push("self.pop_callstub((-1)>>>0);");
@@ -5522,6 +5522,7 @@ function vm_restart() {
     
     /* We're now ready to execute. */
 }
+self.vm_restart = vm_restart;
 
 /* Run-length-encode an array, for Quetzal. */
 function compress_bytes(arr) {
@@ -5858,6 +5859,11 @@ function vm_restoreundo() {
 
     return true;
 }
+
+self.vm_save = vm_save;
+self.vm_restore = vm_restore;
+self.vm_saveundo = vm_saveundo;
+self.vm_restoreundo = vm_restoreundo;
 
 /* Change the size of the memory map. The internal flag should be true 
    only when the heap-allocation system is calling.
