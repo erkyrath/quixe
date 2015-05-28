@@ -1946,7 +1946,7 @@ var opcode_table = {
     },
 
     0x100: function(context, operands) { /* gestalt */
-        var expr = "do_gestalt(("+operands[0]+"),("+operands[1]+"))";
+        var expr = "self.do_gestalt(("+operands[0]+"),("+operands[1]+"))";
         context.code.push(operands[2]+expr+");");
     },
 
@@ -1994,7 +1994,7 @@ var opcode_table = {
     },
 
     0x111: function(context, operands) { /* setrandom */
-        context.code.push("set_random(" + operands[0] + ");");
+        context.code.push("self.set_random(" + operands[0] + ");");
     },
 
     0x120: function(context, operands) { /* quit */
@@ -3755,6 +3755,7 @@ function set_random(val) {
         self.random_func = srand_get_random;
     }
 }
+self.set_random = set_random;
 
 /* Here is a pretty standard random-number generator and seed function.
    It is used for the deterministic mode of the Glulx RNG. (In the
@@ -5053,6 +5054,7 @@ function do_gestalt(val, val2) {
         return 0;
     }
 }
+self.do_gestalt = do_gestalt;
 
 /* This fetches a search key, and returns an array containing the key
    (bytewise). Actually it always returns the same array.
