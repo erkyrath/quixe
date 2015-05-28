@@ -2114,12 +2114,12 @@ var opcode_table = {
     0x178: function(context, operands) { /* malloc */
         var expr = "heap_malloc("+operands[0]+")";
         context.code.push(operands[1]+expr+");");
-        ;;;context.code.push("assert_heap_valid();"); //assert
+        ;;;context.code.push("self.assert_heap_valid();"); //assert
     },
     
     0x179: function(context, operands) { /* mfree */
         context.code.push("heap_free("+operands[0]+");");
-        ;;;context.code.push("assert_heap_valid();"); //assert
+        ;;;context.code.push("self.assert_heap_valid();"); //assert
     },
 
     0x180: function(context, operands) { /* accelfunc */
@@ -6148,6 +6148,7 @@ function assert_heap_valid() {
     if (addr != self.endmem)
         fatal_error("Heap inconsistency: overrun at end of heap");
 }
+self.assert_heap_valid = assert_heap_valid;
 
 var debuginfo = {
     map: {},
