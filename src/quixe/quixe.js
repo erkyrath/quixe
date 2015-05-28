@@ -1243,7 +1243,7 @@ function oputil_perform_jump(context, operand, unconditional) {
                 ;;;context.code.push("// ignoring offstack for conditional return: " + context.offstack.length); //debug
             }
             context.code.push("if (self.leave_function()) return self.VMStopped;");
-            context.code.push("pop_callstub("+val+");");
+            context.code.push("self.pop_callstub("+val+");");
         }
         else {
             oputil_unload_offstate(context, !unconditional);
@@ -1256,7 +1256,7 @@ function oputil_perform_jump(context, operand, unconditional) {
         oputil_unload_offstate(context, !unconditional);
         context.code.push("if (("+operand+")==0 || ("+operand+")==1) {");
         context.code.push("if (self.leave_function()) return self.VMStopped;");
-        context.code.push("pop_callstub("+operand+");");
+        context.code.push("self.pop_callstub("+operand+");");
         context.code.push("}");
         context.code.push("else {");
         context.code.push("self.pc = ("+context.cp+"+("+operand+")-2) >>>0;");
@@ -1582,7 +1582,7 @@ var opcode_table = {
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
         context.code.push("if (self.leave_function()) return self.VMStopped;");
-        context.code.push("pop_callstub("+operands[0]+");");
+        context.code.push("self.pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -1603,7 +1603,7 @@ var opcode_table = {
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
         context.code.push("pop_stack_to("+operands[1]+");");
-        context.code.push("pop_callstub("+operands[0]+");");
+        context.code.push("self.pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -2027,7 +2027,7 @@ var opcode_table = {
         context.varsused["ix"] = true;
         oputil_push_callstub(context, operands[1]);
         context.code.push("ix = vm_save("+operands[0]+");");
-        context.code.push("pop_callstub(ix ? 0 : 1);");
+        context.code.push("self.pop_callstub(ix ? 0 : 1);");
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -2037,7 +2037,7 @@ var opcode_table = {
         context.code.push("if (vm_restore("+operands[0]+")) {");
         /* Succeeded. Pop the call stub that save pushed, using -1
            to indicate success. */
-        context.code.push("pop_callstub((-1)>>>0);");
+        context.code.push("self.pop_callstub((-1)>>>0);");
         context.code.push("} else {");
         /* Failed to restore. Put back the PC, in case it got overwritten. */
         oputil_store(context, operands[1], "1");
@@ -2053,7 +2053,7 @@ var opcode_table = {
         oputil_push_callstub(context, operands[0]);
         context.code.push("vm_saveundo();");
         /* Any failure was a fatal error, so we return success. */
-        context.code.push("pop_callstub(0);");
+        context.code.push("self.pop_callstub(0);");
         context.code.push("return;");
         context.path_ends = true;
     },
@@ -2063,7 +2063,7 @@ var opcode_table = {
         context.code.push("if (vm_restoreundo()) {");
         /* Succeeded. Pop the call stub that saveundo pushed, using -1
            to indicate success. */
-        context.code.push("pop_callstub((-1)>>>0);");
+        context.code.push("self.pop_callstub((-1)>>>0);");
         context.code.push("} else {");
         /* Failed to restore. Put back the PC, in case it got overwritten. */
         oputil_store(context, operands[0], "1");
