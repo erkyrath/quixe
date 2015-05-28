@@ -2239,7 +2239,7 @@ var opcode_table = {
     },
 
     0x141: function(context, operands) { /* setstringtbl */
-        context.code.push("set_string_table("+operands[0]+");");
+        context.code.push("self.set_string_table("+operands[0]+");");
     },
 
     0x148: function(context, operands) { /* getiosys */
@@ -4296,6 +4296,7 @@ function set_string_table(addr) {
     decoding_tree = textenv.decoding_tree;
     vmstring_table = textenv.vmstring_tables[self.iosysmode];
 }
+self.set_string_table = set_string_table;
 
 /* Set the VM iosys, and adjust the vmstring_table register appropriately. 
 */
