@@ -1602,7 +1602,7 @@ var opcode_table = {
         context.offstack.length = 0;
         context.offloc.length = 0;
         context.offlocdirty.length = 0;
-        context.code.push("pop_stack_to("+operands[1]+");");
+        context.code.push("self.pop_stack_to("+operands[1]+");");
         context.code.push("self.pop_callstub("+operands[0]+");");
         context.code.push("return;");
         context.path_ends = true;
