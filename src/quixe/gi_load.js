@@ -742,9 +742,16 @@ var decode_base64;
    of the above.)
 */
 if (window.btoa) {
-    encode_base64 = function(arr) {
-        return window.btoa(String.fromCharCode.apply(this, arr));
-    }
+    encode_base64 = function(image) {
+        // There's a limit on how much can be piped into .apply() at a time, so
+        // do this in chunks
+        var blocks = [];
+        for (var i = 0, l = image.length; i < l; i += 16384) {
+            blocks.push(String.fromCharCode.apply(String, image.slice(i, i + 16384)));
+        }
+
+        return btoa(blocks.join(''));
+    };
 }
 else {
     encode_base64 = function(arr) {
