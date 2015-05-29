@@ -21,6 +21,12 @@
    The "self" will be available inside compiled functions, and will give
    them access to its contents.
 */
+/* We find that .bind()-build functions are slower than the original,
+   particularly on Firefox. However, I don't know another way around the
+   "dynamic variable binding in eval()" issue, which is *also* an 
+   optimization problem. At least GiDispa functions aren't (usually) called 
+   that often in (normal) gameplay.
+*/
 
 GiDispa = function() {
 

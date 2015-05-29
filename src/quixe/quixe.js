@@ -42,6 +42,9 @@
  */
 
 // ### Optimizations I have not yet tried:
+// Using JS array types. This didn't prove to be a speedup a few years
+//   ago, but maybe engines have improved. The raw Blorb loading delay
+//   might also benefit from this.
 // Change memory to an array of 4-byte values. Inline Mem4 and Mem4W when
 //   address is known to be aligned.
 // Inline Mem1 wherever possible.
@@ -53,7 +56,6 @@
 // Also: put in debug asserts for valid stack values (at push/pop)
 //   (check isFinite and non-negative)
 // Should we be caching arrays instead of strings?
-// Replace eval() with Function(), providing external APIs to make it work.
 
 /* Put everything inside the Quixe namespace. */
 
