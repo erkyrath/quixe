@@ -285,6 +285,9 @@ function Mem4(addr) {
     return (memmap[addr] * 0x1000000) + (memmap[addr+1] * 0x10000) 
         + (memmap[addr+2] * 0x100) + (memmap[addr+3]);
 }
+function MemSlice(addr, length) {
+    return memmap.slice(addr, addr + length);
+}
 function MemW1(addr, val) {
     // ignore high bytes if necessary
     memmap[addr] = val & 0xFF;
@@ -304,6 +307,7 @@ function MemW4(addr, val) {
 self.Mem1 = Mem1;
 self.Mem2 = Mem2;
 self.Mem4 = Mem4;
+self.MemSlice = MemSlice;
 self.MemW1 = MemW1;
 self.MemW2 = MemW2;
 self.MemW4 = MemW4;
@@ -5072,52 +5076,48 @@ self.do_gestalt = do_gestalt;
 /* This fetches a search key, and returns an array containing the key
    (bytewise). Actually it always returns the same array.
 */
-var tempsearchkey = [];
 function fetch_search_key(addr, len, options) {
     var ix;
-    tempsearchkey.length = len;
 
     if (options & 1) {
         /* indirect key */
-        for (ix=0; ix<len; ix++)
-            tempsearchkey[ix] = Mem1(addr+ix);
+        return MemSlice(addr, len);
     }
     else {
         switch (len) {
         case 4:
-            tempsearchkey[0] = (addr >> 24) & 0xFF;
-            tempsearchkey[1] = (addr >> 16) & 0xFF;
-            tempsearchkey[2] = (addr >> 8) & 0xFF;
-            tempsearchkey[3] = addr & 0xFF;
-            break;
+            return [
+                (addr >> 24) & 0xFF,
+                (addr >> 16) & 0xFF,
+                (addr >> 8) & 0xFF,
+                addr & 0xFF
+            ];
         case 2:
-            tempsearchkey[0] = (addr >> 8) & 0xFF;
-            tempsearchkey[1] = addr & 0xFF;
-            break;
+            return [
+                (addr >> 8) & 0xFF,
+                addr & 0xFF
+            ];
         case 1:
-            tempsearchkey[0] = addr & 0xFF;
-            break;
+            return [addr & 0xFF];
         default:
             throw('Direct search key must hold one, two, or four bytes.');
         }
     }
-
-    return tempsearchkey;
 }
 
 function linear_search(key, keysize, start, 
     structsize, numstructs, keyoffset, options) {
 
-    var ix, count, match, byt;
+    var ix, count, match, bytes;
     var retindex = ((options & 4) != 0);
     var zeroterm = ((options & 2) != 0);
     var keybuf = fetch_search_key(key, keysize, options);
 
     for (count=0; count<numstructs; count++, start+=structsize) {
         match = true;
+        bytes = MemSlice(start + keyoffset, keysize);
         for (ix=0; match && ix<keysize; ix++) {
-            byt = Mem1(start + keyoffset + ix);
-            if (byt != keybuf[ix])
+            if (bytes[ix] != keybuf[ix])
                 match = false;
         }
 
@@ -5130,9 +5130,9 @@ function linear_search(key, keysize, start,
         
         if (zeroterm) {
             match = true;
+            bytes = MemSlice(start + keyoffset, keysize);
             for (ix=0; match && ix<keysize; ix++) {
-                byt = Mem1(start + keyoffset + ix);
-                if (byt != 0)
+                if (bytes[ix] != 0)
                     match = false;
             }
             
