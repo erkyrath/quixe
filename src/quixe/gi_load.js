@@ -743,11 +743,13 @@ var decode_base64;
 */
 if (window.btoa) {
     encode_base64 = function(image) {
-        // There's a limit on how much can be piped into .apply() at a time, so
-        // do this in chunks
+        /* There's a limit on how much can be piped into .apply() at a 
+           time -- that is, JS interpreters choke on too many arguments
+           in a function call. 16k is a conservative limit. */
         var blocks = [];
-        for (var i = 0, l = image.length; i < l; i += 16384) {
-            blocks.push(String.fromCharCode.apply(String, image.slice(i, i + 16384)));
+        var imglen = image.length;
+        for (var ix = 0; ix < imglen; ix += 16384) {
+            blocks.push(String.fromCharCode.apply(String, image.slice(ix, ix + 16384)));
         }
 
         return btoa(blocks.join(''));
