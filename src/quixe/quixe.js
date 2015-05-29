@@ -487,26 +487,25 @@ self.fatal_error = fatal_error;
    (This function used to use eval(), which let you sneak the funcname
    in for debugging purposes.)
 
-   If arg1, arg2 are provided, they become the function arguments.
-   Currently limited to two.
-
    The function runs in global scope, rather than our Quixe environment.
-   Private Quixe variables are not available. To help work around this, the
-   function's "this" is bound to the "self" object. Typically you'll start
-   the function with "var self = this;" so that generated code can be
-   written in the usual idiom.
+   Private Quixe variables are not available. To work around this, the
+   function's first argument must be "self"; the caller must pass in the
+   global self object.
+
+   If arg1, arg2 are provided, they become additional function arguments.
+   (Currently limited to two.)
 */
 function make_code(val, funcname, arg1, arg2) {
     var func;
     if (funcname === undefined)
         funcname = '_func';
     if (arg1 === undefined)
-        func = new Function(val);
+        func = new Function('self', val);
     else if (arg2 === undefined)
-        func = new Function(arg1, val);
+        func = new Function('self', arg1, val);
     else
-        func = new Function(arg1, arg2, val);
-    return func.bind(self);
+        func = new Function('self', arg1, arg2, val);
+    return func;
 }
 
 /* Constructor: VMFunc
@@ -3409,9 +3408,6 @@ function compile_path(vmfunc, startaddr, startiosys) {
 
     context.code.push(""); /* May be replaced by the _hold var declarations. */
 
-    /* The "self" object will be bound in via "this". */
-    context.code.push("var self = this;");
-
     while (!context.path_ends) {
 
         /* Fetch the opcode number. */
@@ -4520,7 +4516,7 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
                 return false;
         }
         else {
-            res = strop(nextcp, substring);
+            res = strop(self, nextcp, substring);
             if (res instanceof Array) {
                 /* Entered a substring */
                 substring = true;
@@ -4596,9 +4592,6 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
         buffer: [],
         code: []
     }
-
-    /* The "self" object will be bound in via "this". */
-    context.code.push("var self = this;");
 
     if (inmiddle == 0) {
         type = Mem1(addr);
@@ -6375,7 +6368,7 @@ function execute_loop() {
             }
         }
         total_path_calls++; //###stats
-        var res = path();
+        var res = path(self);
         if (res === self.VMStopped) {
             self.done_executing = true;
             self.vm_stopped = true;
