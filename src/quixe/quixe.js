@@ -48,6 +48,8 @@
 // Change memory to an array of 4-byte values. Inline Mem4 and Mem4W when
 //   address is known to be aligned.
 // Inline Mem1 wherever possible.
+// Compile "@mul 2 x" amd "@mul x 2" as a bit-shift (similarly other
+//   power-of-2 constants).
 // Is "x instanceof Function" efficient? Should compile_string return a 
 //   tiny tagged object instead?
 // Probably don't want to cache string-functions in filter mode.
@@ -221,6 +223,23 @@ function qstackdump() {
         ls.push(val);
     }
     qlog("VM stack dump: " + ls.join(", "));
+}
+
+/* Polyfill for Math.imul, if necessary. (This affects the global Math
+   namespace at load time, which is ugly, but only on ancient browsers.)
+*/
+if (Math.imul === undefined) {
+    qlog("Polyfilling Math.imul().");
+    /* Code from: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul */
+    Math.imul = function(a, b) {
+        var ah = (a >>> 16) & 0xffff;
+        var al = a & 0xffff;
+        var bh = (b >>> 16) & 0xffff;
+        var bl = b & 0xffff;
+        // the shift by 0 fixes the sign on the high part
+        // the final |0 converts the unsigned value into a signed value
+        return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0)|0);
+    };
 }
 
 /* Fast char-to-hex and char-to-quoted-char conversion tables. 
@@ -1304,7 +1323,7 @@ var opcode_table = {
     0x12: function(context, operands) { /* mul */
         var sign0 = oputil_signify_operand(context, operands[0]);
         var sign1 = oputil_signify_operand(context, operands[1]);
-        context.code.push(operands[2]+"(("+sign0+")*("+sign1+")) >>>0);");
+        context.code.push(operands[2]+"(Math.imul(("+sign0+"),("+sign1+"))) >>>0);");
     },
 
     0x13: function(context, operands) { /* div */

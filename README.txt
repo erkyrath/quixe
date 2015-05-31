@@ -92,6 +92,8 @@ on the web site), copy play-remote.html.
     browsers. (No more eval() calls!) Thanks to Alex Munroe for pointing
     out the problem and offering solutions. Also everyone else who
     joined in the JS-wonkery discussion.
+  - Use Math.imul instead of native multiplication, so that large integer
+    multiplies (which overflow 32 bits) are computed correctly.
 
 - 2.1.0 (April 24, 2015)
   - Include GlkOte 2.1.0 (graphics windows; image display; mouse input).
