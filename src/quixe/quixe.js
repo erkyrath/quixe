@@ -6420,7 +6420,6 @@ return {
     get_signature: quixe_get_signature,
     get_statistics: quixe_get_statistics,
     get_debuginfo: quixe_get_debuginfo,
-    self: self, /* ### debugging */
 
     ReadByte: ReadArgByte,
     WriteByte: WriteArgByte,
