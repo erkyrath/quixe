@@ -87,7 +87,7 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- 2.1.1 (###)
+- 2.1.1 (June 13, 2015)
   - Restructured generated JS code for better optimization in modern
     browsers. (No more eval() calls!) Thanks to Alex Munroe for pointing
     out the problem and offering solutions. Also everyone else who
