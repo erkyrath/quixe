@@ -109,6 +109,7 @@ on the web site), copy play-remote.html.
 - 2.0.0 (February 12, 2015)
   - Switched from Prototype over to jQuery.
   - Switched from my old ad-hoc license to the MIT license.
+  - Added the ability to download a saved-game file.
   - Increased the font size in the included CSS stylesheets.
   - Fixed save bug where the IFhd chunk could appear late in the file
     (violating the Quetzal spec). Also, a bug where odd-length chunks
