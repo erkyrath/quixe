@@ -901,6 +901,8 @@ function setup_operandlist_table() {
         0x125: list_C, /* saveundo */
         0x126: list_F, /* restoreundo */
         0x127: list_LL, /* protect */
+        0x128: list_S, /* hasundo */
+        0x129: list_none, /* discardundo */
         0x130: list_LLF, /* glk */
         0x140: list_S, /* getstringtbl */
         0x141: list_L, /* setstringtbl */
@@ -2109,6 +2111,14 @@ var opcode_table = {
         context.code.push("if (self.protectstart==self.protectend) {")
         context.code.push("  self.protectstart=0; self.protectend=0;");
         context.code.push("}");
+    },
+
+    0x128: function(context, operands) { /* hasundo */
+        context.code.push(operands[0]+"(self.vm_hasundo() ? 0 : 1));");
+    },
+
+    0x129: function(context, operands) { /* discardundo */
+        context.code.push("self.vm_discardundo();");
     },
 
     0x170: function(context, operands) { /* mzero */
@@ -5037,7 +5047,7 @@ function do_gestalt(val, val2) {
 
     switch (val) {
     case 0: /* GlulxVersion */
-        return 0x00030102; /* Glulx spec version 3.1.2 */
+        return 0x00030103; /* Glulx spec version 3.1.3 */
 
     case 1: /* TerpVersion */
         return 0x00020101; /* Quixe version 2.1.1 */
@@ -5084,6 +5094,9 @@ function do_gestalt(val, val2) {
 
     case 11: /* Float */
         return 1; /* We can handle the floating-point opcodes. */
+
+    case 12: /* ExtUndo */
+        return 1; /* We can handle hasundo/discardundo. */
 
 
     default:
@@ -5892,10 +5905,31 @@ function vm_restoreundo() {
     return true;
 }
 
+/* Checks whether there's a snapshot on the undo stack.
+   Returns true if there is.
+*/
+function vm_hasundo() {
+    if (undostack.length == 0) {
+        return false;
+    }
+    return true;
+}
+
+/* Pops the most recent snapshot off the undo stack, if there are any.
+*/
+function vm_discardundo() {
+    if (undostack.length == 0) {
+        return;
+    }
+    var snapshot = undostack.pop();
+}
+
 self.vm_save = vm_save;
 self.vm_restore = vm_restore;
 self.vm_saveundo = vm_saveundo;
 self.vm_restoreundo = vm_restoreundo;
+self.vm_hasundo = vm_hasundo;
+self.vm_discardundo = vm_discardundo;
 
 /* Change the size of the memory map. The internal flag should be true 
    only when the heap-allocation system is calling.
