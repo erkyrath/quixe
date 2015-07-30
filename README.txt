@@ -89,6 +89,7 @@ on the web site), copy play-remote.html.
 
 - 2.1.2 (###, 2015)
   - Added basic WAI-ARIA support to buffer windows.
+  - Added @hasundo and @discardundo opcodes. (Glulx spec 3.1.3.)
 
 - 2.1.1 (June 13, 2015)
   - Restructured generated JS code for better optimization in modern
