@@ -89,7 +89,7 @@ on the web site), copy play-remote.html.
 
 - 2.1.2 (###, 2015)
   - Added basic WAI-ARIA support to buffer windows.
-    Fixed a bug where setting a graphics window's color and then clearing
+  - Fixed a bug where setting a graphics window's color and then clearing
     it (in the same turn) would fail.
 
 - 2.1.1 (June 13, 2015)

@@ -1,5 +1,5 @@
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.1.0.
+ * GlkOte Library: version 2.1.1.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -2490,7 +2490,7 @@ function build_evhan_hyperlink(winid, linkval) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '2.1.0',
+  version:  '2.1.1',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
