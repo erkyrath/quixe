@@ -3670,7 +3670,16 @@ function glk_window_clear(win) {
         }
         break;
     case Const.wintype_Graphics:
+        /* If the background color has been set, we must retain that entry.
+           (The last setcolor, if there are several.) */
+        var setcol = null;
+        for (var ix=0; ix<win.content.length; ix++) {
+            if (win.content[ix].special == 'setcolor')
+                setcol = win.content[ix];
+        }
         win.content.length = 0;
+        if (setcol !== null)
+            win.content.push(setcol);
         win.content.push({ special: 'fill' }); /* clear to background color */
         break;
     }
