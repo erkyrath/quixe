@@ -4453,6 +4453,8 @@ function glk_image_draw(win, imgid, val1, val2) {
                 break;
         }
         img.alignment = alignment;
+        if (win.hyperlink)
+            img.hyperlink = win.hyperlink;
         gli_window_buffer_put_special(win, img);
         return 1;
 
@@ -4503,6 +4505,8 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
                 break;
         }
         img.alignment = alignment;
+        if (win.hyperlink)
+            img.hyperlink = win.hyperlink;
         gli_window_buffer_put_special(win, img);
         return 1;
 
