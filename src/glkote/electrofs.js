@@ -28,6 +28,38 @@ catch (ex) {}
  * selection, the callback will be called with a null argument.
 */
 function dialog_open(tosave, usage, gameid, callback) {
+    const dialog = require('electron').remote.dialog;
+    var opts = { 
+        filters: filters_for_usage(usage) 
+    };
+    var diacallback = function(ls) {
+        if (ls.length == 0)
+            callback(null);
+        else
+            callback(ls[0]);
+    };
+    if (!tosave) {
+        opts.properties = ['openFile'];
+        dialog.showOpenDialog(opts, diacallback);
+    }
+    else {
+        dialog.showSaveDialog(opts, diacallback);
+    }
+}
+
+function filters_for_usage(val) {
+    switch (val) {
+    case 'data': 
+        return [ { name: 'Glk Data File', extensions: ['glkdata'] } ];
+    case 'save': 
+        return [ { name: 'Glk Save File', extensions: ['glksave'] } ];
+    case 'transcript': 
+        return [ { name: 'Transcript File', extensions: ['txt'] } ];
+    case 'command': 
+        return [ { name: 'Command File', extensions: ['txt'] } ];
+    default:
+        return [];
+    }
 }
 
 /* Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
@@ -45,6 +77,7 @@ function file_construct_ref(filename, usage, gameid) {
         gameid = '';
     var path = path.join(extfilepath, filename);
     var ref = { path:path, usage:usage };
+    return ref;
 }
 
 /* Dialog.file_ref_exists(ref) -- returns whether the file exists
