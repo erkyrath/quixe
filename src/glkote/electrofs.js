@@ -34,10 +34,13 @@ function dialog_open(tosave, usage, gameid, callback) {
         filters: filters_for_usage(usage) 
     };
     var diacallback = function(ls) {
-        if (ls.length == 0)
+        if (ls.length == 0) {
             callback(null);
-        else
-            callback({ filename:ls[0], usage:usage });
+        }
+        else {
+            var ref = { filename:ls, usage:usage };
+            callback(ref);
+        }
     };
     var mainwin = require('electron').remote.getCurrentWindow();
     if (!tosave) {
@@ -106,18 +109,16 @@ function file_remove_ref(ref) {
 /* ###
  */
 function file_open(fmode, ref) {
-    console.log('### file_open', ref);
-
     var fstream = null;
     if (fmode == Const.filemode_Read) {
-        fstream = fs.createReadStream(ref, {
+        fstream = fs.createReadStream(ref.filename, {
                 flags: 'r',
                 autoClose: false
             });
     }
     else {
         //### other modes, other flags
-        fstream = fs.createWriteStream(ref, {
+        fstream = fs.createWriteStream(ref.filename, {
                 flags: 'w'
             });
     }

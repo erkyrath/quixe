@@ -2639,12 +2639,6 @@ function gli_delete_stream(str) {
         if (window.GiDispa)
             GiDispa.unretain_array(str.buf);
     }
-    else if (str.type == strtype_File) {
-        if (str.fstream && str.writable) {
-            str.fstream.end();
-        }
-        str.fstream = null;
-    }
 
     if (window.GiDispa)
         GiDispa.class_unregister('stream', str);
@@ -2661,6 +2655,7 @@ function gli_delete_stream(str) {
     if (next)
         next.prev = prev;
 
+    str.fstream = null;
     str.buf = null;
     str.readable = false;
     str.writable = false;
@@ -3998,11 +3993,16 @@ function glk_stream_close(str, result) {
         throw('glk_stream_close: cannot close window stream');
 
     if (str.type == strtype_File && str.writable) {
-        if (!(str.timer_id === null)) {
-            clearTimeout(str.timer_id);
-            str.timer_id = null;
+        if (!str.streaming) {
+            if (!(str.timer_id === null)) {
+                clearTimeout(str.timer_id);
+                str.timer_id = null;
+            }
+            Dialog.file_write(str.ref, str.buf);
         }
-        Dialog.file_write(str.ref, str.buf);
+        else {
+            str.fstream.end();
+        }
     }
 
     gli_stream_fill_result(str, result);
