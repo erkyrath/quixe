@@ -800,7 +800,7 @@ function file_construct_ref(filename, usage, gameid) {
     if (!filename)
         filename = '';
     if (!usage)
-        useage = '';
+        usage = '';
     if (!gameid)
         gameid = '';
     var key = usage + ':' + gameid + ':' + filename;
