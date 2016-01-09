@@ -36,7 +36,7 @@ function dialog_open(tosave, usage, gameid, callback) {
         if (ls.length == 0)
             callback(null);
         else
-            callback(ls[0]);
+            callback({ filename:ls[0], usage:usage });
     };
     if (!tosave) {
         opts.properties = ['openFile'];
@@ -76,7 +76,7 @@ function file_construct_ref(filename, usage, gameid) {
     if (!gameid)
         gameid = '';
     var path = path.join(extfilepath, filename);
-    var ref = { path:path, usage:usage };
+    var ref = { filename:path, usage:usage };
     return ref;
 }
 
