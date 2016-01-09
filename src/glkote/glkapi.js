@@ -2593,15 +2593,21 @@ function gli_new_stream(type, readable, writable, rock) {
     str.disprock = undefined;
 
     str.unicode = false;
+    str.streaming = false;
     str.ref = null;
     str.win = null;
     str.file = null;
+
+    /* for buffer mode */
     str.buf = null;
     str.bufpos = 0;
     str.buflen = 0;
     str.bufeof = 0;
     str.timer_id = null;
     str.flush_func = null;
+
+    /* for streaming mode */
+    str.fstream = null;
 
     str.readcount = 0;
     str.writecount = 0;
@@ -2632,6 +2638,12 @@ function gli_delete_stream(str) {
     if (str.type == strtype_Memory) {
         if (window.GiDispa)
             GiDispa.unretain_array(str.buf);
+    }
+    else if (str.type == strtype_File) {
+        if (str.fstream && str.writable) {
+            str.fstream.end();
+        }
+        str.fstream = null;
     }
 
     if (window.GiDispa)
@@ -2675,6 +2687,7 @@ function gli_stream_open_window(win) {
    We do this by setting a ten-second timer (if there isn't one set already).
    The timer calls a flush method on the stream.
 */
+/*### streaming? */
 function gli_stream_dirty_file(str) {
     if (str.timer_id === null) {
         if (str.flush_func === null) {
