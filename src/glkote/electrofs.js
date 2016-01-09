@@ -34,7 +34,7 @@ function dialog_open(tosave, usage, gameid, callback) {
         filters: filters_for_usage(usage) 
     };
     var diacallback = function(ls) {
-        if (ls.length == 0) {
+        if (!ls) {
             callback(null);
         }
         else {
