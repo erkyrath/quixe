@@ -83,12 +83,14 @@ function file_construct_ref(filename, usage, gameid) {
 /* Dialog.file_ref_exists(ref) -- returns whether the file exists
  */
 function file_ref_exists(ref) {
+    console.log('### file_ref_exists', ref);
     //###
 }
 
 /* Dialog.file_remove_ref(ref) -- delete the file, if it exists
  */
 function file_remove_ref(ref) {
+    console.log('### file_remove_ref', ref);
     //###
 }
 
@@ -99,7 +101,7 @@ function file_remove_ref(ref) {
  * or unicode values which must be converted.
  */
 function file_write(dirent, content, israw) {
-    //### but we'll start with json-stringify just to demo
+    throw('file_write not implemented in electrofs');
 }
 
 /* Dialog.file_read(dirent, israw) -- read data from the file
@@ -112,7 +114,7 @@ function file_write(dirent, content, israw) {
  * in israw mode).
  */
 function file_read(dirent, israw) {
-    //### but we'll start with json-stringify just to demo
+    throw('file_read not implemented in electrofs');
 }
 
 /* End of Dialog namespace function. Return the object which will

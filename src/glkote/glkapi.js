@@ -2783,11 +2783,11 @@ function gli_put_char(str, ch) {
     case strtype_File:
         if (str.streaming) {
             //### ensure_op?
-            if (!str->unicode) {
+            if (!str.unicode) {
                 str.fstream.write(String.fromCharCode(val), 'binary');
             }
             else {
-                if (!str->isbinary) {
+                if (!str.isbinary) {
                     /* cheap UTF-8 stream */
                     str.fstream.write(String.fromCharCode(val), 'utf8');
                 }
@@ -2844,7 +2844,7 @@ function gli_put_array(str, arr, allbytes) {
     case strtype_File:
         if (str.streaming) {
             //### ensure_op?
-            if (!str->unicode) {
+            if (!str.unicode) {
                 if (allbytes)
                     val = String.fromCharCode.apply(this, arr);
                 else
@@ -2852,7 +2852,7 @@ function gli_put_array(str, arr, allbytes) {
                 str.fstream.write(val, 'binary');
             }
             else {
-                if (!str->isbinary) {
+                if (!str.isbinary) {
                     /* cheap UTF-8 stream */
                     if (allbytes)
                         val = String.fromCharCode.apply(this, arr);
@@ -3844,21 +3844,26 @@ function glk_stream_open_file(fref, fmode, rock) {
     if (fmode == Const.filemode_Read && !Dialog.file_ref_exists(fref.ref))
         throw('glk_stream_open_file: file not found for reading: ' + fref.ref.filename);
 
-    var content = null;
-    if (fmode != Const.filemode_Write) {
-        content = Dialog.file_read(fref.ref);
-    }
-    if (content == null) {
-        content = [];
-        if (fmode != Const.filemode_Read) {
-            /* We just created this file. (Or perhaps we're in Write mode and
-               we're truncating.) Write immediately, to create it and get the
-               creation date right. */
-            Dialog.file_write(fref.ref, '', true);
+    if (!Dialog.streaming) {
+        var content = null;
+        if (fmode != Const.filemode_Write) {
+            content = Dialog.file_read(fref.ref);
         }
+        if (content == null) {
+            content = [];
+            if (fmode != Const.filemode_Read) {
+                /* We just created this file. (Or perhaps we're in Write mode
+                   and we're truncating.) Write immediately, to create it and
+                   get the creation date right. */
+                Dialog.file_write(fref.ref, '', true);
+            }
+        }
+        if (content.length == null) 
+            throw('glk_stream_open_file: data read had no length');
     }
-    if (content.length == null) 
-        throw('glk_stream_open_file: data read had no length');
+    else {
+        var fstream = Dialog.file_open(fmode, fref.ref);
+    }
 
     str = gli_new_stream(strtype_File, 
         (fmode != Const.filemode_Write), 
@@ -3867,16 +3872,23 @@ function glk_stream_open_file(fref, fmode, rock) {
     str.unicode = false;
     str.ref = fref.ref;
 
-    str.buf = content;
-    str.buflen = 0xFFFFFFFF; /* enormous */
-    if (fmode == Const.filemode_Write)
-        str.bufeof = 0;
-    else
-        str.bufeof = content.length;
-    if (fmode == Const.filemode_WriteAppend)
-        str.bufpos = str.bufeof;
-    else
-        str.bufpos = 0;
+    if (!Dialog.streaming) {
+        str.streaming = false;
+        str.buf = content;
+        str.buflen = 0xFFFFFFFF; /* enormous */
+        if (fmode == Const.filemode_Write)
+            str.bufeof = 0;
+        else
+            str.bufeof = content.length;
+        if (fmode == Const.filemode_WriteAppend)
+            str.bufpos = str.bufeof;
+        else
+            str.bufpos = 0;
+    }
+    else {
+        str.streaming = true;
+        str.fstream = fstream;
+    }
 
     return str;
 }
@@ -5066,18 +5078,23 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
     if (fmode == Const.filemode_Read && !Dialog.file_ref_exists(fref.ref))
         throw('glk_stream_open_file_uni: file not found for reading: ' + fref.ref.filename);
 
-    var content = null;
-    if (fmode != Const.filemode_Write) {
-        content = Dialog.file_read(fref.ref);
-    }
-    if (content == null) {
-        content = [];
-        if (fmode != Const.filemode_Read) {
-            /* We just created this file. (Or perhaps we're in Write mode and
-               we're truncating.) Write immediately, to create it and get the
-               creation date right. */
-            Dialog.file_write(fref.ref, '', true);
+    if (!Dialog.streaming) {
+        var content = null;
+        if (fmode != Const.filemode_Write) {
+            content = Dialog.file_read(fref.ref);
         }
+        if (content == null) {
+            content = [];
+            if (fmode != Const.filemode_Read) {
+                /* We just created this file. (Or perhaps we're in Write mode
+                   and we're truncating.) Write immediately, to create it and
+                   get the creation date right. */
+                Dialog.file_write(fref.ref, '', true);
+            }
+        }
+    }
+    else {
+        var fstream = Dialog.file_open(fmode, fref.ref);
     }
 
     str = gli_new_stream(strtype_File, 
@@ -5087,16 +5104,23 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
     str.unicode = true;
     str.ref = fref.ref;
 
-    str.buf = content;
-    str.buflen = 0xFFFFFFFF; /* enormous */
-    if (fmode == Const.filemode_Write)
-        str.bufeof = 0;
-    else
-        str.bufeof = content.length;
-    if (fmode == Const.filemode_WriteAppend)
-        str.bufpos = str.bufeof;
-    else
-        str.bufpos = 0;
+    if (!Dialog.streaming) {
+        str.streaming = false;
+        str.buf = content;
+        str.buflen = 0xFFFFFFFF; /* enormous */
+        if (fmode == Const.filemode_Write)
+            str.bufeof = 0;
+        else
+            str.bufeof = content.length;
+        if (fmode == Const.filemode_WriteAppend)
+            str.bufpos = str.bufeof;
+        else
+            str.bufpos = 0;
+    }
+    else {
+        str.streaming = true;
+        str.fstream = fstream;
+    }
 
     return str;
 }
