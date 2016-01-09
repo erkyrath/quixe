@@ -29,7 +29,8 @@ catch (ex) {}
 */
 function dialog_open(tosave, usage, gameid, callback) {
     const dialog = require('electron').remote.dialog;
-    var opts = { 
+    /*### title */
+    var opts = {
         filters: filters_for_usage(usage) 
     };
     var diacallback = function(ls) {
@@ -38,14 +39,22 @@ function dialog_open(tosave, usage, gameid, callback) {
         else
             callback({ filename:ls[0], usage:usage });
     };
+    var mainwin = require('electron').remote.getCurrentWindow();
     if (!tosave) {
         opts.properties = ['openFile'];
-        dialog.showOpenDialog(opts, diacallback);
+        dialog.showOpenDialog(mainwin, opts, diacallback);
     }
     else {
-        dialog.showSaveDialog(opts, diacallback);
+        dialog.showSaveDialog(mainwin, opts, diacallback);
     }
 }
+
+const Const = {
+    filemode_Write : 0x01,
+    filemode_Read : 0x02,
+    filemode_ReadWrite : 0x03,
+    filemode_WriteAppend : 0x05
+};
 
 function filters_for_usage(val) {
     switch (val) {
@@ -94,24 +103,34 @@ function file_remove_ref(ref) {
     //###
 }
 
+/* ###
+ */
+function file_open(fmode, ref) {
+    console.log('### file_open', ref);
+
+    var fstream = null;
+    if (fmode == Const.filemode_Read) {
+        fstream = fs.createReadStream(ref, {
+                flags: 'r',
+                autoClose: false
+            });
+    }
+    else {
+        //### other modes, other flags
+        fstream = fs.createWriteStream(ref, {
+                flags: 'w'
+            });
+    }
+    return fstream;
+}
+
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
- *
- * The "content" argument is stored to the file. If "israw" is true, the
- * content must be a string. Otherwise, the content is an array of byte
- * or unicode values which must be converted.
  */
 function file_write(dirent, content, israw) {
     throw('file_write not implemented in electrofs');
 }
 
 /* Dialog.file_read(dirent, israw) -- read data from the file
- *
- * Read the (entire) content of the file. If "israw" is true, this returns the
- * string that was stored. Otherwise, the content is converted to an array
- * of byte/unicode values.
- *
- * As a special case, the empty string is converted to an empty array (when not
- * in israw mode).
  */
 function file_read(dirent, israw) {
     throw('file_read not implemented in electrofs');
@@ -126,6 +145,7 @@ return {
     file_construct_ref: file_construct_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
+    file_open: file_open,
     file_write: file_write,
     file_read: file_read
 };
