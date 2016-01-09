@@ -2687,8 +2687,9 @@ function gli_stream_open_window(win) {
    We do this by setting a ten-second timer (if there isn't one set already).
    The timer calls a flush method on the stream.
 */
-/*### streaming? */
 function gli_stream_dirty_file(str) {
+    if (str.streaming)
+        GlkOte.log('### gli_stream_dirty_file called for streaming file!');
     if (str.timer_id === null) {
         if (str.flush_func === null) {
             /* Bodge together a closure to act as a stream method. */
@@ -2780,6 +2781,27 @@ function gli_put_char(str, ch) {
     
     switch (str.type) {
     case strtype_File:
+        if (str.streaming) {
+            //### ensure_op?
+            if (!str->unicode) {
+                str.fstream.write(String.fromCharCode(val), 'binary');
+            }
+            else {
+                if (!str->isbinary) {
+                    /* cheap UTF-8 stream */
+                    str.fstream.write(String.fromCharCode(val), 'utf8');
+                }
+                else {
+                    /* cheap big-endian stream */
+                    str.fstream.write(String.fromCharCode(0), 'binary');
+                    str.fstream.write(String.fromCharCode(0), 'binary');
+                    str.fstream.write(String.fromCharCode(0), 'binary');
+                    str.fstream.write(String.fromCharCode(val), 'binary');
+                }
+            }
+            break;
+        }
+        /* non-streaming... */
         gli_stream_dirty_file(str);
         /* fall through to memory... */
     case strtype_Memory:
@@ -2820,6 +2842,38 @@ function gli_put_array(str, arr, allbytes) {
     
     switch (str.type) {
     case strtype_File:
+        if (str.streaming) {
+            //### ensure_op?
+            if (!str->unicode) {
+                if (allbytes)
+                    val = String.fromCharCode.apply(this, arr);
+                else
+                    val = UniArrayToString(arr);
+                str.fstream.write(val, 'binary');
+            }
+            else {
+                if (!str->isbinary) {
+                    /* cheap UTF-8 stream */
+                    if (allbytes)
+                        val = String.fromCharCode.apply(this, arr);
+                    else
+                        val = UniArrayToString(arr);
+                    str.fstream.write(val, 'utf8');
+                }
+                else {
+                    /* cheap big-endian stream */
+                    for (ix=0; ix<arr.length; ix++) {
+                        val = arr[ix];
+                        str.fstream.write(String.fromCharCode(((val >> 24) & 0xFF)), 'binary');
+                        str.fstream.write(String.fromCharCode(((val >> 16) & 0xFF)), 'binary');
+                        str.fstream.write(String.fromCharCode(((val >> 8) & 0xFF)), 'binary');
+                        str.fstream.write(String.fromCharCode(((val) & 0xFF)), 'binary');
+                    }
+                }
+            }
+            break;
+        }
+        /* non-streaming... */
         gli_stream_dirty_file(str);
         /* fall through to memory... */
     case strtype_Memory:
