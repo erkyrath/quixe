@@ -3059,7 +3059,6 @@ function gli_get_char(str, want_unicode) {
                     return 63; // return '?'
                 return ch;
             }
-            break;
         }
         /* non-streaming or resource... */
         /* fall through to memory... */
@@ -3105,6 +3104,21 @@ function gli_get_line(str, buf, want_unicode) {
         }
         /* non-unicode streams: fall through to memory... */
     case strtype_File:
+        if (str.streaming) {
+            if (len == 0)
+                return 0;
+            len -= 1; /* for the terminal null */
+            gotnewline = false;
+            for (lx=0; lx<len && !gotnewline; lx++) {
+                ch = gli_get_char(str, want_unicode);
+                if (ch == -1)
+                    break;
+                buf[lx] = ch;
+                gotnewline = (ch == 10);
+            }
+            return lx;
+        }
+        /* non-streaming or resource... */
         /* fall through to memory... */
     case strtype_Memory:
         if (len == 0)
@@ -3162,6 +3176,16 @@ function gli_get_buffer(str, buf, want_unicode) {
         }
         /* non-unicode streams: fall through to memory... */
     case strtype_File:
+        if (str.streaming) {
+            for (lx=0; lx<len; lx++) {
+                ch = gli_get_char(str, want_unicode);
+                if (ch == -1)
+                    break;
+                buf[lx] = ch;
+            }
+            return lx;
+        }
+        /* non-streaming or resource... */
         /* fall through to memory... */
     case strtype_Memory:
         if (str.bufpos >= str.bufeof) {
