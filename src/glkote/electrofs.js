@@ -33,22 +33,29 @@ function dialog_open(tosave, usage, gameid, callback) {
     var opts = {
         filters: filters_for_usage(usage) 
     };
-    var diacallback = function(ls) {
-        if (!ls) {
-            callback(null);
-        }
-        else {
-            var ref = { filename:ls, usage:usage };
-            callback(ref);
-        }
-    };
     var mainwin = require('electron').remote.getCurrentWindow();
     if (!tosave) {
         opts.properties = ['openFile'];
-        dialog.showOpenDialog(mainwin, opts, diacallback);
+        dialog.showOpenDialog(mainwin, opts, function(ls) {
+                if (!ls || !ls.length) {
+                    callback(null);
+                }
+                else {
+                    var ref = { filename:ls[0], usage:usage };
+                    callback(ref);
+                }
+            });
     }
     else {
-        dialog.showSaveDialog(mainwin, opts, diacallback);
+        dialog.showSaveDialog(mainwin, opts, function(path) {
+                if (!path) {
+                    callback(null);
+                }
+                else {
+                    var ref = { filename:path, usage:usage };
+                    callback(ref);
+                }
+            });
     }
 }
 
@@ -96,14 +103,23 @@ function file_construct_ref(filename, usage, gameid) {
  */
 function file_ref_exists(ref) {
     console.log('### file_ref_exists', ref);
-    //###
+    try {
+        fs.accessSync(ref.filename, fs.F_OK);
+        return true;
+    }
+    catch (ex) {
+        return false;
+    }
 }
 
 /* Dialog.file_remove_ref(ref) -- delete the file, if it exists
  */
 function file_remove_ref(ref) {
     console.log('### file_remove_ref', ref);
-    //###
+    try {
+        fs.unlinkSync(ref.filename);
+    }
+    catch (ex) { }
 }
 
 /* ###
