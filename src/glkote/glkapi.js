@@ -2982,6 +2982,39 @@ function gli_get_char(str, want_unicode) {
         }
         /* non-unicode streams: fall through to memory... */
     case strtype_File:
+        if (str.streaming) {
+            //### ensure_op?
+            if (!str.unicode) {
+                var buf = str.fstream.read(1);
+                if (!buf || !buf.length)
+                    return -1;
+                str.readcount++;
+                return buf[0];
+            }
+            else {
+                if (!str.isbinary) {
+                    /* cheap UTF-8 stream */
+                    //###
+                }
+                else {
+                    /* cheap big-endian stream */
+                    var buf = str.fstream.read(4);
+                    if (!buf || buf.length < 4)
+                        return -1;
+                    var ch = (buf[0] << 24);
+                    ch |= (buf[1] << 16);
+                    ch |= (buf[2] << 8);
+                    ch |= buf[3];
+                }
+                str.readcount++;
+                ch >>>= 0;
+                if (!want_unicode && ch >= 0x100)
+                    return 63; // return '?'
+                return ch;
+            }
+            break;
+        }
+        /* non-streaming or resource... */
         /* fall through to memory... */
     case strtype_Memory:
         if (str.bufpos < str.bufeof) {
@@ -3935,6 +3968,9 @@ function glk_stream_open_resource(filenum, rock) {
         rock);
     str.unicode = false;
     str.isbinary = isbinary;
+
+    /* Resource streams always use buffer mode. */
+    str.streaming = false;
 
     /* We have been handed an array of bytes. (They're big-endian four-byte
        chunks, or perhaps a UTF-8 byte sequence, rather than native-endian
