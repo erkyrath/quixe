@@ -2993,15 +2993,62 @@ function gli_get_char(str, want_unicode) {
             }
             else {
                 if (!str.isbinary) {
-                    /* cheap UTF-8 stream */
-                    //###
+                    /* slightly less cheap UTF8 stream */
+                    var val0, val1, val2, val3;
+                    var buf = str.fstream.read(1);
+                    if (!buf || !buf.length)
+                        return -1;
+                    val0 = buf[0];
+                    if (val0 < 0x80) {
+                        ch = val0;
+                    }
+                    else {
+                        buf = str.fstream.read(1);
+                        if (!buf || !buf.length)
+                            return -1;
+                        val1 = buf[0];
+                        if ((val1 & 0xC0) != 0x80)
+                            return -1;
+                        if ((val0 & 0xE0) == 0xC0) {
+                            ch = (val0 & 0x1F) << 6;
+                            ch |= (val1 & 0x3F);
+                        }
+                        else {
+                            buf = str.fstream.read(1);
+                            if (!buf || !buf.length)
+                                return -1;
+                            val2 = buf[0];
+                            if ((val2 & 0xC0) != 0x80)
+                                return -1;
+                            if ((val0 & 0xF0) == 0xE0) {
+                                ch = (((val0 & 0xF)<<12)  & 0x0000F000);
+                                ch |= (((val1 & 0x3F)<<6) & 0x00000FC0);
+                                ch |= (((val2 & 0x3F))    & 0x0000003F);
+                            }
+                            else if ((val0 & 0xF0) == 0xF0) {
+                                buf = str.fstream.read(1);
+                                if (!buf || !buf.length)
+                                    return -1;
+                                val3 = buf[0];
+                                if ((val3 & 0xC0) != 0x80)
+                                    return -1;
+                                ch = (((val0 & 0x7)<<18)   & 0x1C0000);
+                                ch |= (((val1 & 0x3F)<<12) & 0x03F000);
+                                ch |= (((val2 & 0x3F)<<6)  & 0x000FC0);
+                                ch |= (((val3 & 0x3F))     & 0x00003F);
+                            }
+                            else {
+                                return -1;
+                            }
+                        }
+                    }
                 }
                 else {
                     /* cheap big-endian stream */
                     var buf = str.fstream.read(4);
                     if (!buf || buf.length < 4)
                         return -1;
-                    var ch = (buf[0] << 24);
+                    ch = (buf[0] << 24);
                     ch |= (buf[1] << 16);
                     ch |= (buf[2] << 8);
                     ch |= buf[3];
