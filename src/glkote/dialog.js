@@ -13,6 +13,11 @@
  * This library also contains utility routines to manage "files", which are
  * actually entries in the browser's localStorage object.
  *
+ * If you are in the Electron.io environment, you want to include electrofs.js
+ * instead of this module. To distinguish this from electrofs.js, look at
+ * Dialog.streaming, which will be true for electrofs.js and false for
+ * dialog.js.
+ *
  * The primary function to call:
  *
  * Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog

@@ -5,6 +5,18 @@
  * This Javascript library is copyright 2016 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
+ * This is a (mostly-) drop-in replacement for dialog.js for the Electron.io
+ * environment. It uses the Node.js "fs" and "path" packages to read and write
+ * files, and the Electron.io "dialog" package to present file-selection
+ * dialogs.
+ *
+ * The interface is similar to dialog.js, but not exactly the same. (Sorry!
+ * The Atom/Electron API didn't exist when I write dialog.js, or I would
+ * have come up with a cleaner abstraction.)
+ *
+ * This presents itself as a Dialog module. To distinguish it from dialog.js,
+ * look at Dialog.streaming, which will be true for electrofs.js and false for
+ * dialog.js.
  */
 
 Dialog = function() {
