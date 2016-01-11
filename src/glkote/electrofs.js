@@ -1,3 +1,12 @@
+/* ElectroFS -- a Javascript load/save library for IF interfaces
+ * Designed by Andrew Plotkin <erkyrath@eblong.com>
+ * <http://eblong.com/zarf/glk/glkote.html>
+ * 
+ * This Javascript library is copyright 2016 by Andrew Plotkin.
+ * It is distributed under the MIT license; see the "LICENSE" file.
+ *
+ */
+
 Dialog = function() {
 
 const fs = require('fs-ext');
@@ -67,6 +76,9 @@ const filemode_Read = 0x02;
 const filemode_ReadWrite = 0x03;
 const filemode_WriteAppend = 0x05;
 
+/* Construct a file-filter list for a given usage type. These lists are
+   used by showOpenDialog and showSaveDialog, above. 
+*/
 function filters_for_usage(val)
 {
     switch (val) {
@@ -200,6 +212,8 @@ function file_fopen(fmode, ref)
     return fstream;
 }
 
+/* Dialog.file_fclose(fstream) -- close a file
+ */
 function file_fclose(fstream)
 {
     if (fstream.fd === null) {
@@ -210,6 +224,9 @@ function file_fclose(fstream)
     fstream.fd = null;
 }
 
+/* Dialog.file_fread(fstream, len) -- read a given number of bytes from a file
+   Returns a buffer. If end-of-file, returns an empty buffer.
+ */
 function file_fread(fstream, len)
 {
     var buf = new buffer.Buffer(len);
@@ -220,6 +237,11 @@ function file_fread(fstream, len)
         return buf.slice(0, count);
 }
 
+/* Dialog.file_fwrite(fstream, str) -- write a string to a file
+   The string must contain only byte values (character values 0-255).
+   Yes, it is inconsistent that file_fwrite takes strings but file_fread
+   returns buffers.
+ */
 function file_fwrite(fstream, str)
 {
     var buf = new buffer.Buffer(str, 'binary');

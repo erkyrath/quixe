@@ -2,7 +2,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010-15 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-16 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a "file" for saving
