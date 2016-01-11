@@ -2,6 +2,7 @@ Dialog = function() {
 
 const fs = require('fs-ext');
 const path = require('path');
+const buffer = require('buffer');
 var userpath = require('electron').remote.app.getPath('userData');
 var extfilepath = path.join(userpath, 'quixe-files');
 
