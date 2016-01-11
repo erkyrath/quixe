@@ -27,11 +27,12 @@ catch (ex) {}
  * argument (see below) when the user selects a file. If the user cancels the
  * selection, the callback will be called with a null argument.
 */
-function dialog_open(tosave, usage, gameid, callback) {
+function dialog_open(tosave, usage, gameid, callback)
+{
     const dialog = require('electron').remote.dialog;
     /*### title */
     var opts = {
-        filters: filters_for_usage(usage) 
+        filters: filters_for_usage(usage)
     };
     var mainwin = require('electron').remote.getCurrentWindow();
     if (!tosave) {
@@ -65,7 +66,8 @@ const filemode_Read = 0x02;
 const filemode_ReadWrite = 0x03;
 const filemode_WriteAppend = 0x05;
 
-function filters_for_usage(val) {
+function filters_for_usage(val)
+{
     switch (val) {
     case 'data': 
         return [ { name: 'Glk Data File', extensions: ['glkdata'] } ];
@@ -86,7 +88,8 @@ function filters_for_usage(val) {
  * to read an existing file or create a new one. Any unspecified arguments are
  * assumed to be the empty string.
  */
-function file_construct_ref(filename, usage, gameid) {
+function file_construct_ref(filename, usage, gameid)
+{
     if (!filename)
         filename = '';
     if (!usage)
@@ -100,7 +103,8 @@ function file_construct_ref(filename, usage, gameid) {
 
 /* Dialog.file_ref_exists(ref) -- returns whether the file exists
  */
-function file_ref_exists(ref) {
+function file_ref_exists(ref)
+{
     console.log('### file_ref_exists', ref);
     try {
         fs.accessSync(ref.filename, fs.F_OK);
@@ -113,7 +117,8 @@ function file_ref_exists(ref) {
 
 /* Dialog.file_remove_ref(ref) -- delete the file, if it exists
  */
-function file_remove_ref(ref) {
+function file_remove_ref(ref)
+{
     console.log('### file_remove_ref', ref);
     try {
         fs.unlinkSync(ref.filename);
@@ -123,7 +128,8 @@ function file_remove_ref(ref) {
 
 /* Dialog.file_fopen(fmode, ref) -- open a file for reading or writing
  */
-function file_fopen(fmode, ref) {
+function file_fopen(fmode, ref)
+{
     /* This object is analogous to a FILE* in C code. Yes, we're 
        reimplementing fopen() for Node.js. I'm not proud. Or tired. 
        The good news is, the logic winds up identical to that in
@@ -193,7 +199,8 @@ function file_fopen(fmode, ref) {
     return fstream;
 }
 
-function file_fclose(fstream) {
+function file_fclose(fstream)
+{
     if (fstream.fd === null) {
         GlkOte.log('file_fclose: file already closed: ' + fstream.filename);
         return;
@@ -202,15 +209,29 @@ function file_fclose(fstream) {
     fstream.fd = null;
 }
 
+function file_fread(fstream, len)
+{
+}
+
+function file_fwrite(fstream, str)
+{
+}
+
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
+   This call is intended for the non-streaming API, so it does not
+   exist in this version of Dialog.
  */
-function file_write(dirent, content, israw) {
+function file_write(dirent, content, israw)
+{
     throw('file_write not implemented in electrofs');
 }
 
 /* Dialog.file_read(dirent, israw) -- read data from the file
+   This call is intended for the non-streaming API, so it does not
+   exist in this version of Dialog.
  */
-function file_read(dirent, israw) {
+function file_read(dirent, israw)
+{
     throw('file_read not implemented in electrofs');
 }
 
@@ -225,6 +246,8 @@ return {
     file_remove_ref: file_remove_ref,
     file_fopen: file_fopen,
     file_fclose: file_fclose,
+    file_fread: file_fread,
+    file_fwrite: file_fwrite,
     file_write: file_write,
     file_read: file_read
 };

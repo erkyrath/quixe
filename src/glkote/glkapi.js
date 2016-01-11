@@ -2641,7 +2641,7 @@ function gli_delete_stream(str) {
     }
     else if (str.type == strtype_File) {
         if (str.fstream) {
-            Dialog.fclose(str.fstream);
+            Dialog.file_fclose(str.fstream);
             str.fstream = null;
         }
     }
