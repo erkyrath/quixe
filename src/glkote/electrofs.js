@@ -59,12 +59,11 @@ function dialog_open(tosave, usage, gameid, callback) {
     }
 }
 
-const Const = {
-    filemode_Write : 0x01,
-    filemode_Read : 0x02,
-    filemode_ReadWrite : 0x03,
-    filemode_WriteAppend : 0x05
-};
+/* Same as in glkapi.js. */
+const filemode_Write = 0x01;
+const filemode_Read = 0x02;
+const filemode_ReadWrite = 0x03;
+const filemode_WriteAppend = 0x05;
 
 function filters_for_usage(val) {
     switch (val) {
@@ -122,23 +121,85 @@ function file_remove_ref(ref) {
     catch (ex) { }
 }
 
-/* ###
+/* Dialog.file_fopen(fmode, ref) -- open a file for reading or writing
  */
-function file_open(fmode, ref) {
-    var fstream = null;
-    if (fmode == Const.filemode_Read) {
-        fstream = fs.createReadStream(ref.filename, {
-                flags: 'r',
-                autoClose: false
-            });
+function file_fopen(fmode, ref) {
+    /* This object is analogous to a FILE* in C code. Yes, we're 
+       reimplementing fopen() for Node.js. I'm not proud. Or tired. 
+       The good news is, the logic winds up identical to that in
+       the C libraries.
+    */
+
+    var fstream = {
+        fmode: fmode,
+        filename: ref.filename,
+        fd: null
+    };
+
+    /* The spec says that Write, ReadWrite, and WriteAppend create the
+       file if necessary. However, open(filename, "r+") doesn't create
+       a file. So we have to pre-create it in the ReadWrite and
+       WriteAppend cases. (We use "a" so as not to truncate.) */
+
+    if (fmode == filemode_ReadWrite || fmode == filemode_WriteAppend) {
+        try {
+            var tempfd = fs.openSync(fstream.filename, "a");
+            fs.closeSync(tempfd);
+        }
+        catch (ex) {
+            GlkOte.log('file_fopen: failed to open ' + fstream.filename + ': ' + ex);
+            return null;
+        }
     }
-    else {
-        //### other modes, other flags
-        fstream = fs.createWriteStream(ref.filename, {
-                flags: 'w'
-            });
+
+    /* Another Unix quirk: in r+ mode, you're not supposed to flip from
+       reading to writing or vice versa without doing an fseek. We will
+       track the most recent operation (as lastop) -- Write, Read, or
+       0 if either is legal next. */
+
+    var modestr = null;
+    switch (fmode) {
+        case filemode_Write:
+            modestr = "w";
+            break;
+        case filemode_Read:
+            modestr = "r";
+            break;
+        case filemode_ReadWrite:
+            modestr = "r+";
+            break;
+        case filemode_WriteAppend:
+            /* Can't use "a" here, because then fseek wouldn't work.
+               Instead we use "r+" and then fseek to the end. */
+            modestr = "r+";
+            break;
     }
+
+    try {
+        fstream.fd = fs.openSync(fstream.filename, modestr);
+    }
+    catch (ex) {
+        GlkOte.log('file_fopen: failed to open ' + fstream.filename + ': ' + ex);
+        return null;
+    }
+
+    if (fmode == filemode_WriteAppend) {
+        try {
+            fs.seekSync(fstream.fd, 0, 2); /* ...to the end. */
+        }
+        catch (ex) {}
+    }
+
     return fstream;
+}
+
+function file_fclose(fstream) {
+    if (fstream.fd === null) {
+        GlkOte.log('file_fclose: file already closed: ' + fstream.filename);
+        return;
+    }
+    fs.closeSync(fstream.fd);
+    fstream.fd = null;
 }
 
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
@@ -162,7 +223,8 @@ return {
     file_construct_ref: file_construct_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
-    file_open: file_open,
+    file_fopen: file_fopen,
+    file_fclose: file_fclose,
     file_write: file_write,
     file_read: file_read
 };
