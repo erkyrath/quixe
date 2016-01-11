@@ -211,10 +211,18 @@ function file_fclose(fstream)
 
 function file_fread(fstream, len)
 {
+    var buf = new buffer.Buffer(len);
+    var count = fs.readSync(fstream.fd, buf, 0, len);
+    if (count == len)
+        return buf;
+    else
+        return buf.slice(0, count);
 }
 
 function file_fwrite(fstream, str)
 {
+    var count = fs.writeSync(fstream.fd, str);
+    return count;
 }
 
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
