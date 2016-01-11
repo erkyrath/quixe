@@ -222,7 +222,8 @@ function file_fread(fstream, len)
 
 function file_fwrite(fstream, str)
 {
-    var count = fs.writeSync(fstream.fd, str);
+    var buf = new buffer.Buffer(str, 'binary');
+    var count = fs.writeSync(fstream.fd, buf, 0, buf.length);
     return count;
 }
 
