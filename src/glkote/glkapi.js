@@ -3967,7 +3967,7 @@ function glk_stream_open_file(fref, fmode, rock) {
             throw('glk_stream_open_file: data read had no length');
     }
     else {
-        var fstream = Dialog.file_open(fmode, fref.ref);
+        var fstream = Dialog.file_fopen(fmode, fref.ref);
     }
 
     str = gli_new_stream(strtype_File, 
@@ -5204,7 +5204,7 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
         }
     }
     else {
-        var fstream = Dialog.file_open(fmode, fref.ref);
+        var fstream = Dialog.file_fopen(fmode, fref.ref);
     }
 
     str = gli_new_stream(strtype_File, 
