@@ -17,6 +17,9 @@
  * This presents itself as a Dialog module. To distinguish it from dialog.js,
  * look at Dialog.streaming, which will be true for electrofs.js and false for
  * dialog.js.
+ *
+ * TODO: Add buffering! Make the fopen/fread/fwrite calls true clones of
+ * the C stdio functions.
  */
 
 Dialog = function() {
