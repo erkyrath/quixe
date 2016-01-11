@@ -2785,19 +2785,19 @@ function gli_put_char(str, ch) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                Dialog.file_fwrite(str.fstream, String.fromCharCode(val));
+                Dialog.file_fwrite(str.fstream, String.fromCharCode(ch));
             }
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(val)); /*#### UTF-8!*/
+                    Dialog.file_fwrite(str.fstream, String.fromCharCode(ch)); /*#### UTF-8!*/
                 }
                 else {
                     /* cheap big-endian stream */
                     Dialog.file_fwrite(str.fstream, String.fromCharCode(0));
                     Dialog.file_fwrite(str.fstream, String.fromCharCode(0));
                     Dialog.file_fwrite(str.fstream, String.fromCharCode(0));
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(val));
+                    Dialog.file_fwrite(str.fstream, String.fromCharCode(ch));
                 }
             }
             break;
@@ -3243,6 +3243,11 @@ function glk_put_jstring_stream(str, val, allbytes) {
     
     switch (str.type) {
     case strtype_File:
+        if (str.streaming) {
+            //### if !allbytes, this isn't right
+            Dialog.file_fwrite(str.fstream, val);
+            break;
+        }
         gli_stream_dirty_file(str);
         /* fall through to memory... */
     case strtype_Memory:
@@ -4125,6 +4130,7 @@ function glk_stream_set_position(str, pos, seekmode) {
 
     switch (str.type) {
     case strtype_File:
+        //### if streaming...
         //### check if file has been modified? This is a half-decent time.
         /* fall through to memory... */
     case strtype_Resource:
@@ -4153,6 +4159,7 @@ function glk_stream_get_position(str) {
 
     switch (str.type) {
     case strtype_File:
+        //### if streaming...
         /* fall through to memory... */
     case strtype_Resource:
         /* fall through to memory... */
