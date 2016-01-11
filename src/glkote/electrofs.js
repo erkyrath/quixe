@@ -130,7 +130,6 @@ function file_construct_ref(filename, usage, gameid)
  */
 function file_ref_exists(ref)
 {
-    console.log('### file_ref_exists', ref);
     try {
         fs.accessSync(ref.filename, fs.F_OK);
         return true;
@@ -144,7 +143,6 @@ function file_ref_exists(ref)
  */
 function file_remove_ref(ref)
 {
-    console.log('### file_remove_ref', ref);
     try {
         fs.unlinkSync(ref.filename);
     }
