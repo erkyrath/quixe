@@ -290,6 +290,8 @@ return {
     file_fclose: file_fclose,
     file_fread: file_fread,
     file_fwrite: file_fwrite,
+
+    /* stubs for not-implemented functions */
     file_write: file_write,
     file_read: file_read
 };

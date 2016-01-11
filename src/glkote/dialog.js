@@ -978,6 +978,10 @@ function file_read(dirent, israw) {
         return decode_array(content);
 }
 
+function file_notimplemented() {
+    throw('streaming function not implemented in Dialog');
+}
+
 /* Check whether a given fileref matches the given usage and gameid strings. If
    you don't want to check one attribute or the other, pass null for that
    argument.
@@ -1126,7 +1130,13 @@ return {
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
     file_write: file_write,
-    file_read: file_read
+    file_read: file_read,
+
+    /* stubs for not-implemented functions */
+    file_fopen: file_notimplemented,
+    file_fclose: file_notimplemented,
+    file_fread: file_notimplemented,
+    file_fwrite: file_notimplemented
 };
 
 }();
