@@ -89,10 +89,10 @@ var cur_filelist; /* the files currently on display */
 */
 function dialog_open(tosave, usage, gameid, callback) {
     if (is_open)
-        throw 'Dialog: dialog box is already open.';
+        throw new Error('Dialog: dialog box is already open.');
 
     if (localStorage == null)
-        throw 'Dialog: your browser does not support local storage.';
+        throw new Error('Dialog: your browser does not support local storage.');
 
     dialog_callback = callback;
     will_save = tosave;
@@ -117,7 +117,7 @@ function dialog_open(tosave, usage, gameid, callback) {
 
     var rootel = $('#'+root_el_id);
     if (!rootel.length)
-        throw 'Dialog: unable to find root element #' + root_el_id + '.';
+        throw new Error('Dialog: unable to find root element #' + root_el_id + '.');
 
     /* Create the grey-out screen. */
     var screen = $('#'+dialog_el_id+'_screen');
@@ -979,7 +979,7 @@ function file_read(dirent, israw) {
 }
 
 function file_notimplemented() {
-    throw('streaming function not implemented in Dialog');
+    throw new Error('streaming function not implemented in Dialog');
 }
 
 /* Check whether a given fileref matches the given usage and gameid strings. If

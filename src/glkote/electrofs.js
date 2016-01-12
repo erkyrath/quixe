@@ -268,7 +268,7 @@ function file_fwrite(fstream, str)
  */
 function file_write(dirent, content, israw)
 {
-    throw('file_write not implemented in electrofs');
+    throw new Error('file_write not implemented in electrofs');
 }
 
 /* Dialog.file_read(dirent, israw) -- read data from the file
@@ -277,7 +277,7 @@ function file_write(dirent, content, israw)
  */
 function file_read(dirent, israw)
 {
-    throw('file_read not implemented in electrofs');
+    throw new Error('file_read not implemented in electrofs');
 }
 
 /* End of Dialog namespace function. Return the object which will
