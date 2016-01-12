@@ -152,6 +152,9 @@ function file_remove_ref(ref)
     catch (ex) { }
 }
 
+/* FStream -- constructor for a file stream. This is what file_fopen()
+ * returns.
+ */
 function FStream(fmode, filename)
 {
     this.fmode = fmode;
@@ -197,6 +200,8 @@ FStream.prototype = {
 };
 
 /* Dialog.file_fopen(fmode, ref) -- open a file for reading or writing
+ *
+ * Returns an FStream object.
  */
 function file_fopen(fmode, ref)
 {
@@ -205,7 +210,6 @@ function file_fopen(fmode, ref)
        The good news is, the logic winds up identical to that in
        the C libraries.
     */
-
     var fstream = new FStream(fmode, ref.filename);
 
     /* The spec says that Write, ReadWrite, and WriteAppend create the
