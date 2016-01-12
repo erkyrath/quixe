@@ -26,7 +26,7 @@ Dialog = function() {
 
 const fs = require('fs-ext');
 const path_mod = require('path');
-const buffer = require('buffer');
+const buffer_mod = require('buffer');
 var userpath = require('electron').remote.app.getPath('userData');
 var extfilepath = path_mod.join(userpath, 'quixe-files');
 
@@ -242,7 +242,7 @@ function file_fclose(fstream)
  */
 function file_fread(fstream, len)
 {
-    var buf = new buffer.Buffer(len);
+    var buf = new buffer_mod.Buffer(len);
     var count = fs.readSync(fstream.fd, buf, 0, len);
     if (count == len)
         return buf;
@@ -257,7 +257,7 @@ function file_fread(fstream, len)
  */
 function file_fwrite(fstream, str)
 {
-    var buf = new buffer.Buffer(str, 'binary');
+    var buf = new buffer_mod.Buffer(str, 'binary');
     var count = fs.writeSync(fstream.fd, buf, 0, buf.length);
     return count;
 }
