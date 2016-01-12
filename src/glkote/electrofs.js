@@ -25,10 +25,10 @@
 Dialog = function() {
 
 const fs = require('fs-ext');
-const path = require('path');
+const path_mod = require('path');
 const buffer = require('buffer');
 var userpath = require('electron').remote.app.getPath('userData');
-var extfilepath = path.join(userpath, 'quixe-files');
+var extfilepath = path_mod.join(userpath, 'quixe-files');
 
 /* We try to create a directory for external files at launch time.
    This will usually fail because there's already a directory there.
@@ -124,7 +124,7 @@ function file_construct_ref(filename, usage, gameid)
         usage = '';
     if (!gameid)
         gameid = '';
-    var path = path.join(extfilepath, filename);
+    var path = path_mod.join(extfilepath, filename);
     var ref = { filename:path, usage:usage };
     return ref;
 }
