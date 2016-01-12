@@ -507,7 +507,7 @@ function fatal_error(msg) {
         msg += ")";
     }
     qlog(msg);//###debug
-    throw(msg);
+    throw(new Error(msg));
 }
 self.fatal_error = fatal_error;
 
@@ -5123,7 +5123,7 @@ function fetch_search_key(addr, len, options) {
         case 1:
             return [addr & 0xFF];
         default:
-            throw('Direct search key must hold one, two, or four bytes.');
+            fatal_error('Direct search key must hold one, two, or four bytes.');
         }
     }
 }
