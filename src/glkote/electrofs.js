@@ -153,7 +153,7 @@ function file_remove_ref(ref)
 }
 
 /* FStream -- constructor for a file stream. This is what file_fopen()
- * returns.
+ * returns. It is analogous to a FILE* in C code.
  */
 function FStream(fmode, filename)
 {
