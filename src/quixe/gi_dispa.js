@@ -536,7 +536,7 @@ function build_function(func) {
             refarg = arg.arg;
             out.push('if (callargs['+argpos+'] == 0) {');
             if (arg.nonnull) 
-                out.push('  throw("glk '+func.name+': null argument");');
+                out.push('  throw new Error("glk '+func.name+': null argument");');
             else
                 out.push('  '+tmpvar+' = null;');
             out.push('} else {');
@@ -556,7 +556,7 @@ function build_function(func) {
                 }
             }
             else {
-                throw('buildfunc: unsupported refarg type: ' + func.name);
+                throw new Error('buildfunc: unsupported refarg type: ' + func.name);
             }
             out.push('}');
             argpos += 1;
@@ -566,7 +566,7 @@ function build_function(func) {
             refarg = arg.arg;
             out.push('if (callargs['+argpos+'] == 0) {');
             if (arg.nonnull)
-                out.push('  throw("glk '+func.name+': null argument");');
+                out.push('  throw new Error("glk '+func.name+': null argument");');
             else
                 out.push('  '+tmpvar+' = null;');
             out.push('} else {');
@@ -603,7 +603,7 @@ function build_function(func) {
             }
             out.push(tmpvar+' = Array();');
             out.push('jx = callargs['+argpos+'];');
-            out.push('if (self.VM.ReadByte(jx) != '+checkbyte+') throw("glk '+func.name+': string argument must be unencoded");');
+            out.push('if (self.VM.ReadByte(jx) != '+checkbyte+') throw new Error("glk '+func.name+': string argument must be unencoded");');
             out.push('for (jx+='+arg.refsize+'; true; jx+='+arg.refsize+') {');
             out.push('  ix = self.VM.Read'+arg.macro+'(jx);');
             out.push('  if (ix == 0) break;');
@@ -613,7 +613,7 @@ function build_function(func) {
             argpos += 1;
         }
         else {
-            throw('buildfunc: unsupported arg type: ' + func.name);
+            throw new Error('buildfunc: unsupported arg type: ' + func.name);
         }
     }
 
@@ -669,7 +669,7 @@ function build_function(func) {
                     }
                 }
                 else {
-                    throw('buildfunc: unsupported refarg type: ' + func.name);
+                    throw new Error('buildfunc: unsupported refarg type: ' + func.name);
                 }
                 out.push('}');
             }
@@ -693,7 +693,7 @@ function build_function(func) {
             argpos += 1;
         }
         else {
-            throw('buildfunc: unsupported arg type: ' + func.name);
+            throw new Error('buildfunc: unsupported arg type: ' + func.name);
         }
     }
     
@@ -744,7 +744,7 @@ function get_function(id) {
     if (func === undefined) {
         proto = proto_map[id];
         if (proto === undefined)
-            throw('dispatch: unknown Glk function: ' + id);
+            throw new Error('dispatch: unknown Glk function: ' + id);
         func = build_function(proto);
         function_map[id] = func;
     }
@@ -839,7 +839,7 @@ function retain_array(arr) {
     }
 
     if (obj === undefined)
-        throw('retain_array: array is not an argument');
+        throw new Error('retain_array: array is not an argument');
 
     for (ix=0; !(retained_arrays[ix] === undefined); ix++) { };
     retained_arrays[ix] = obj;
@@ -865,7 +865,7 @@ function unretain_array(arr) {
     }
 
     if (obj === undefined)
-        throw('unretain_array: array was never retained');
+        throw new Error('unretain_array: array was never retained');
 
     if (obj.arg instanceof ArgInt) {
         for (ix=0, jx=obj.addr; ix<obj.len; ix++, jx+=4) {
@@ -885,7 +885,7 @@ function unretain_array(arr) {
         }
     }
     else {
-        throw('unretain_array: unsupported refarg type');
+        throw new Error('unretain_array: unsupported refarg type');
     }
 }
 
@@ -904,7 +904,7 @@ var last_used_id;
 */
 function class_register(clas, obj) {
     if (obj.disprock)
-        throw('class_register: object is already registered');
+        throw new Error('class_register: object is already registered');
     obj.disprock = last_used_id;
     last_used_id++;
 
@@ -915,7 +915,7 @@ function class_register(clas, obj) {
 */
 function class_unregister(clas, obj) {
     if (!obj.disprock || class_map[clas][obj.disprock] === undefined)
-        throw('class_unregister: object is not registered');
+        throw new Error('class_unregister: object is not registered');
     
     delete class_map[clas][obj.disprock];
     obj.disprock = undefined;
