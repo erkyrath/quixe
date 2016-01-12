@@ -152,6 +152,50 @@ function file_remove_ref(ref)
     catch (ex) { }
 }
 
+function FStream(fmode, filename)
+{
+    this.fmode = fmode;
+    this.filename = filename;
+    this.fd = null;
+}
+FStream.prototype = {
+
+    /* fstream.fclose() -- close a file
+     */
+    fclose : function() {
+        if (this.fd === null) {
+            GlkOte.log('file_fclose: file already closed: ' + this.filename);
+            return;
+        }
+        fs.closeSync(this.fd);
+        this.fd = null;
+    },
+
+    /* fstream.file_fread(len) -- read a given number of bytes from a file
+       Returns a buffer. If end-of-file, returns an empty buffer.
+    */
+    fread : function(len) {
+        var buf = new buffer_mod.Buffer(len);
+        var count = fs.readSync(this.fd, buf, 0, len);
+        if (count == len)
+            return buf;
+        else
+            return buf.slice(0, count);
+    },
+
+    /* fstream.file_fwrite(str) -- write a string to a file
+       The string must contain only byte values (character values 0-255).
+       Yes, it is inconsistent that fwrite takes strings but fread
+       returns buffers.
+    */
+    fwrite : function(str) {
+        var buf = new buffer_mod.Buffer(str, 'binary');
+        var count = fs.writeSync(this.fd, buf, 0, buf.length);
+        return count;
+    }
+
+};
+
 /* Dialog.file_fopen(fmode, ref) -- open a file for reading or writing
  */
 function file_fopen(fmode, ref)
@@ -162,11 +206,7 @@ function file_fopen(fmode, ref)
        the C libraries.
     */
 
-    var fstream = {
-        fmode: fmode,
-        filename: ref.filename,
-        fd: null
-    };
+    var fstream = new FStream(fmode, ref.filename);
 
     /* The spec says that Write, ReadWrite, and WriteAppend create the
        file if necessary. However, open(filename, "r+") doesn't create
@@ -225,43 +265,6 @@ function file_fopen(fmode, ref)
     return fstream;
 }
 
-/* Dialog.file_fclose(fstream) -- close a file
- */
-function file_fclose(fstream)
-{
-    if (fstream.fd === null) {
-        GlkOte.log('file_fclose: file already closed: ' + fstream.filename);
-        return;
-    }
-    fs.closeSync(fstream.fd);
-    fstream.fd = null;
-}
-
-/* Dialog.file_fread(fstream, len) -- read a given number of bytes from a file
-   Returns a buffer. If end-of-file, returns an empty buffer.
- */
-function file_fread(fstream, len)
-{
-    var buf = new buffer_mod.Buffer(len);
-    var count = fs.readSync(fstream.fd, buf, 0, len);
-    if (count == len)
-        return buf;
-    else
-        return buf.slice(0, count);
-}
-
-/* Dialog.file_fwrite(fstream, str) -- write a string to a file
-   The string must contain only byte values (character values 0-255).
-   Yes, it is inconsistent that file_fwrite takes strings but file_fread
-   returns buffers.
- */
-function file_fwrite(fstream, str)
-{
-    var buf = new buffer_mod.Buffer(str, 'binary');
-    var count = fs.writeSync(fstream.fd, buf, 0, buf.length);
-    return count;
-}
-
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
    This call is intended for the non-streaming API, so it does not
    exist in this version of Dialog.
@@ -290,9 +293,6 @@ return {
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
     file_fopen: file_fopen,
-    file_fclose: file_fclose,
-    file_fread: file_fread,
-    file_fwrite: file_fwrite,
 
     /* stubs for not-implemented functions */
     file_write: file_write,

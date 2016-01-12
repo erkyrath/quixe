@@ -2641,7 +2641,7 @@ function gli_delete_stream(str) {
     }
     else if (str.type == strtype_File) {
         if (str.fstream) {
-            Dialog.file_fclose(str.fstream);
+            str.fstream.fclose();
             str.fstream = null;
         }
     }
@@ -2785,19 +2785,19 @@ function gli_put_char(str, ch) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                Dialog.file_fwrite(str.fstream, String.fromCharCode(ch));
+                str.fstream.fwrite(String.fromCharCode(ch));
             }
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(ch)); /*#### UTF-8!*/
+                    str.fstream.fwrite(String.fromCharCode(ch)); /*#### UTF-8!*/
                 }
                 else {
                     /* cheap big-endian stream */
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(0));
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(0));
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(0));
-                    Dialog.file_fwrite(str.fstream, String.fromCharCode(ch));
+                    str.fstream.fwrite(String.fromCharCode(0));
+                    str.fstream.fwrite(String.fromCharCode(0));
+                    str.fstream.fwrite(String.fromCharCode(0));
+                    str.fstream.fwrite(String.fromCharCode(ch));
                 }
             }
             break;
@@ -2850,7 +2850,7 @@ function gli_put_array(str, arr, allbytes) {
                     val = String.fromCharCode.apply(this, arr);
                 else
                     val = UniArrayToString(arr);
-                Dialog.file_fwrite(str.fstream, val);
+                str.fstream.fwrite(val);
             }
             else {
                 if (!str.isbinary) {
@@ -2859,16 +2859,16 @@ function gli_put_array(str, arr, allbytes) {
                         val = String.fromCharCode.apply(this, arr);
                     else
                         val = UniArrayToString(arr);
-                    Dialog.file_fwrite(str.fstream, val); /*#### UTF-8!*/
+                    str.fstream.fwrite(val); /*#### UTF-8!*/
                 }
                 else {
                     /* cheap big-endian stream */
                     for (ix=0; ix<arr.length; ix++) {
                         val = arr[ix];
-                        Dialog.file_fwrite(str.fstream, String.fromCharCode(((val >> 24) & 0xFF)));
-                        Dialog.file_fwrite(str.fstream, String.fromCharCode(((val >> 16) & 0xFF)));
-                        Dialog.file_fwrite(str.fstream, String.fromCharCode(((val >> 8) & 0xFF)));
-                        Dialog.file_fwrite(str.fstream, String.fromCharCode(((val) & 0xFF)));
+                        str.fstream.fwrite(String.fromCharCode(((val >> 24) & 0xFF)));
+                        str.fstream.fwrite(String.fromCharCode(((val >> 16) & 0xFF)));
+                        str.fstream.fwrite(String.fromCharCode(((val >> 8) & 0xFF)));
+                        str.fstream.fwrite(String.fromCharCode(((val) & 0xFF)));
                     }
                 }
             }
@@ -2991,7 +2991,7 @@ function gli_get_char(str, want_unicode) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                var buf = Dialog.file_fread(str.fstream, 1);
+                var buf = str.fstream.fread(1);
                 if (!buf || !buf.length)
                     return -1;
                 str.readcount++;
@@ -3001,7 +3001,7 @@ function gli_get_char(str, want_unicode) {
                 if (!str.isbinary) {
                     /* slightly less cheap UTF8 stream */
                     var val0, val1, val2, val3;
-                    var buf = Dialog.file_fread(str.fstream, 1);
+                    var buf = str.fstream.fread(1);
                     if (!buf || !buf.length)
                         return -1;
                     val0 = buf[0];
@@ -3009,7 +3009,7 @@ function gli_get_char(str, want_unicode) {
                         ch = val0;
                     }
                     else {
-                        buf = Dialog.file_fread(str.fstream, 1);
+                        buf = str.fstream.fread(1);
                         if (!buf || !buf.length)
                             return -1;
                         val1 = buf[0];
@@ -3020,7 +3020,7 @@ function gli_get_char(str, want_unicode) {
                             ch |= (val1 & 0x3F);
                         }
                         else {
-                            buf = Dialog.file_fread(str.fstream, 1);
+                            buf = str.fstream.fread(1);
                             if (!buf || !buf.length)
                                 return -1;
                             val2 = buf[0];
@@ -3032,7 +3032,7 @@ function gli_get_char(str, want_unicode) {
                                 ch |= (((val2 & 0x3F))    & 0x0000003F);
                             }
                             else if ((val0 & 0xF0) == 0xF0) {
-                                buf = Dialog.file_fread(str.fstream, 1);
+                                buf = str.fstream.fread(1);
                                 if (!buf || !buf.length)
                                     return -1;
                                 val3 = buf[0];
@@ -3051,7 +3051,7 @@ function gli_get_char(str, want_unicode) {
                 }
                 else {
                     /* cheap big-endian stream */
-                    var buf = Dialog.file_fread(str.fstream, 4);
+                    var buf = str.fstream.fread(4);
                     if (!buf || buf.length < 4)
                         return -1;
                     ch = (buf[0] << 24);
@@ -3245,7 +3245,7 @@ function glk_put_jstring_stream(str, val, allbytes) {
     case strtype_File:
         if (str.streaming) {
             //### if !allbytes, this isn't right
-            Dialog.file_fwrite(str.fstream, val);
+            str.fstream.fwrite(val);
             break;
         }
         gli_stream_dirty_file(str);
