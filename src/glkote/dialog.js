@@ -1133,10 +1133,7 @@ return {
     file_read: file_read,
 
     /* stubs for not-implemented functions */
-    file_fopen: file_notimplemented,
-    file_fclose: file_notimplemented,
-    file_fread: file_notimplemented,
-    file_fwrite: file_notimplemented
+    file_fopen: file_notimplemented
 };
 
 }();
