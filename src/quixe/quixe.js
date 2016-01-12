@@ -121,6 +121,8 @@ function quixe_init() {
         execute_loop();
     }
     catch (ex) {
+        if (ex.stack)
+            qlog('JS stack dump:\n' + ex.stack);
         qstackdump();
         Glk.fatal_error("Quixe init: " + show_exception(ex));
         if (opt_rethrow_exceptions)
@@ -138,6 +140,8 @@ function quixe_resume() {
         execute_loop();
     }
     catch (ex) {
+        if (ex.stack)
+            qlog('JS stack dump:\n' + ex.stack);
         qstackdump();
         Glk.fatal_error("Quixe run: " + show_exception(ex));
         if (opt_rethrow_exceptions)
