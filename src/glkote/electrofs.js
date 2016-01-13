@@ -87,6 +87,9 @@ const filemode_Write = 0x01;
 const filemode_Read = 0x02;
 const filemode_ReadWrite = 0x03;
 const filemode_WriteAppend = 0x05;
+const seekmode_Start = 0;
+const seekmode_Current = 1;
+const seekmode_End = 2;
 
 /* Construct a file-filter list for a given usage type. These lists are
    used by showOpenDialog and showSaveDialog, above. 
