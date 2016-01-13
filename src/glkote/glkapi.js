@@ -5270,6 +5270,8 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
     else {
         str.streaming = true;
         str.fstream = fstream;
+        /* We'll want a Buffer object around for short and writes. */
+        str.buffer4 = new fstream.BufferClass(4);
     }
 
     return str;
