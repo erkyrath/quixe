@@ -4130,7 +4130,10 @@ function glk_stream_set_position(str, pos, seekmode) {
 
     switch (str.type) {
     case strtype_File:
-        //### if streaming...
+        if (str.streaming) {
+            str.fseek(pos, seekmode);
+            break;
+        }
         //### check if file has been modified? This is a half-decent time.
         /* fall through to memory... */
     case strtype_Resource:
@@ -4159,7 +4162,9 @@ function glk_stream_get_position(str) {
 
     switch (str.type) {
     case strtype_File:
-        //### if streaming...
+        if (str.streaming) {
+            return str.ftell();
+        }
         /* fall through to memory... */
     case strtype_Resource:
         /* fall through to memory... */
