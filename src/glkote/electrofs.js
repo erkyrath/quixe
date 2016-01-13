@@ -24,7 +24,7 @@
 
 Dialog = function() {
 
-const fs = require('fs-ext');
+const fs = require('fs');
 const path_mod = require('path');
 const buffer_mod = require('buffer');
 var userpath = require('electron').remote.app.getPath('userData');
@@ -152,6 +152,8 @@ function file_remove_ref(ref)
     catch (ex) { }
 }
 
+const BUFSIZE = 256;
+
 /* FStream -- constructor for a file stream. This is what file_fopen()
  * returns. It is analogous to a FILE* in C code.
  */
@@ -159,7 +161,17 @@ function FStream(fmode, filename)
 {
     this.fmode = fmode;
     this.filename = filename;
-    this.fd = null;
+    this.fd = null; /* will be filled in by file_fopen */
+
+    this.mark = 0; /* read-write position in the file */
+
+    /* We buffer input or output (but never both at the same time). */
+    this.buffer = new buffer_mod.Buffer(BUFSIZE);
+    /* bufuse is filemode_Read or filemode_Write, if the buffer is being used
+       for reading or writing. The buffer starts at mark and covers buflen
+       bytes. */
+    this.bufuse = 0; 
+    this.buflen = 0; /* how much of the buffer is used */
 }
 FStream.prototype = {
 
@@ -170,8 +182,11 @@ FStream.prototype = {
             GlkOte.log('file_fclose: file already closed: ' + this.filename);
             return;
         }
+        /* flush any unwritten data */
+        this.fflush();
         fs.closeSync(this.fd);
         this.fd = null;
+        this.buffer = null;
     },
 
     /* fstream.file_fread(len) -- read a given number of bytes from a file
@@ -195,6 +210,20 @@ FStream.prototype = {
         var buf = new buffer_mod.Buffer(str, 'binary');
         var count = fs.writeSync(this.fd, buf, 0, buf.length);
         return count;
+    }
+
+    fflush : function() {
+        if (this.bufuse == filemode_Read) {
+            /* do nothing, just mark the buffer unused */
+        }
+        else if (this.bufuse == filemode_Write) {
+            if (this.buflen) {
+                var count = fs.writeSync(this.fd, this.buffer, 0, this.buflen, this.mark);
+                this.mark += count;
+            }
+        }
+        this.bufuse = 0;
+        this.buflen = 0;
     }
 
 };
@@ -260,8 +289,10 @@ function file_fopen(fmode, ref)
     }
 
     if (fmode == filemode_WriteAppend) {
+        /* We must jump to the end of the file. */
         try {
-            fs.seekSync(fstream.fd, 0, 2); /* ...to the end. */
+            var stats = fs.fstatSync(fstream.fd);
+            fstream.mark = stats.size;
         }
         catch (ex) {}
     }
