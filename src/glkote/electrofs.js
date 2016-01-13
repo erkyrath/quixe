@@ -17,9 +17,6 @@
  * This presents itself as a Dialog module. To distinguish it from dialog.js,
  * look at Dialog.streaming, which will be true for electrofs.js and false for
  * dialog.js.
- *
- * TODO: Add buffering! Make the fopen/fread/fwrite calls true clones of
- * the C stdio functions.
  */
 
 Dialog = function() {
@@ -168,10 +165,12 @@ function FStream(fmode, filename)
     /* We buffer input or output (but never both at the same time). */
     this.buffer = new buffer_mod.Buffer(BUFSIZE);
     /* bufuse is filemode_Read or filemode_Write, if the buffer is being used
-       for reading or writing. The buffer starts at mark and covers buflen
-       bytes. */
+       for reading or writing. For writing, the buffer starts at mark and
+       covers buflen bytes. For reading, the buffer *ends* at mark having
+       covered from bufmark to buflen. */
     this.bufuse = 0; 
     this.buflen = 0; /* how much of the buffer is used */
+    this.bufmark = 0; /* how much of the buffer has been read out (readmode only) */
 }
 FStream.prototype = {
 
@@ -190,15 +189,46 @@ FStream.prototype = {
     },
 
     /* fstream.file_fread(len) -- read a given number of bytes from a file
-       Returns a buffer. If end-of-file, returns an empty buffer.
+       The data is copied into the given buffer, which must be at least
+       len bytes long. Returns the number of bytes read, or 0 if end-of-file.
     */
-    fread : function(len) {
-        var buf = new buffer_mod.Buffer(len);
-        var count = fs.readSync(this.fd, buf, 0, len);
-        if (count == len)
-            return buf;
-        else
-            return buf.slice(0, count);
+    fread : function(buf, len) {
+        /* got will be our mark in the buf argument. When got reaches
+           len, we're done. (Unless we hit EOF first.) */
+        var got = 0;
+
+        while (true) {
+            if (this.bufuse == filemode_Read) {
+                if (this.bufmark < this.buflen) {
+                    var want = len - got;
+                    if (want > this.buflen - this.bufmark)
+                        want = this.buflen - this.bufmark;
+                    if (want > 0) {
+                        this.buffer.copy(buf, got, this.bufmark, this.bufmark+want);
+                        this.bufmark += want;
+                        got += want;
+                    }
+                }
+                if (got >= len)
+                    return got;
+                
+                /* We need more, but we've consumed the entire buffer. Fall
+                   through to the next step where we will fflush and read. */
+            }
+            
+            if (this.bufuse)
+                this.fflush();
+            
+            this.bufuse = filemode_Read;
+            this.bufmark = 0;
+            this.buflen = fs.readSync(this.fd, this.buffer, 0, BUFSIZE, this.mark);
+            if (this.buflen == 0) {
+                /* End of file. Mark the buffer unused, since it's empty. */
+                this.bufuse = 0;
+                return got;
+            }
+            this.mark += this.buflen;
+        }
     },
 
     /* fstream.file_fwrite(str) -- write a string to a file
@@ -212,9 +242,29 @@ FStream.prototype = {
         return count;
     }
 
+    ftell : function() {
+        if (this.bufuse == filemode_Read) {
+            return this.mark - (this.buflen - this.bufmark);
+        }
+        else if (this.bufuse == filemode_Write) {
+            return this.mark + this.buflen;
+        }
+        else {
+            return this.mark;
+        }
+    }
+
+    fseek : function(pos, seekmode) {
+        /* ### we could seek within the current buffer, but I haven't
+           implemented that. */
+        this.fflush();
+        //###...
+    }
+
     fflush : function() {
         if (this.bufuse == filemode_Read) {
-            /* do nothing, just mark the buffer unused */
+            /* Do nothing, just mark the buffer unused. The mark is already
+               at the end-of-buffer. */
         }
         else if (this.bufuse == filemode_Write) {
             if (this.buflen) {
@@ -224,6 +274,7 @@ FStream.prototype = {
         }
         this.bufuse = 0;
         this.buflen = 0;
+        this.bufmark = 0;
     }
 
 };
