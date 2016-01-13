@@ -247,7 +247,7 @@ FStream.prototype = {
         var buf = new buffer_mod.Buffer(str, 'binary');
         var count = fs.writeSync(this.fd, buf, 0, buf.length);
         return count;
-    }
+    },
 
     ftell : function() {
         if (this.bufuse == filemode_Read) {
@@ -259,7 +259,7 @@ FStream.prototype = {
         else {
             return this.mark;
         }
-    }
+    },
 
     fseek : function(pos, seekmode) {
         /* ### we could seek within the current buffer, which would be
@@ -285,7 +285,7 @@ FStream.prototype = {
         if (val < 0)
             val = 0;
         this.mark = val;
-    }
+    },
 
     fflush : function() {
         if (this.bufuse == filemode_Read) {
