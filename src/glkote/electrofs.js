@@ -35,6 +35,37 @@ try {
 }
 catch (ex) {}
 
+/* Constants -- same as in glkapi.js. */
+const filemode_Write = 0x01;
+const filemode_Read = 0x02;
+const filemode_ReadWrite = 0x03;
+const filemode_WriteAppend = 0x05;
+const seekmode_Start = 0;
+const seekmode_Current = 1;
+const seekmode_End = 2;
+
+/* The size of our stream buffering. */
+const BUFFER_SIZE = 256;
+
+/* Construct a file-filter list for a given usage type. These lists are
+   used by showOpenDialog and showSaveDialog, below. 
+*/
+function filters_for_usage(val)
+{
+    switch (val) {
+    case 'data': 
+        return [ { name: 'Glk Data File', extensions: ['glkdata'] } ];
+    case 'save': 
+        return [ { name: 'Glk Save File', extensions: ['glksave'] } ];
+    case 'transcript': 
+        return [ { name: 'Transcript File', extensions: ['txt'] } ];
+    case 'command': 
+        return [ { name: 'Command File', extensions: ['txt'] } ];
+    default:
+        return [];
+    }
+}
+
 /* Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog
  *
  * The "tosave" flag should be true for a save dialog, false for a load
@@ -82,34 +113,6 @@ function dialog_open(tosave, usage, gameid, callback)
     }
 }
 
-/* Same as in glkapi.js. */
-const filemode_Write = 0x01;
-const filemode_Read = 0x02;
-const filemode_ReadWrite = 0x03;
-const filemode_WriteAppend = 0x05;
-const seekmode_Start = 0;
-const seekmode_Current = 1;
-const seekmode_End = 2;
-
-/* Construct a file-filter list for a given usage type. These lists are
-   used by showOpenDialog and showSaveDialog, above. 
-*/
-function filters_for_usage(val)
-{
-    switch (val) {
-    case 'data': 
-        return [ { name: 'Glk Data File', extensions: ['glkdata'] } ];
-    case 'save': 
-        return [ { name: 'Glk Save File', extensions: ['glksave'] } ];
-    case 'transcript': 
-        return [ { name: 'Transcript File', extensions: ['txt'] } ];
-    case 'command': 
-        return [ { name: 'Command File', extensions: ['txt'] } ];
-    default:
-        return [];
-    }
-}
-
 /* Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
  *
  * Create a fileref. This does not create a file; it's just a thing you can use
@@ -152,8 +155,6 @@ function file_remove_ref(ref)
     catch (ex) { }
 }
 
-const BUFSIZE = 256;
-
 /* FStream -- constructor for a file stream. This is what file_fopen()
  * returns. It is analogous to a FILE* in C code.
  */
@@ -166,7 +167,7 @@ function FStream(fmode, filename)
     this.mark = 0; /* read-write position in the file */
 
     /* We buffer input or output (but never both at the same time). */
-    this.buffer = new buffer_mod.Buffer(BUFSIZE);
+    this.buffer = new buffer_mod.Buffer(BUFFER_SIZE);
     /* bufuse is filemode_Read or filemode_Write, if the buffer is being used
        for reading or writing. For writing, the buffer starts at mark and
        covers buflen bytes. For reading, the buffer *ends* at mark having
@@ -222,12 +223,12 @@ FStream.prototype = {
             if (this.bufuse)
                 this.fflush();
 
-            /* ### if len-got >= BUFSIZE, we could read directly and ignore
+            /* ### if len-got >= BUFFER_SIZE, we could read directly and ignore
                our buffer. */
             
             this.bufuse = filemode_Read;
             this.bufmark = 0;
-            this.buflen = fs.readSync(this.fd, this.buffer, 0, BUFSIZE, this.mark);
+            this.buflen = fs.readSync(this.fd, this.buffer, 0, BUFFER_SIZE, this.mark);
             if (this.buflen == 0) {
                 /* End of file. Mark the buffer unused, since it's empty. */
                 this.bufuse = 0;
@@ -377,8 +378,9 @@ function file_fopen(fmode, ref)
 }
 
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
-   This call is intended for the non-streaming API, so it does not
-   exist in this version of Dialog.
+ *
+ * This call is intended for the non-streaming API, so it does not
+ * exist in this version of Dialog.
  */
 function file_write(dirent, content, israw)
 {
@@ -386,8 +388,9 @@ function file_write(dirent, content, israw)
 }
 
 /* Dialog.file_read(dirent, israw) -- read data from the file
-   This call is intended for the non-streaming API, so it does not
-   exist in this version of Dialog.
+ *
+ * This call is intended for the non-streaming API, so it does not
+ * exist in this version of Dialog.
  */
 function file_read(dirent, israw)
 {
