@@ -218,6 +218,9 @@ FStream.prototype = {
             
             if (this.bufuse)
                 this.fflush();
+
+            /* ### if len-got >= BUFSIZE, we could read directly and ignore
+               our buffer. */
             
             this.bufuse = filemode_Read;
             this.bufmark = 0;
@@ -255,10 +258,29 @@ FStream.prototype = {
     }
 
     fseek : function(pos, seekmode) {
-        /* ### we could seek within the current buffer, but I haven't
-           implemented that. */
+        /* ### we could seek within the current buffer, which would be
+           efficient for small moves. */
         this.fflush();
-        //###...
+
+        var val = 0;
+        if (seekmode == seekmode_Current) {
+            val = this.mark + pos;
+        }
+        else if (seekmode == seekmode_End) {
+            try {
+                var stats = fs.fstatSync(fstream.fd);
+                val = stats.size + pos;
+            }
+            catch (ex) {
+                val = this.mark + pos;
+            }
+        }
+        else {
+            val = pos;
+        }
+        if (val < 0)
+            val = 0;
+        this.mark = val;
     }
 
     fflush : function() {
