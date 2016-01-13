@@ -2785,19 +2785,22 @@ function gli_put_char(str, ch) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                str.fstream.fwrite(String.fromCharCode(ch));
+                str.buffer4[0] = ch;
+                str.fstream.fwrite(str.buffer4, 1);
             }
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    str.fstream.fwrite(String.fromCharCode(ch)); /*#### UTF-8!*/
+                    var len = str.buffer4.write(String.fromCharCode(ch));
+                    str.fstream.fwrite(str.buffer4, len);
                 }
                 else {
                     /* cheap big-endian stream */
-                    str.fstream.fwrite(String.fromCharCode(0));
-                    str.fstream.fwrite(String.fromCharCode(0));
-                    str.fstream.fwrite(String.fromCharCode(0));
-                    str.fstream.fwrite(String.fromCharCode(ch));
+                    str.buffer4[0] = 0;
+                    str.buffer4[1] = 0;
+                    str.buffer4[2] = 0;
+                    str.buffer4[3] = ch;
+                    str.fstream.fwrite(str.buffer4, 4);
                 }
             }
             break;
@@ -2846,30 +2849,35 @@ function gli_put_array(str, arr, allbytes) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                if (allbytes)
-                    val = String.fromCharCode.apply(this, arr);
-                else
+                if (allbytes) {
+                    var buf = str.BufferClass(arr);
+                    str.fstream.fwrite(buf);
+                }
+                else {
                     val = UniArrayToString(arr);
+                }
                 str.fstream.fwrite(val);
             }
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    if (allbytes)
-                        val = String.fromCharCode.apply(this, arr);
-                    else
-                        val = UniArrayToString(arr);
-                    str.fstream.fwrite(val); /*#### UTF-8!*/
+                    if (allbytes) {
+                        var buf = str.BufferClass(arr);
+                        str.fstream.fwrite(buf);
+                    }
+                    else {
+                        var arr8 = UniArrayToUTF8(arr);
+                        var buf = str.BufferClass(arr8);
+                        str.fstream.fwrite(buf);
+                    }
                 }
                 else {
                     /* cheap big-endian stream */
+                    var buf = str.BufferClass(4*arr.count);
                     for (ix=0; ix<arr.length; ix++) {
-                        val = arr[ix];
-                        str.fstream.fwrite(String.fromCharCode(((val >> 24) & 0xFF)));
-                        str.fstream.fwrite(String.fromCharCode(((val >> 16) & 0xFF)));
-                        str.fstream.fwrite(String.fromCharCode(((val >> 8) & 0xFF)));
-                        str.fstream.fwrite(String.fromCharCode(((val) & 0xFF)));
+                        buf.writeUInt32BE(arr[ix], 4*ix, true);
                     }
+                    str.fstream.fwrite(buf);
                 }
             }
             break;
