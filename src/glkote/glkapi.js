@@ -2850,7 +2850,7 @@ function gli_put_array(str, arr, allbytes) {
             //### ensure_op?
             if (!str.unicode) {
                 if (allbytes) {
-                    var buf = str.BufferClass(arr);
+                    var buf = new str.fstream.BufferClass(arr);
                     str.fstream.fwrite(buf);
                 }
                 else {
@@ -2862,18 +2862,18 @@ function gli_put_array(str, arr, allbytes) {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
                     if (allbytes) {
-                        var buf = str.BufferClass(arr);
+                        var buf = new str.fstream.BufferClass(arr);
                         str.fstream.fwrite(buf);
                     }
                     else {
                         var arr8 = UniArrayToUTF8(arr);
-                        var buf = str.BufferClass(arr8);
+                        var buf = new str.fstream.BufferClass(arr8);
                         str.fstream.fwrite(buf);
                     }
                 }
                 else {
                     /* cheap big-endian stream */
-                    var buf = str.BufferClass(4*arr.count);
+                    var buf = new str.fstream.BufferClass(4*arr.count);
                     for (ix=0; ix<arr.length; ix++) {
                         buf.writeUInt32BE(arr[ix], 4*ix, true);
                     }
@@ -3255,23 +3255,23 @@ function glk_put_jstring_stream(str, val, allbytes) {
         if (str.streaming) {
             if (!str.unicode) {
                 if (allbytes) {
-                    var buf = str.BufferClass(val, 'binary');
+                    var buf = new str.fstream.BufferClass(val, 'binary');
                     str.fstream.fwrite(buf);
                 }
                 else {
-                    var buf = str.BufferClass(val); // utf8
+                    var buf = new str.fstream.BufferClass(val); // utf8
                     str.fstream.fwrite(buf);
                 }
             }
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    var buf = str.BufferClass(val); // utf8
+                    var buf = new str.fstream.BufferClass(val); // utf8
                     str.fstream.fwrite(buf);
                 }
                 else {
                     /* cheap big-endian stream */
-                    var buf = str.BufferClass(4*val.length);
+                    var buf = new str.fstream.BufferClass(4*val.length);
                     for (ix=0; ix<val.length; ix++) {
                         buf.writeUInt32BE(val.charCodeAt(ix), 4*ix, true);
                     }
