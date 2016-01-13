@@ -196,7 +196,7 @@ FStream.prototype = {
         this.buffer = null;
     },
 
-    /* fstream.fread(buf, len) -- read bytes from a file
+    /* fstream.fread(buf, [len]) -- read bytes from a file
      *
      * Up to buf.length bytes are read into the given buffer. If the len
      * argument is given, up to len bytes are read; the buffer must be at least
@@ -226,7 +226,8 @@ FStream.prototype = {
                     return got;
                 
                 /* We need more, but we've consumed the entire buffer. Fall
-                   through to the next step where we will fflush and read. */
+                   through to the next step where we will fflush and keep
+                   reading. */
             }
             
             if (this.bufuse)
@@ -247,7 +248,7 @@ FStream.prototype = {
         }
     },
 
-    /* fstream.fwrite(buf, len) -- write data to a file
+    /* fstream.fwrite(buf, [len]) -- write data to a file
      *
      * buf.length bytes are written to the stream. If the len argument is
      * given, that many bytes are written; the buffer must be at least len
@@ -256,6 +257,35 @@ FStream.prototype = {
     fwrite : function(buf, len) {
         if (len === undefined)
             len = buf.length;
+
+        var from = 0;
+
+        while (true) {
+            if (this.bufuse == filemode_Write) {
+                var want = len - from;
+                if (want > BUFFER_SIZE - this.buflen)
+                    want = BUFFER_SIZE - this.buflen;
+                if (want > 0) {
+                    buf.copy(this.buffer, this.buflen, from, from+want);
+                    this.buflen += want;
+                    from += want;
+                }
+            }
+            if (from >= len)
+                return from;
+
+            /* We need to write more, but the buffer is full. Fall through
+               to the next step where we will fflush and keep writing. */
+
+            if (this.bufuse)
+                this.fflush();
+
+            /* ### if len-from >= BUFFER_SIZE, we could write directly and
+               ignore our buffer. */
+            
+            this.bufuse = filemode_Write;
+            this.buflen = 0;
+        }
     },
 
     ftell : function() {
