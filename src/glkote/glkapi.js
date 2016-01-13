@@ -2849,14 +2849,8 @@ function gli_put_array(str, arr, allbytes) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                if (allbytes) {
-                    var buf = new str.fstream.BufferClass(arr);
-                    str.fstream.fwrite(buf);
-                }
-                else {
-                    val = UniArrayToString(arr);
-                }
-                str.fstream.fwrite(val);
+                var buf = new str.fstream.BufferClass(arr);
+                str.fstream.fwrite(buf);
             }
             else {
                 if (!str.isbinary) {
