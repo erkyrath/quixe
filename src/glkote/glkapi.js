@@ -3253,8 +3253,31 @@ function glk_put_jstring_stream(str, val, allbytes) {
     switch (str.type) {
     case strtype_File:
         if (str.streaming) {
-            //### if !allbytes, this isn't right
-            str.fstream.fwrite(val);
+            if (!str.unicode) {
+                if (allbytes) {
+                    var buf = str.BufferClass(val, 'binary');
+                    str.fstream.fwrite(buf);
+                }
+                else {
+                    var buf = str.BufferClass(val); // utf8
+                    str.fstream.fwrite(buf);
+                }
+            }
+            else {
+                if (!str.isbinary) {
+                    /* cheap UTF-8 stream */
+                    var buf = str.BufferClass(val); // utf8
+                    str.fstream.fwrite(buf);
+                }
+                else {
+                    /* cheap big-endian stream */
+                    var buf = str.BufferClass(4*val.length);
+                    for (ix=0; ix<val.length; ix++) {
+                        buf.writeUInt32BE(val.charCodeAt(ix), 4*ix, true);
+                    }
+                    str.fstream.fwrite(buf);
+                }
+            }
             break;
         }
         gli_stream_dirty_file(str);
