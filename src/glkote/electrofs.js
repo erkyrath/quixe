@@ -178,6 +178,10 @@ function FStream(fmode, filename)
 }
 FStream.prototype = {
 
+    /* Export constructor for Buffer objects. See
+       https://nodejs.org/dist/latest-v5.x/docs/api/buffer.html */
+    BufferClass : buffer_mod.Buffer,
+
     /* fstream.fclose() -- close a file
      */
     fclose : function() {

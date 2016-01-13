@@ -2991,28 +2991,28 @@ function gli_get_char(str, want_unicode) {
         if (str.streaming) {
             //### ensure_op?
             if (!str.unicode) {
-                var buf = str.fstream.fread(1);
-                if (!buf || !buf.length)
+                var len = str.fstream.fread(str.buffer4, 1);
+                if (!len)
                     return -1;
                 str.readcount++;
-                return buf[0];
+                return str.buffer4[0];
             }
             else {
                 if (!str.isbinary) {
                     /* slightly less cheap UTF8 stream */
                     var val0, val1, val2, val3;
-                    var buf = str.fstream.fread(1);
-                    if (!buf || !buf.length)
+                    var len = str.fstream.fread(str.buffer4, 1);
+                    if (!len)
                         return -1;
-                    val0 = buf[0];
+                    val0 = str.buffer4[0];
                     if (val0 < 0x80) {
                         ch = val0;
                     }
                     else {
-                        buf = str.fstream.fread(1);
-                        if (!buf || !buf.length)
+                        var len = str.fstream.fread(str.buffer4, 1);
+                        if (!len)
                             return -1;
-                        val1 = buf[0];
+                        val1 = str.buffer4[0];
                         if ((val1 & 0xC0) != 0x80)
                             return -1;
                         if ((val0 & 0xE0) == 0xC0) {
@@ -3020,10 +3020,10 @@ function gli_get_char(str, want_unicode) {
                             ch |= (val1 & 0x3F);
                         }
                         else {
-                            buf = str.fstream.fread(1);
-                            if (!buf || !buf.length)
+                            var len = str.fstream.fread(str.buffer4, 1);
+                            if (!len)
                                 return -1;
-                            val2 = buf[0];
+                            val2 = str.buffer4[0];
                             if ((val2 & 0xC0) != 0x80)
                                 return -1;
                             if ((val0 & 0xF0) == 0xE0) {
@@ -3032,10 +3032,10 @@ function gli_get_char(str, want_unicode) {
                                 ch |= (((val2 & 0x3F))    & 0x0000003F);
                             }
                             else if ((val0 & 0xF0) == 0xF0) {
-                                buf = str.fstream.fread(1);
-                                if (!buf || !buf.length)
+                                var len = str.fstream.fread(str.buffer4, 1);
+                                if (!len)
                                     return -1;
-                                val3 = buf[0];
+                                val3 = str.buffer4[0];
                                 if ((val3 & 0xC0) != 0x80)
                                     return -1;
                                 ch = (((val0 & 0x7)<<18)   & 0x1C0000);
@@ -3051,13 +3051,14 @@ function gli_get_char(str, want_unicode) {
                 }
                 else {
                     /* cheap big-endian stream */
-                    var buf = str.fstream.fread(4);
-                    if (!buf || buf.length < 4)
+                    var len = str.fstream.fread(str.buffer4, 4);
+                    if (len < 4)
                         return -1;
-                    ch = (buf[0] << 24);
-                    ch |= (buf[1] << 16);
-                    ch |= (buf[2] << 8);
-                    ch |= buf[3];
+                    /*### or buf.readUInt32BE(0, true) */
+                    ch = (str.buffer4[0] << 24);
+                    ch |= (str.buffer4[1] << 16);
+                    ch |= (str.buffer4[2] << 8);
+                    ch |= str.buffer4[3];
                 }
                 str.readcount++;
                 ch >>>= 0;
@@ -3998,6 +3999,8 @@ function glk_stream_open_file(fref, fmode, rock) {
     else {
         str.streaming = true;
         str.fstream = fstream;
+        /* We'll want a Buffer object around for short and writes. */
+        str.buffer4 = new fstream.BufferClass(4);
     }
 
     return str;
