@@ -196,11 +196,16 @@ FStream.prototype = {
         this.buffer = null;
     },
 
-    /* fstream.file_fread(len) -- read a given number of bytes from a file
-       The data is copied into the given buffer, which must be at least
-       len bytes long. Returns the number of bytes read, or 0 if end-of-file.
-    */
+    /* fstream.fread(buf, len) -- read bytes from a file
+     *
+     * Up to buf.length bytes are read into the given buffer. If the len
+     * argument is given, up to len bytes are read; the buffer must be at least
+     * len bytes long. Returns the number of bytes read, or 0 if end-of-file.
+     */
     fread : function(buf, len) {
+        if (len === undefined)
+            len = buf.length;
+
         /* got will be our mark in the buf argument. When got reaches
            len, we're done. (Unless we hit EOF first.) */
         var got = 0;
@@ -242,15 +247,15 @@ FStream.prototype = {
         }
     },
 
-    /* fstream.file_fwrite(str) -- write a string to a file
-       The string must contain only byte values (character values 0-255).
-       Yes, it is inconsistent that fwrite takes strings but fread
-       returns buffers.
-    */
-    fwrite : function(str) {
-        var buf = new buffer_mod.Buffer(str, 'binary');
-        var count = fs.writeSync(this.fd, buf, 0, buf.length);
-        return count;
+    /* fstream.fwrite(buf, len) -- write data to a file
+     *
+     * buf.length bytes are written to the stream. If the len argument is
+     * given, that many bytes are written; the buffer must be at least len
+     * bytes long. Return the number of bytes written.
+     */
+    fwrite : function(buf, len) {
+        if (len === undefined)
+            len = buf.length;
     },
 
     ftell : function() {
