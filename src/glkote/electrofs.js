@@ -130,7 +130,7 @@ function dialog_open(tosave, usage, gameid, callback)
  * ".glkdata", ".glksave", ".txt".
  */
 function file_clean_fixed_name(filename, usage) {
-    var res = filename.replace(/[/\\<>:|?*]/g, '');
+    var res = filename.replace(/["/\\<>:|?*]/g, '');
     var pos = res.indexOf('.');
     if (pos >= 0) 
         res = res.slice(0, pos);
