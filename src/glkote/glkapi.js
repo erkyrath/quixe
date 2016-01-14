@@ -2022,6 +2022,63 @@ function UniArrayToString(arr) {
     return newarr.join('');
 }
 
+/* Convert an array of 32-bit Unicode values to an array of 8-bit byte
+   values, encoded UTF-8. If all the values are 0-127, this returns the
+   same array. Otherwise it returns a new (longer) array. */
+function UniArrayToUTF8(arr) {
+    var count = 0;
+
+    for (var ix=0; ix<arr.length; ix++) {
+        var val = arr[ix];
+        if (val < 0x80) {
+            count += 1;
+        }
+        else if (val < 0x800) {
+            count += 2;
+        }
+        else if (val < 0x10000) {
+            count += 3;
+        }
+        else if (val < 0x200000) {
+            count += 4;
+        }
+        else {
+            count += 1;
+        }
+    }
+
+    if (count == arr.length)
+        return arr;
+
+    var res = [];
+    for (var ix=0; ix<arr.length; ix++) {
+        var val = arr[ix];
+        if (val < 0x80) {
+            res.push(val);
+        }
+        else if (val < 0x800) {
+            res.push(0xC0 | ((val & 0x7C0) >> 6));
+            res.push(0x80 |  (val & 0x03F)     );
+        }
+        else if (val < 0x10000) {
+            res.push(0xE0 | ((val & 0xF000) >> 12));
+            res.push(0x80 | ((val & 0x0FC0) >>  6));
+            res.push(0x80 |  (val & 0x003F)      );
+        }
+        else if (val < 0x200000) {
+            res.push(0xF0 | ((val & 0x1C0000) >> 18));
+            res.push(0x80 | ((val & 0x03F000) >> 12));
+            res.push(0x80 | ((val & 0x000FC0) >>  6));
+            res.push(0x80 |  (val & 0x00003F)      );
+        }
+        else {
+            res.push(63);  // '?'
+        }
+    }
+
+    return res;
+}
+
 /* Log the message in the browser's error log, if it has one. (This shows
    up in Safari, in Opera, and in Firefox if you have Firebug installed.)
 */
@@ -3970,6 +4027,7 @@ function glk_stream_open_file(fref, fmode, rock) {
         throw('glk_stream_open_file: invalid fileref');
 
     var str;
+    var fstream;
 
     if (fmode != Const.filemode_Read 
         && fmode != Const.filemode_Write 
@@ -3998,7 +4056,7 @@ function glk_stream_open_file(fref, fmode, rock) {
             throw('glk_stream_open_file: data read had no length');
     }
     else {
-        var fstream = Dialog.file_fopen(fmode, fref.ref);
+        fstream = Dialog.file_fopen(fmode, fref.ref);
     }
 
     str = gli_new_stream(strtype_File, 
@@ -4159,7 +4217,7 @@ function glk_stream_set_position(str, pos, seekmode) {
     switch (str.type) {
     case strtype_File:
         if (str.streaming) {
-            str.fseek(pos, seekmode);
+            str.fstream.fseek(pos, seekmode);
             break;
         }
         //### check if file has been modified? This is a half-decent time.
@@ -4191,7 +4249,7 @@ function glk_stream_get_position(str) {
     switch (str.type) {
     case strtype_File:
         if (str.streaming) {
-            return str.ftell();
+            return str.fstream.ftell();
         }
         /* fall through to memory... */
     case strtype_Resource:
@@ -5218,6 +5276,7 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
         throw('glk_stream_open_file_uni: invalid fileref');
 
     var str;
+    var fstream;
 
     if (fmode != Const.filemode_Read 
         && fmode != Const.filemode_Write 
@@ -5244,7 +5303,7 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
         }
     }
     else {
-        var fstream = Dialog.file_fopen(fmode, fref.ref);
+        fstream = Dialog.file_fopen(fmode, fref.ref);
     }
 
     str = gli_new_stream(strtype_File, 
