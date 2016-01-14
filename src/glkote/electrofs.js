@@ -43,6 +43,10 @@ const filemode_WriteAppend = 0x05;
 const seekmode_Start = 0;
 const seekmode_Current = 1;
 const seekmode_End = 2;
+const fileusage_Data = 0x00;
+const fileusage_SavedGame = 0x01;
+const fileusage_Transcript = 0x02;
+const fileusage_InputRecord = 0x03;
 
 /* The size of our stream buffering. */
 const BUFFER_SIZE = 256;
@@ -110,6 +114,39 @@ function dialog_open(tosave, usage, gameid, callback)
                     callback(ref);
                 }
             });
+    }
+}
+
+/* Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
+ *
+ * Take an arbitrary string and convert it into a filename that can
+ * validly be stored in the user's directory. This is called for filenames
+ * that come from the game file, but not for filenames selected directly
+ * by the user (i.e. from a file selection dialog).
+ *
+ * The new spec recommendations: delete all characters in the string
+ * "/\<>:|?*" (including quotes). Truncate at the first period. Change to
+ * "null" if there's nothing left. Then append an appropriate suffix:
+ * ".glkdata", ".glksave", ".txt".
+ */
+function file_clean_fixed_name(filename, usage) {
+    var res = filename.replace(/[/\\<>:|?*]/g, '');
+    var pos = res.indexOf('.');
+    if (pos >= 0) 
+        res = res.slice(0, pos);
+    if (res.length == 0)
+        res = "null";
+
+    switch (usage) {
+    case fileusage_Data:
+        return res + '.glkdata';
+    case fileusage_SavedGame:
+        return res + '.glksave';
+    case fileusage_Transcript:
+    case fileusage_InputRecord:
+        return res + '.txt';
+    default:
+        return res;
     }
 }
 
@@ -442,6 +479,7 @@ return {
     streaming: true,
     open: dialog_open,
 
+    file_clean_fixed_name: file_clean_fixed_name,
     file_construct_ref: file_construct_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,

@@ -4278,6 +4278,9 @@ function glk_fileref_create_temp(usage, rock) {
 }
 
 function glk_fileref_create_by_name(usage, filename, rock) {
+    /* Filenames that do not come from the user must be cleaned up. */
+    filename = Dialog.file_clean_fixed_name(filename, usage);
+
     fref = gli_new_fileref(filename, usage, rock, null);
     return fref;
 }

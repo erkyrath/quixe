@@ -795,6 +795,20 @@ function evhan_storage_changed(ev) {
     }
 }
 
+/* Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
+ *
+ * Take an arbitrary string and convert it into a filename that can
+ * validly be stored in the user's directory. This is called for filenames
+ * that come from the game file, but not for filenames selected directly
+ * by the user (i.e. from a file selection dialog).
+ *
+ * Because we store everything in browser local storage, we have no
+ * filename restrictions.
+ */
+function file_clean_fixed_name(filename, usage) {
+    return filename;
+}
+
 /* Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
  *
  * Create a fileref. This does not create a file; it's just a thing you can use
@@ -1126,6 +1140,7 @@ return {
     streaming: false,
     open: dialog_open,
 
+    file_clean_fixed_name: file_clean_fixed_name,
     file_construct_ref: file_construct_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
