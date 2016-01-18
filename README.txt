@@ -45,6 +45,17 @@ your "mystory.ulx.js" file.
 To set up a page that can play any game file on the Internet (as
 on the web site), copy play-remote.html.
 
+
+* Electron
+
+The included version of GlkOte has extra support for the Electron
+environment. This is a version of Node.js wrapped up as an application
+shell, with extra APIs for native file support. In this environment,
+use lib/elkote.min.js instead of lib/glkote.min.js.
+
+If you have no idea what I just said, ignore lib/elkote.min.js.
+
+
 * Contents
 
 - README.txt       -- this file
@@ -68,6 +79,7 @@ on the web site), copy play-remote.html.
   (each of the next two files contains several files from the src directory,
   run through rjsmin.py)
   - glkote.min.js        -- glkote files
+  - elkote.min.js        -- glkote files (alternate package for Electron)
   - quixe.min.js         -- quixe files
 
 - media -- images, CSS, and layout for play.html et al
