@@ -49,6 +49,13 @@ compress_source(
         ])
 
 compress_source(
+    'lib/elkote.min.js', [
+        'src/glkote/glkote.js',
+        'src/glkote/electrofs.js',
+        'src/glkote/glkapi.js',
+        ])
+
+compress_source(
     'lib/quixe.min.js', [
         'src/quixe/quixe.js',
         'src/quixe/gi_dispa.js',
