@@ -30,6 +30,7 @@
  * (These fileref objects are not the same as the filerefs used in the Glk API.
  * A Glk fileref contains one of these filerefs, however.)
  *
+ * Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
  * Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
  * Dialog.file_write(ref, content, israw) -- write data to the file
  * Dialog.file_read(ref, israw) -- read data from the file
