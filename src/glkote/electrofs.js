@@ -201,14 +201,14 @@ function FStream(fmode, filename)
     this.filename = filename;
     this.fd = null; /* will be filled in by file_fopen */
 
-    this.mark = 0; /* read-write position in the file */
+    this.mark = 0; /* read-write position in the file (or buffer start pos) */
 
     /* We buffer input or output (but never both at the same time). */
     this.buffer = new buffer_mod.Buffer(BUFFER_SIZE);
     /* bufuse is filemode_Read or filemode_Write, if the buffer is being used
        for reading or writing. For writing, the buffer starts at mark and
-       covers buflen bytes. For reading, the buffer *ends* at mark having
-       covered from bufmark to buflen. */
+       covers buflen bytes. For reading, the buffer starts at mark amd runs
+       buflen bytes, but bufmark bytes have been consumed from it. */
     this.bufuse = 0; 
     this.buflen = 0; /* how much of the buffer is used */
     this.bufmark = 0; /* how much of the buffer has been read out (readmode only) */
@@ -281,7 +281,7 @@ FStream.prototype = {
                 this.bufuse = 0;
                 return got;
             }
-            this.mark += this.buflen;
+            /* mark stays at the buffer start position */
         }
     },
 
@@ -327,7 +327,7 @@ FStream.prototype = {
 
     ftell : function() {
         if (this.bufuse == filemode_Read) {
-            return this.mark - (this.buflen - this.bufmark);
+            return this.mark + this.bufmark;
         }
         else if (this.bufuse == filemode_Write) {
             return this.mark + this.buflen;
@@ -365,8 +365,8 @@ FStream.prototype = {
 
     fflush : function() {
         if (this.bufuse == filemode_Read) {
-            /* Do nothing, just mark the buffer unused. The mark is already
-               at the end-of-buffer. */
+            /* Do nothing, just advance the mark. */
+            this.mark += this.bufmark;
         }
         else if (this.bufuse == filemode_Write) {
             if (this.buflen) {
