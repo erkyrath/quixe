@@ -3356,15 +3356,9 @@ function glk_put_jstring_stream(str, val, allbytes) {
     case strtype_File:
         if (str.streaming) {
             if (!str.unicode) {
-                if (allbytes) {
-                    var buf = new str.fstream.BufferClass(val, 'binary');
-                    str.fstream.fwrite(buf);
-                }
-                else {
-                    // give up on non-Latin-1 characters
-                    var buf = new str.fstream.BufferClass(val, 'binary');
-                    str.fstream.fwrite(buf);
-                }
+                // if !allbytes, we just give up on non-Latin-1 characters
+                var buf = new str.fstream.BufferClass(val, 'binary');
+                str.fstream.fwrite(buf);
             }
             else {
                 if (!str.isbinary) {
@@ -3383,8 +3377,32 @@ function glk_put_jstring_stream(str, val, allbytes) {
             }
             break;
         }
-        gli_stream_dirty_file(str);
-        /* fall through to memory... */
+        else {
+            /* non-streaming... */
+            gli_stream_dirty_file(str);
+            var arr = [];
+            for (ix=0; ix<val.length; ix++)
+                arr.push(val.charCodeAt(ix));
+            var arr8;
+            if (!str.unicode) {
+                arr8 = arr;
+            }
+            else {
+                if (!str.isbinary)
+                    arr8 = UniArrayToUTF8(arr);
+                else
+                    arr8 = UniArrayToBE32(arr);
+            }
+            var len = arr8.length;
+            if (len > str.buflen-str.bufpos)
+                len = str.buflen-str.bufpos;
+            for (ix=0; ix<len; ix++)
+                str.buf[str.bufpos+ix] = arr8[ix];
+            str.bufpos += len;
+            if (str.bufpos > str.bufeof)
+                str.bufeof = str.bufpos;
+            break;
+        }
     case strtype_Memory:
         len = val.length;
         if (len > str.buflen-str.bufpos)
