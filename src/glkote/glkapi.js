@@ -36,11 +36,6 @@
    into a UTF-16-encoded pair of two-byte characters. This will come
    out okay in a buffer window, but it will again mess up grid windows,
    and will also double the write-count in a stream.
-
-   When opening a Unicode file stream, the library does not follow
-   the (recent) requirement to store four-byte values (binary mode)
-   or UTF-8 characters (text mode). This causes errors in the
-   extbinaryfile.ulx test.
 */
 
 /* Put everything inside the Glk namespace. */
