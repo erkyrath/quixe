@@ -348,7 +348,7 @@ FStream.prototype = {
         }
         else if (seekmode == seekmode_End) {
             try {
-                var stats = fs.fstatSync(fstream.fd);
+                var stats = fs.fstatSync(this.fd);
                 val = stats.size + pos;
             }
             catch (ex) {
