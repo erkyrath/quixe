@@ -3211,22 +3211,6 @@ function gli_get_line(str, buf, want_unicode) {
     var gotnewline;
 
     switch (str.type) {
-    case strtype_Resource:
-        if (str.unicode) {
-            if (len == 0)
-                return 0;
-            len -= 1; /* for the terminal null */
-            gotnewline = false;
-            for (lx=0; lx<len && !gotnewline; lx++) {
-                ch = gli_get_char(str, want_unicode);
-                if (ch == -1)
-                    break;
-                buf[lx] = ch;
-                gotnewline = (ch == 10);
-            }
-            return lx;
-        }
-        /* non-unicode streams: fall through to memory... */
     case strtype_File:
         if (str.streaming) {
             if (len == 0)
@@ -3242,8 +3226,23 @@ function gli_get_line(str, buf, want_unicode) {
             }
             return lx;
         }
-        /* non-streaming or resource... */
-        /* fall through to memory... */
+        /* non-streaming, fall through to resource... */
+    case strtype_Resource:
+        if (str.unicode) {
+            if (len == 0)
+                return 0;
+            len -= 1; /* for the terminal null */
+            gotnewline = false;
+            for (lx=0; lx<len && !gotnewline; lx++) {
+                ch = gli_get_char(str, want_unicode);
+                if (ch == -1)
+                    break;
+                buf[lx] = ch;
+                gotnewline = (ch == 10);
+            }
+            return lx;
+        }
+        /* non-unicode file/resource, fall through to memory... */
     case strtype_Memory:
         if (len == 0)
             return 0;
@@ -3288,17 +3287,6 @@ function gli_get_buffer(str, buf, want_unicode) {
     var lx, ch;
     
     switch (str.type) {
-    case strtype_Resource:
-        if (str.unicode) {
-            for (lx=0; lx<len; lx++) {
-                ch = gli_get_char(str, want_unicode);
-                if (ch == -1)
-                    break;
-                buf[lx] = ch;
-            }
-            return lx;
-        }
-        /* non-unicode streams: fall through to memory... */
     case strtype_File:
         if (str.streaming) {
             for (lx=0; lx<len; lx++) {
@@ -3309,8 +3297,18 @@ function gli_get_buffer(str, buf, want_unicode) {
             }
             return lx;
         }
-        /* non-streaming or resource... */
-        /* fall through to memory... */
+        /* non-streaming, fall through to resource... */
+    case strtype_Resource:
+        if (str.unicode) {
+            for (lx=0; lx<len; lx++) {
+                ch = gli_get_char(str, want_unicode);
+                if (ch == -1)
+                    break;
+                buf[lx] = ch;
+            }
+            return lx;
+        }
+        /* non-unicode file/resource, fall through to memory... */
     case strtype_Memory:
         if (str.bufpos >= str.bufeof) {
             len = 0;
