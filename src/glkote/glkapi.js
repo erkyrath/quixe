@@ -2877,7 +2877,6 @@ function gli_put_char(str, ch) {
                     str.fstream.fwrite(str.buffer4, 4);
                 }
             }
-            break;
         }
         else {
             /* non-streaming... */
@@ -2905,8 +2904,8 @@ function gli_put_char(str, ch) {
                 if (str.bufpos > str.bufeof)
                     str.bufeof = str.bufpos;
             }
-            break;
         }
+        break;
     case strtype_Memory:
         if (str.bufpos < str.buflen) {
             str.buf[str.bufpos] = ch;
@@ -2966,7 +2965,6 @@ function gli_put_array(str, arr, allbytes) {
                     str.fstream.fwrite(buf);
                 }
             }
-            break;
         }
         else {
             /* non-streaming... */
@@ -2989,8 +2987,8 @@ function gli_put_array(str, arr, allbytes) {
             str.bufpos += len;
             if (str.bufpos > str.bufeof)
                 str.bufeof = str.bufpos;
-            break;
         }
+        break;
     case strtype_Memory:
         len = arr.length;
         if (len > str.buflen-str.bufpos)
@@ -3375,7 +3373,6 @@ function glk_put_jstring_stream(str, val, allbytes) {
                     str.fstream.fwrite(buf);
                 }
             }
-            break;
         }
         else {
             /* non-streaming... */
@@ -3401,8 +3398,8 @@ function glk_put_jstring_stream(str, val, allbytes) {
             str.bufpos += len;
             if (str.bufpos > str.bufeof)
                 str.bufeof = str.bufpos;
-            break;
         }
+        break;
     case strtype_Memory:
         len = val.length;
         if (len > str.buflen-str.bufpos)
