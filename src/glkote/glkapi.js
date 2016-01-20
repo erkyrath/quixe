@@ -2915,7 +2915,7 @@ function gli_put_array(str, arr, allbytes) {
                 }
                 else {
                     /* cheap big-endian stream */
-                    var buf = new str.fstream.BufferClass(4*arr.count);
+                    var buf = new str.fstream.BufferClass(4*arr.length);
                     for (ix=0; ix<arr.length; ix++) {
                         buf.writeUInt32BE(arr[ix], 4*ix, true);
                     }
