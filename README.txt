@@ -100,6 +100,10 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 * Version History
 
 - 2.1.3 (###)
+  - Changed the behavior of unicode files in local storage. They are now
+    byte arrays (UTF8 or BE32) instead of unichar arrays. Legacy saved files
+    will not read back correctly. This only affects files created with
+    glk_stream_open_file_uni(), so it does *not* affect saved games.
   - Fixed a bug where hyperlinks set on images (in text) would not work.
 
 - 2.1.2 (November 22, 2015)
