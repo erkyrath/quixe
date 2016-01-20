@@ -2840,7 +2840,6 @@ function gli_put_char(str, ch) {
     switch (str.type) {
     case strtype_File:
         if (str.streaming) {
-            //### ensure_op?
             if (!str.unicode) {
                 str.buffer4[0] = ch;
                 str.fstream.fwrite(str.buffer4, 1);
@@ -2904,7 +2903,6 @@ function gli_put_array(str, arr, allbytes) {
     switch (str.type) {
     case strtype_File:
         if (str.streaming) {
-            //### ensure_op?
             if (!str.unicode) {
                 var buf = new str.fstream.BufferClass(arr);
                 str.fstream.fwrite(buf);
@@ -3042,7 +3040,6 @@ function gli_get_char(str, want_unicode) {
         /* non-unicode streams: fall through to memory... */
     case strtype_File:
         if (str.streaming) {
-            //### ensure_op?
             if (!str.unicode) {
                 var len = str.fstream.fread(str.buffer4, 1);
                 if (!len)
