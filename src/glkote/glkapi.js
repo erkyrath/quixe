@@ -2912,15 +2912,9 @@ function gli_put_array(str, arr, allbytes) {
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    if (allbytes) {
-                        var buf = new str.fstream.BufferClass(arr);
-                        str.fstream.fwrite(buf);
-                    }
-                    else {
-                        var arr8 = UniArrayToUTF8(arr);
-                        var buf = new str.fstream.BufferClass(arr8);
-                        str.fstream.fwrite(buf);
-                    }
+                    var arr8 = UniArrayToUTF8(arr);
+                    var buf = new str.fstream.BufferClass(arr8);
+                    str.fstream.fwrite(buf);
                 }
                 else {
                     /* cheap big-endian stream */
