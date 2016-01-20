@@ -2650,6 +2650,8 @@ function gli_new_stream(type, readable, writable, rock) {
     str.disprock = undefined;
 
     str.unicode = false;
+    /* isbinary is only meaningful for Resource and streaming-File streams */
+    str.isbinary = false;
     str.streaming = false;
     str.ref = null;
     str.win = null;
@@ -2852,10 +2854,7 @@ function gli_put_char(str, ch) {
                 }
                 else {
                     /* cheap big-endian stream */
-                    str.buffer4[0] = 0;
-                    str.buffer4[1] = 0;
-                    str.buffer4[2] = 0;
-                    str.buffer4[3] = ch;
+                    str.buffer4.writeUInt32BE(ch, 0, true);
                     str.fstream.fwrite(str.buffer4, 4);
                 }
             }
@@ -4056,6 +4055,7 @@ function glk_stream_open_file(fref, fmode, rock) {
         (fmode != Const.filemode_Read), 
         rock);
     str.unicode = false;
+    str.isbinary = !fref.textmode;
     str.ref = fref.ref;
 
     if (!Dialog.streaming) {
@@ -5306,6 +5306,7 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
         (fmode != Const.filemode_Read), 
         rock);
     str.unicode = true;
+    str.isbinary = !fref.textmode;
     str.ref = fref.ref;
 
     if (!Dialog.streaming) {
