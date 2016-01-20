@@ -3310,7 +3310,8 @@ function glk_put_jstring_stream(str, val, allbytes) {
                     str.fstream.fwrite(buf);
                 }
                 else {
-                    var buf = new str.fstream.BufferClass(val); // utf8
+                    // give up on non-Latin-1 characters
+                    var buf = new str.fstream.BufferClass(val, 'binary');
                     str.fstream.fwrite(buf);
                 }
             }
