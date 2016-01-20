@@ -87,7 +87,6 @@ function filters_for_usage(val)
 function dialog_open(tosave, usage, gameid, callback)
 {
     const dialog = require('electron').remote.dialog;
-    /*### title */
     var opts = {
         filters: filters_for_usage(usage)
     };
