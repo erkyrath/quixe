@@ -2849,8 +2849,18 @@ function gli_put_char(str, ch) {
             else {
                 if (!str.isbinary) {
                     /* cheap UTF-8 stream */
-                    var len = str.buffer4.write(String.fromCharCode(ch));
-                    str.fstream.fwrite(str.buffer4, len);
+                    var len;
+                    if (ch < 0x10000) {
+                        len = str.buffer4.write(String.fromCharCode(ch));
+                        str.fstream.fwrite(str.buffer4, len); // utf8
+                    }
+                    else {
+                        /* String.fromCharCode chokes on astral characters;
+                           do it the hard way */
+                        var arr8 = UniArrayToUTF8([ch]);
+                        var buf = new str.fstream.BufferClass(arr8);
+                        str.fstream.fwrite(buf);
+                    }
                 }
                 else {
                     /* cheap big-endian stream */
