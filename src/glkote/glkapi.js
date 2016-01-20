@@ -2079,6 +2079,20 @@ function UniArrayToUTF8(arr) {
     return res;
 }
 
+/* Convert an array of 32-bit Unicode values to an array of 8-bit byte
+   values, encoded as big-endian words. */
+function UniArrayToBE32(arr) {
+    var res = new Array(4*arr.length);
+    for (var ix=0; ix<arr.length; ix++) {
+        var val = arr[ix];
+        res[4*ix]   = (val >> 24) & 0xFF;
+        res[4*ix+1] = (val >> 16) & 0xFF;
+        res[4*ix+2] = (val >> 8) & 0xFF;
+        res[4*ix+3] = (val) & 0xFF;
+    }
+    return res;
+}
+
 /* Log the message in the browser's error log, if it has one. (This shows
    up in Safari, in Opera, and in Firefox if you have Firebug installed.)
 */
@@ -2870,9 +2884,34 @@ function gli_put_char(str, ch) {
             }
             break;
         }
-        /* non-streaming... */
-        gli_stream_dirty_file(str);
-        /* fall through to memory... */
+        else {
+            /* non-streaming... */
+            gli_stream_dirty_file(str);
+            if (!str.unicode || (ch < 0x80 && !str.isbinary)) {
+                if (str.bufpos < str.buflen) {
+                    str.buf[str.bufpos] = ch;
+                    str.bufpos += 1;
+                    if (str.bufpos > str.bufeof)
+                        str.bufeof = str.bufpos;
+                }
+            }
+            else {
+                var arr;
+                if (!str.isbinary)
+                    arr = UniArrayToUTF8([ch]);
+                else
+                    arr = UniArrayToBE32([ch]);
+                var len = arr.length;
+                if (len > str.buflen-str.bufpos)
+                    len = str.buflen-str.bufpos;
+                for (ix=0; ix<len; ix++)
+                    str.buf[str.bufpos+ix] = arr[ix];
+                str.bufpos += len;
+                if (str.bufpos > str.bufeof)
+                    str.bufeof = str.bufpos;
+            }
+            break;
+        }
     case strtype_Memory:
         if (str.bufpos < str.buflen) {
             str.buf[str.bufpos] = ch;
@@ -2934,9 +2973,29 @@ function gli_put_array(str, arr, allbytes) {
             }
             break;
         }
-        /* non-streaming... */
-        gli_stream_dirty_file(str);
-        /* fall through to memory... */
+        else {
+            /* non-streaming... */
+            gli_stream_dirty_file(str);
+            var arr8;
+            if (!str.unicode) {
+                arr8 = arr;
+            }
+            else {
+                if (!str.isbinary)
+                    arr8 = UniArrayToUTF8(arr);
+                else
+                    arr8 = UniArrayToBE32(arr);
+            }
+            var len = arr8.length;
+            if (len > str.buflen-str.bufpos)
+                len = str.buflen-str.bufpos;
+            for (ix=0; ix<len; ix++)
+                str.buf[str.bufpos+ix] = arr8[ix];
+            str.bufpos += len;
+            if (str.bufpos > str.bufeof)
+                str.bufeof = str.bufpos;
+            break;
+        }
     case strtype_Memory:
         len = arr.length;
         if (len > str.buflen-str.bufpos)
