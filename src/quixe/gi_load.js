@@ -43,6 +43,8 @@
  *   set_page_title: If true, the loader will change the document title
  *     to describe the game being loaded. If false, the document title
  *     will be left alone. (default: true)
+ *   default_page_title: A default label for the game, if none could be
+ *     extracted from the metadata or URL. (default: "Game")
  *   default_story: The URL of the game file to load, if not otherwise
  *     provided.
  *   proxy_url: The URL of the web-app service which is used to convert
@@ -96,6 +98,7 @@ var all_options = {
     use_query_story: true, // use the ?story= URL parameter (if provided)
     default_story: null,   // story URL to use if not otherwise set
     set_page_title: true,  // set the window title to the game name
+    default_page_title: 'Game', // fallback game name to use for title
     image_info_map: null,  // look for images in Blorb data
     proxy_url: 'http://zcode.appspot.com/proxy/'
 };
@@ -875,6 +878,8 @@ function start_game(image) {
             title = metadata.title;
         if (!title && gameurl) 
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
+        if (!title)
+            title = all_options.default_page_title;
         if (!title)
             title = 'Game';
 
