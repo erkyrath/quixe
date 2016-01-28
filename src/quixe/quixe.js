@@ -3653,13 +3653,21 @@ function pop_callstub(val) {
     if (isNaN(val))
         fatal_error("Function returned undefined value.");
 
-    var framestart = self.frame.valstack.pop();
-    if (framestart != self.frame.framestart)
+    /* This somewhat clumsy way of popping off the last four elements of  the
+     * stack turns out to be significantly faster, which is great, because this
+     * function is extremely hot. */
+    var valstack = self.frame.valstack;
+    var vallen = valstack.length;
+    var framestart = valstack[vallen - 1];
+    if (framestart != self.frame.framestart) {
+        valstack.length -= 1;
         fatal_error("Call stub frameptr (" + framestart + ") " +
             "does not match frame (" + self.frame.framestart + ")");
-    self.pc = self.frame.valstack.pop();
-    destaddr = self.frame.valstack.pop();
-    desttype = self.frame.valstack.pop();
+    }
+    self.pc = valstack[vallen - 2];
+    destaddr = valstack[vallen - 3];
+    desttype = valstack[vallen - 4];
+    valstack.length -= 4;
 
     switch (desttype) {
     case 0:
