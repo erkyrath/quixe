@@ -55,6 +55,9 @@
  *     provided, we rely on Blorb resources.) This can be an object
  *     or a string; in the latter case, we look up a global object with
  *     that name.
+ *   exit_warning: A message to display (in a blue warning pane) when
+ *     the game exits. If empty or null, no message is displayed.
+ *     (default: "The game session has ended.")
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
  *
@@ -99,6 +102,7 @@ var all_options = {
     default_story: null,   // story URL to use if not otherwise set
     set_page_title: true,  // set the window title to the game name
     default_page_title: 'Game', // fallback game name to use for title
+    exit_warning: 'The game session has ended.',
     image_info_map: null,  // look for images in Blorb data
     proxy_url: 'http://zcode.appspot.com/proxy/'
 };
