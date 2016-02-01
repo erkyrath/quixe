@@ -48,6 +48,7 @@ var gameport_id = 'gameport';
 var generation = 0;
 var disabled = false;
 var loading_visible = null;
+var error_visible = false;
 var windowdic = null;
 var current_metrics = null;
 var currently_focussed = false;
@@ -1400,13 +1401,46 @@ function glkote_log(msg) {
    is called when jQuery couldn't be loaded.
 */
 function glkote_error(msg) {
+  if (!msg)
+    msg = '???';
+
   var el = document.getElementById('errorcontent');
   remove_children(el);
   el.appendChild(document.createTextNode(msg));
 
   el = document.getElementById('errorpane');
+  if (el.className == 'WarningPane')
+    el.className = null;
   el.style.display = '';   /* el.show() */
+  error_visible = true;
 
+  hide_loading();
+}
+
+/* Displays a blue warning pane, with a message in it.
+
+   Unlike glkote_error, a warning can be removed (call glkote_warning with
+   no argument). The warning pane is intrusive, so it should be used for
+   for conditions that interrupt or suspend normal play. An error overrides
+   a warning.
+
+   (Quixe uses this to display an "end of session" message.)
+*/
+function glkote_warning(msg) {
+  if (error_visible)
+    return;
+
+  if (!msg) {
+    $('#errorpane').hide();
+    return;
+  }
+
+  var el = document.getElementById('errorcontent');
+  remove_children(el);
+  el.appendChild(document.createTextNode(msg));
+
+  $('#errorpane').addClass('WarningPane');
+  $('#errorpane').show();
   hide_loading();
 }
 
@@ -2498,6 +2532,7 @@ return {
   getdomcontext: glkote_get_dom_context,
   setdomcontext: glkote_set_dom_context,
   log:      glkote_log,
+  warning:  glkote_warning,
   error:    glkote_error
 };
 

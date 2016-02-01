@@ -48,6 +48,9 @@ var VM = null;
 /* Environment capabilities. (Checked at init time.) */
 var has_canvas;
 
+/* Options from the vm_options object. */
+var option_exit_warning;
+
 /* Library display state. */
 var has_exited = false;
 var ui_disabled = false;
@@ -82,6 +85,8 @@ function init(vm_options) {
     vm_options.accept = accept_ui_event;
 
     GlkOte.init(vm_options);
+
+    option_exit_warning = vm_options.exit_warning;
 }
 
 function accept_ui_event(obj) {
@@ -3482,6 +3487,8 @@ function glk_exit() {
     has_exited = true;
     ui_disabled = true;
     gli_selectref = null;
+    if (option_exit_warning)
+        GlkOte.warning(option_exit_warning);
     return DidNotReturn;
 }
 
