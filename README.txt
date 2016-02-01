@@ -105,6 +105,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
     will not read back correctly. This only affects files created with
     glk_stream_open_file_uni(), so it does *not* affect saved games.
   - Fixed a bug where hyperlinks set on images (in text) would not work.
+  - Eevee provides further speed optimizations.
 
 - 2.1.2 (November 22, 2015)
   - Added basic WAI-ARIA support to buffer windows.
