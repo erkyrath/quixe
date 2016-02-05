@@ -191,7 +191,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Permissions
 
-The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010-15
+The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010-16
 by Andrew Plotkin. They are distributed under the MIT license; see the
 "LICENSE" file.
 
