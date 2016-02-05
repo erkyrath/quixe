@@ -682,8 +682,10 @@ function evhan_storage_changed(ev) {
         }
         /* Sort by usage, then date modified */
         ls.sort(function(f1, f2) {
-                if (f1.dirent.usage != f2.dirent.usage)
-                    return (f1.dirent.usage < f2.dirent.usage);
+                if (f1.dirent.usage < f2.dirent.usage) 
+                    return -1;
+                else if (f1.dirent.usage > f2.dirent.usage) 
+                    return 1;
                 return f2.modified.getTime() - f1.modified.getTime(); 
             });
 
