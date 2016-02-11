@@ -67,6 +67,11 @@ var regex_external_links = null;
 var NBSP = "\xa0";
 /* Number of paragraphs to retain in a buffer window's scrollback. */
 var max_buffer_length = 200;
+/* Size of the scrollbar, give or take some. */
+var approx_scroll_width = 20;
+/* Margin for how close you have to scroll to end-of-page to kill the
+   moreprompt. (Really this just counters rounding error.) */
+var moreprompt_margin = 2;
 
 /* Some constants for key event native values. (Not including function 
    keys.) */
@@ -503,7 +508,7 @@ function glkote_update(arg) {
             win.topunseen = newtopunseen;
           /* The scroll-down has not touched needspaging, because it is
              currently false. Let's see if it should be true. */
-          if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
+          if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
             win.needspaging = false;
           }
           else {
@@ -523,7 +528,7 @@ function glkote_update(arg) {
               { id: 'win'+win.id+'_moreprompt', 'class': 'MorePrompt' } );
             moreel.append('More');
             /* 20 pixels is a cheap approximation of a scrollbar-width. */
-            var morex = win.coords.right + 20;
+            var morex = win.coords.right + approx_scroll_width;
             var morey = win.coords.bottom;
             moreel.css({ bottom:morey+'px', right:morex+'px' });
             $('#'+windowport_id, dom_context).append(moreel);
@@ -2113,7 +2118,7 @@ function evhan_doc_keypress(ev) {
       if (win.needspaging) {
         /* The scroll-down might have cleared needspaging already. But 
            if not... */
-        if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
+        if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
           win.needspaging = false;
           var moreel = $('#win'+win.id+'_moreprompt', dom_context);
           if (moreel.length)
@@ -2490,7 +2495,7 @@ function evhan_window_scroll(ev) {
   if (win.topunseen < newtopunseen)
     win.topunseen = newtopunseen;
 
-  if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
+  if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
     win.needspaging = false;
     var moreel = $('#win'+win.id+'_moreprompt', dom_context);
     if (moreel.length)
