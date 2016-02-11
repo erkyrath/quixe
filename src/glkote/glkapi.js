@@ -80,7 +80,7 @@ function init(vm_options) {
 
     VM = vm_options.vm;
     if (window.GiDispa)
-        GiDispa.set_vm(VM);
+        GiDispa.set_vm(VM, vm_options.do_vm_autosave);
 
     vm_options.accept = accept_ui_event;
 

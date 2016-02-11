@@ -42,8 +42,9 @@ self.VM = null;
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
 */
-function set_vm(vm_api) {
+function set_vm(vm_api, autosave_flag) {
     self.VM = vm_api;
+    do_vm_autosave = autosave_flag;
 }
 
 /* A table of the Glk classes, and their index numbers. This is derived from
@@ -632,7 +633,7 @@ function build_function(func) {
 
     if (mayblock) {
         /* If the call blocks, we need to stash away the arguments and
-           then return early. */
+           then return early. Autosave may also happen here. */
         out.push('if (glkret === Glk.DidNotReturn) {');
         out.push('  self.set_blocked_selector(' + func.id + ', callargs);');
         out.push('  return glkret;');
@@ -756,10 +757,24 @@ function get_function(id) {
 var blocked_selector = null;
 var blocked_callargs = null;
 
+var do_vm_autosave = false; /* Does the VM want autosave calls? */
+var last_event_type = -1; /* Last event type. */
+
 /* Stash the above arguments. We make a copy of the args list, because
    we don't trust the argument to be immutable.
+
+   This is also where autosave (possibly) happens. It's an awkward spot,
+   sorry. Even more awkward: we peek at the last event type to see if
+   it's a good time to autosave. (Not if we've just started up, or
+   if the last event was arrange.) Terrible module leakage, I know.
 */
 function set_blocked_selector(sel, args) {
+    if (do_vm_autosave && sel == 0x0C0 && args[0] != 0) {
+        // glk_select
+        if (last_event_type != -1 && last_event_type != 5)
+            self.VM.do_autosave(args[0]);
+    }
+
     blocked_selector = sel;
     blocked_callargs = args.slice(0);
 }
@@ -776,6 +791,7 @@ function prepare_resume(glka0) {
     if (blocked_selector == 0x0C0) {
         // glk_select
         if (blocked_callargs[0] != 0) {
+            last_event_type = (glka0.get_field(0) >>> 0);
             self.VM.WriteStructField(blocked_callargs[0], 0, glka0.get_field(0) >>> 0);
             self.VM.WriteStructField(blocked_callargs[0], 1, class_obj_to_id("window", glka0.get_field(1)));
             self.VM.WriteStructField(blocked_callargs[0], 2, glka0.get_field(2) >>> 0);

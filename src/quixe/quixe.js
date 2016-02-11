@@ -5847,6 +5847,10 @@ function vm_restore(streamid) {
     return true;
 }
 
+function vm_autosave(eventaddr) {
+    console.log('### vm_autosave ' + eventaddr);
+}
+
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
    many on the stack, throw away the oldest.
 */
@@ -6439,7 +6443,9 @@ return {
     WriteWord: WriteArgWord,
     ReadStructField: ReadStructField,
     WriteStructField: WriteStructField,
-    SetResumeStore: SetResumeStore
+    SetResumeStore: SetResumeStore,
+
+    do_autosave: vm_autosave
 };
 
 }();
