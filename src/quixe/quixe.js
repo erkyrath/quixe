@@ -5922,6 +5922,8 @@ function vm_autosave(eventaddr) {
     var opmodes = parse_partial_operand();
     if (!opmodes)
         return;
+
+    //### push stuff
     
     var snapshot = {};
     snapshot.ram = memmap.slice(ramstart);
@@ -5940,6 +5942,10 @@ function vm_autosave(eventaddr) {
             snapshot.usedlist.push(usedlist[i].size);
         }
     }
+
+    //### pop stuff
+
+    //### stash library and VM-extra state
 
     snapshot.glk = Glk.save_allstate();
 
