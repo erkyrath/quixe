@@ -5916,7 +5916,7 @@ function vm_restore(streamid) {
    This looks a lot like vm_save, but we serialize a little differently.
 */
 function vm_autosave(eventaddr) {
-    console.log('### vm_autosave, eventaddr=' + eventaddr);
+    var timestart = new Date().getTime(); //###stats
 
     var opmodes = parse_partial_operand();
     if (!opmodes)
@@ -5939,6 +5939,9 @@ function vm_autosave(eventaddr) {
             snapshot.usedlist.push(usedlist[i].size);
         }
     }
+
+    var timeend = new Date().getTime(); //###stats
+    qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
 
     console.log(snapshot); //###
 }
