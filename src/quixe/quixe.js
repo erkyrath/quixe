@@ -3784,6 +3784,52 @@ function store_operand_by_funcop(funcop, val) {
     }
 }
 
+/* Backtrack through the current opcode (at prevpc), and figure out whether
+   its input arguments are on the stack or not. This will be important when
+   setting up the saved VM state for restarting its opcode.
+   
+   Returns an object { selop, argsop, resop }.
+ */
+function parse_partial_operand()
+{
+    var addr = prevpc;
+    
+    /* Fetch the opcode number. */
+    var opcode = Mem1(addr);
+    addr++;
+    if (opcode & 0x80) {
+        /* More than one-byte opcode. */
+        if (opcode & 0x40) {
+            /* Four-byte opcode */
+            opcode &= 0x3F;
+            opcode = (opcode << 8) | Mem1(addr);
+            addr++;
+            opcode = (opcode << 8) | Mem1(addr);
+            addr++;
+            opcode = (opcode << 8) | Mem1(addr);
+            addr++;
+        }
+        else {
+            /* Two-byte opcode */
+            opcode &= 0x7F;
+            opcode = (opcode << 8) | Mem1(addr);
+            addr++;
+        }
+    }
+    
+    if (opcode != 0x130) { /* op_glk */
+        qlog("parse_partial_operand: parsed wrong opcode: " + opcode);
+        return null;
+    }
+    
+    /* @glk has operands LLS. */
+    return {
+        selop  : Mem1(addr) & 0x0F,
+        argsop : (Mem1(addr) >> 4) & 0x0F,
+        resop  : Mem1(addr+1) & 0x0F
+    };
+}
+
 /* Set the VM's random-number function to either a "true" RNG (Javascript's
    Math.random), or a seeded deterministic RNG.
 */
@@ -5847,8 +5893,35 @@ function vm_restore(streamid) {
     return true;
 }
 
+/* Writes a snapshot of the VM state to a special file (not represented
+   by a fileref -- that's how special it is). The eventaddr is the
+   VM address of the event structure; we'll need it to autorestore
+   properly.
+
+   This looks a lot like vm_save, but we serialize a little differently.
+*/
 function vm_autosave(eventaddr) {
     console.log('### vm_autosave ' + eventaddr);
+
+    var snapshot = {};
+    snapshot.ram = memmap.slice(ramstart);
+    snapshot.endmem = self.endmem;
+    snapshot.pc = self.pc;
+    snapshot.stack = [];
+    for (var i = 0; i < stack.length; i++) {
+        push_serialized_stackframe(stack[i], snapshot.stack);
+    }
+
+    if (heap_is_active()) {
+        snapshot.heapstart = heapstart;
+        snapshot.usedlist = [];
+        for (var i = 0; i < usedlist.length; i++) {
+            snapshot.usedlist.push(usedlist[i].addr);
+            snapshot.usedlist.push(usedlist[i].size);
+        }
+    }
+
+    console.log(snapshot); //###
 }
 
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
