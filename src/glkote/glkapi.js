@@ -540,6 +540,12 @@ function update() {
     GlkOte.update(dataobj);
 }
 
+/* ###
+*/
+function save_allstate() {
+    return { dummy:'GLKSTATE' };
+}
+
 /* This is the handler for a VM fatal error. (Not for an error in our own
    library!) We display the error message, and then push a final display
    update, which kills all input fields in all windows.
@@ -5636,7 +5642,9 @@ return {
     version: '2.2.0', /* GlkOte/GlkApi version */
     init : init,
     update : update,
+    save_allstate : save_allstate,
     fatal_error : fatal_error,
+
     byte_array_to_string : ByteArrayToString,
     uni_array_to_string : UniArrayToString,
     Const : Const,

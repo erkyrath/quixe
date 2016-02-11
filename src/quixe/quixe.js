@@ -5914,6 +5914,7 @@ function vm_restore(streamid) {
    properly.
 
    This looks a lot like vm_save, but we serialize a little differently.
+   We're creating a JSONable object.
 */
 function vm_autosave(eventaddr) {
     var timestart = new Date().getTime(); //###stats
@@ -5939,6 +5940,8 @@ function vm_autosave(eventaddr) {
             snapshot.usedlist.push(usedlist[i].size);
         }
     }
+
+    snapshot.glk = Glk.save_allstate();
 
     var timeend = new Date().getTime(); //###stats
     qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
