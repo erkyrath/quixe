@@ -41,6 +41,10 @@ self.VM = null;
 
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
+
+   If autosave_flag is set, we will call VM.do_autosave on every glk_select
+   call. (Every interesting one, that is. We don't bother after window 
+   arrange events.)
 */
 function set_vm(vm_api, autosave_flag) {
     self.VM = vm_api;
