@@ -2577,6 +2577,8 @@ var opcode_table = {
             mayblock = Glk.call_may_not_return(Number(operands[0]));
         else
             mayblock = true;
+        if (mayblock)
+            context.code.push("  self.prevpc = "+context.prevcp+";");
         context.code.push("self.tempglkargs.length = " + operands[1] + ";");
         if (quot_isconstant(operands[1])) {
             var ix;
@@ -3393,6 +3395,7 @@ function compile_path(vmfunc, startaddr, startiosys) {
         vmfunc: vmfunc,
 
         cp: null, /* Will be filled in as we go */
+        prevcp: null, /* ditto */
 
         /* The iosysmode, as of cp. This is always a literal value;
            if it becomes unknown-at-compile-time, we stop compiling. */
@@ -3438,6 +3441,10 @@ function compile_path(vmfunc, startaddr, startiosys) {
     context.code.push(""); /* May be replaced by the _hold var declarations. */
 
     while (!context.path_ends) {
+
+        /* Stash the current opcode's address, in case the interpreter needs to
+           serialize the VM state out-of-band. */
+        context.prevcp = cp;
 
         /* Fetch the opcode number. */
         opcodecp = cp;
@@ -3792,7 +3799,7 @@ function store_operand_by_funcop(funcop, val) {
  */
 function parse_partial_operand()
 {
-    var addr = prevpc;
+    var addr = self.prevpc;
     
     /* Fetch the opcode number. */
     var opcode = Mem1(addr);
@@ -5488,6 +5495,12 @@ self.protectend = null;
 self.iosysmode = null;
 self.iosysrock = null;
 
+/* This is not needed for VM operation, but it may be needed for
+   autosave/autorestore. It is updated very lazily -- only when
+   beginning a blocking @glk opcode. (I.e., only when we're about
+   to autosave.) */
+self.prevpc = null;
+
 var undostack;     // array of VM state snapshots.
 self.resumefuncop = null;
 self.resumevalue = null;
@@ -5522,6 +5535,7 @@ function setup_vm() {
     stack = [];
     self.frame = null;
     self.pc = 0;
+    self.prevpc = 0;
 
     if (game_image.length < 36)
         fatal_error("This is too short to be a valid Glulx file.");
@@ -5601,6 +5615,7 @@ function vm_restart() {
     stack = [];
     self.frame = null;
     self.pc = 0;
+    self.prevpc = 0;
     self.iosysmode = 0;
     self.iosysrock = 0;
     set_string_table(origstringtable);
@@ -5901,8 +5916,12 @@ function vm_restore(streamid) {
    This looks a lot like vm_save, but we serialize a little differently.
 */
 function vm_autosave(eventaddr) {
-    console.log('### vm_autosave ' + eventaddr);
+    console.log('### vm_autosave, eventaddr=' + eventaddr);
 
+    var opmodes = parse_partial_operand();
+    if (!opmodes)
+        return;
+    
     var snapshot = {};
     snapshot.ram = memmap.slice(ramstart);
     snapshot.endmem = self.endmem;
