@@ -863,6 +863,18 @@ function start_game(image) {
     }
 
     if (image[0] == 0x46 && image[1] == 0x4F && image[2] == 0x52 && image[3] == 0x4D) {
+        var formtype = String.fromCharCode(image[8], image[9], image[10], image[11]);
+
+        if (formtype == 'IFZS') {
+            all_options.io.fatal_error("This is a saved-game file, not a Glulx game file. You must launch the game first, then restore your save.");
+            return;
+        }
+
+        if (formtype != 'IFRS') {
+            all_options.io.fatal_error("This IFF file is not a Blorb file!");
+            return;
+        }
+
         try {
             image = unpack_blorb(image);
         }
