@@ -5930,9 +5930,28 @@ function vm_autosave(eventaddr) {
     if (!opmodes)
         return;
 
-    //### push stuff
-    
     var snapshot = {};
+
+    /* Push all the necessary arguments for the @glk opcode. */
+    var valstack = self.frame.valstack;
+    var origstacklen = valstack.length;
+    /* The event structure address: */
+    valstack.push(eventaddr);
+    if (opmodes.argsop == 8) {
+        /* The number of Glk arguments (1): */
+        valstack.push(1);
+    }
+    if (opmodes.selop == 8) {
+        /* The Glk call selector (0x00C0): */
+        valstack.push(0x00C0);
+    }
+
+    /* Push a temporary callstub which contains the *last* PC -- the address
+       of the @glk(select) invocation. */
+    valstack.push(0, 0, self.prevpc, self.frame.framestart);
+
+    /* Save the RAM, stack, and heap. */
+
     snapshot.ram = memmap.slice(ramstart);
     snapshot.endmem = self.endmem;
     snapshot.pc = self.pc;
@@ -5950,8 +5969,11 @@ function vm_autosave(eventaddr) {
         }
     }
 
-    //### pop stuff
+    /* Pop off the temporary stack stuff. */
+    valstack.length = origstacklen;
 
+    /* Save miscellaneous VM things which are not part of a standard
+       save state. */
     snapshot.stringtable = self.stringtable;
     snapshot.iosysmode = self.iosysmode;
     snapshot.iosysrock = self.iosysrock;
@@ -5967,7 +5989,7 @@ function vm_autosave(eventaddr) {
     for (var ix in accel_funcnum_map)
         snapshot.accel_funcnum_map[ix] = accel_funcnum_map[ix];
 
-    //### stash library and VM-extra state
+    //### stash library state (Glk tag-to-ID map)
 
     snapshot.glk = Glk.save_allstate();
 
