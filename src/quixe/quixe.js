@@ -5945,6 +5945,12 @@ function vm_autosave(eventaddr) {
 
     //### pop stuff
 
+    snapshot.stringtable = self.stringtable;
+    snapshot.iosysmode = self.iosysmode;
+    snapshot.iosysrock = self.iosysrock;
+    snapshot.protectstart = self.protectstart;
+    snapshot.protectend = self.protectend;
+
     //### stash library and VM-extra state
 
     snapshot.glk = Glk.save_allstate();
