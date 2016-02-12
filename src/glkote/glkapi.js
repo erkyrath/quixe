@@ -593,6 +593,8 @@ function save_allstate() {
         res.filerefs.push(obj);
     }
 
+    // Ignore gli_schannellist, as it's currently always empty.
+
     return res;
 }
 
