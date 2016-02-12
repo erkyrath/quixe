@@ -2156,6 +2156,7 @@ var opcode_table = {
     },
 
     0x180: function(context, operands) { /* accelfunc */
+        context.code.push("self.accel_funcnum_map["+operands[1]+"] = "+operands[0]+";");
         context.code.push("self.accel_address_map["+operands[1]+"] = self.accel_func_map["+operands[0]+"];");
     },
     
@@ -3892,9 +3893,15 @@ function srand_get_random() {
     return srand_table[srand_index1] / 0x100000000;
 }
 
-/* Maps VM addresses to the (native) functions used to accelerate them. This is also referenced from self. */
+/* accel_funcnum_map maps VM addresses to the index number of the (native)
+   functions used to accelerate them. accel_address_map maps VM addresses
+   directly to the native functions. (So accel_address_map[x] ==
+   accel_func_map[accel_funcnum_map[x]].) These are also referenced from
+   self. */
 var accel_address_map = {};
+var accel_funcnum_map = {};
 self.accel_address_map = accel_address_map;
+self.accel_funcnum_map = accel_funcnum_map;
 
 /* A list of the nine parameter fields used by the accelerated functions. */
 var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
@@ -5955,6 +5962,10 @@ function vm_autosave(eventaddr) {
         snapshot.srand_index1 = srand_index1;
         snapshot.srand_index2 = srand_index2;
     }
+    snapshot.accel_params = accel_params.slice(0);
+    snapshot.accel_funcnum_map = {};
+    for (var ix in accel_funcnum_map)
+        snapshot.accel_funcnum_map[ix] = accel_funcnum_map[ix];
 
     //### stash library and VM-extra state
 
