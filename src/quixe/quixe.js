@@ -5950,6 +5950,11 @@ function vm_autosave(eventaddr) {
     snapshot.iosysrock = self.iosysrock;
     snapshot.protectstart = self.protectstart;
     snapshot.protectend = self.protectend;
+    if (self.random_func == srand_get_random && srand_table) {
+        snapshot.srand_table = srand_table.slice(0);
+        snapshot.srand_index1 = srand_index1;
+        snapshot.srand_index2 = srand_index2;
+    }
 
     //### stash library and VM-extra state
 
