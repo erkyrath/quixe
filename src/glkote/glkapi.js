@@ -550,10 +550,13 @@ function save_allstate() {
     if (gli_rootwin)
         res.rootwin = gli_rootwin.disprock;
 
+    if (gli_currentstr)
+        res.currentstr = gli_currentstr.disprock;
+
     res.windows = [];
     for (var win = gli_windowlist; win; win = win.next) {
         var obj = {
-            type: win.type, rock: win.rock,
+            type: win.type, rock: win.rock, disprock: win.disprock,
             style: win.style, hyperlink: win.hyperlink
         };
         if (win.parent)
@@ -561,8 +564,33 @@ function save_allstate() {
         obj.str = win.str.disprock;
         if (win.echostr)
             obj.echostr = win.echostr.disprock;
+
         //### requests and linebuf
+
+        //### grid and buffer content
+
         res.windows.push(obj);
+    }
+
+    res.streams = [];
+    for (var str = gli_streamlist; str; str = str.next) {
+        var obj = {
+            type: str.type, rock: str.rock, disprock: str.disprock,
+            unicode: str.unicode, isbinary: str.isbinary
+        };
+
+        //### more stuff
+
+        res.streams.push(obj);
+    }
+
+    res.filerefs = [];
+    for (var fref = gli_filereflist; fref; fref = fref.next) {
+        var obj = {
+            type: fref.type, rock: fref.rock, disprock: fref.disprock
+        };
+
+        res.filerefs.push(obj);
     }
 
     return res;
