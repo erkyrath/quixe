@@ -543,7 +543,29 @@ function update() {
 /* ###
 */
 function save_allstate() {
-    return { dummy:'GLKSTATE' };
+    var res = {};
+
+    //### metrics?
+
+    if (gli_rootwin)
+        res.rootwin = gli_rootwin.disprock;
+
+    res.windows = [];
+    for (var win = gli_windowlist; win; win = win.next) {
+        var obj = {
+            type: win.type, rock: win.rock,
+            style: win.style, hyperlink: win.hyperlink
+        };
+        if (win.parent)
+            obj.parent = win.parent.disprock;
+        obj.str = win.str.disprock;
+        if (win.echostr)
+            obj.echostr = win.echostr.disprock;
+        //### requests and linebuf
+        res.windows.push(obj);
+    }
+
+    return res;
 }
 
 /* This is the handler for a VM fatal error. (Not for an error in our own
