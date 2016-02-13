@@ -6019,6 +6019,46 @@ function vm_autorestore(snapshot) {
         stack[i].depth = i;
     }
     self.frame = stack[stack.length - 1];
+
+    if (snapshot.heapstart === undefined) {
+        heapstart = 0;
+        usedlist = [];
+        freelist = [];
+    }
+    else {
+        heapstart = snapshot.heapstart;
+
+        usedlist = [];
+        for (var ix = 0; ix < snapshot.usedlist.length; ix += 2) {
+            var addr = snapshot.usedlist[ix];
+            var size = snapshot.usedlist[ix+1];
+            usedlist.push(new HeapBlock(addr, size));
+        }
+
+        // This list may be out-of-order. Sort it by address.
+        usedlist.sort(function(blk1, blk2) {return blk1.addr - blk2.addr;});
+
+        // Create freelist blocks to fill in the gaps.
+        freelist = [];
+        var heapend = heapstart;
+        for (var i = 0; i < usedlist.length; i++) {
+            var addr = usedlist[i].addr;
+            var size = usedlist[i].size;
+            if (addr < heapend || (addr + size) > self.endmem) {
+                fatal_error("vm_autorestore failed: corrupt dynamic heap");
+            }
+            if (addr > heapend) {
+                freelist.push(new HeapBlock(heapend, addr - heapend));
+            }
+            heapend = addr + size;
+        }
+        if (heapend < self.endmem) {
+            freelist.push(new HeapBlock(heapend, self.endmem - heapend));
+        }
+    }
+
+    ;;;assert_heap_valid(); //assert
+    
 }
 
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
