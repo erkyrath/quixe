@@ -1069,7 +1069,14 @@ function autosave_write(signature, snapshot) {
 */
 function autosave_read(signature) {
     var key = 'autosave:' + signature;
-    return localStorage.getItem(key);
+    var val = localStorage.getItem(key);
+    if (val) {
+        try {
+            return JSON.parse(val);
+        }
+        catch (ex) { }
+    }
+    return null;
 }
 
 /* Define encode_array() and decode_array() functions. These would be

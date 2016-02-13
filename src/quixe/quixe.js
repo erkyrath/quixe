@@ -94,6 +94,7 @@ function quixe_prepare(image, all_options) {
 
     if (all_options) {
         opt_rethrow_exceptions = all_options.rethrow_exceptions;
+        opt_do_vm_autosave = all_options.do_vm_autosave;
     }
 
     if (all_options && all_options.debug_info_data_chunk) {
@@ -5463,6 +5464,7 @@ self.encode_float = encode_float;
 var game_image = null; /* the original game image, as an array of bytes */
 var game_signature = null; /* string, containing the first 64 bytes of image */
 var opt_rethrow_exceptions = null;
+var opt_do_vm_autosave = null;
 
 /* The VM state variables. */
 
@@ -5594,6 +5596,13 @@ function setup_vm() {
     heapstart = 0;
     usedlist = [];
     freelist = [];
+
+    if (opt_do_vm_autosave) {
+        var snapshot = Dialog.autosave_read(game_signature);
+        qlog('### found snapshot!');
+        vm_autorestore(snapshot);
+        return;
+    }
     
     vm_restart();
 }
@@ -6008,6 +6017,7 @@ function vm_autosave(eventaddr) {
 
 function vm_autorestore(snapshot) {
 
+    memmap = game_image.slice(0, endgamefile);
     memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
     self.endmem = snapshot.endmem;
     self.pc = snapshot.pc;
