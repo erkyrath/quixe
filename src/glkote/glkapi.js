@@ -654,20 +654,58 @@ function restore_allstate(res)
     for (var ix=0; ix<res.windows.length; ix++) {
         var obj = res.windows[ix];
         var win = GiDispa.class_obj_from_id('window', obj.disprock);
+
         win.parent = GiDispa.class_obj_from_id('window', obj.parent);
         win.str = GiDispa.class_obj_from_id('stream', obj.str);
         win.echostr = GiDispa.class_obj_from_id('stream', obj.echostr);
+
+        switch (win.type) {
+        case Const.wintype_TextBuffer:
+            win.accum = [];
+            win.accumstyle = null;
+            win.accumhyperlink = 0;
+            win.content = [];
+            win.clearcontent = false;
+            break;
+        case Const.wintype_TextGrid:
+            win.gridwidth = obj.gridwidth;
+            win.gridheight = obj.gridheight;
+            //### lines
+            win.cursorx = obj.cursorx;
+            win.cursory = obj.cursory;
+            break;
+        case Const.wintype_Graphics:
+            //### no clue
+            break;
+        case Const.wintype_Pair:
+            win.pair_dir = obj.pair_dir;
+            win.pair_division = obj.pair_division;
+            win.pair_key = GiDispa.class_obj_from_id('window', obj.pair_key);
+            win.pair_keydamage = false;
+            win.pair_size = obj.pair_size;
+            win.pair_hasborder = obj.pair_hasborder;
+            win.pair_vertical = obj.pair_vertical;
+            win.pair_backward = obj.pair_backward;
+            win.child1 = GiDispa.class_obj_from_id('window', obj.child1);
+            win.child2 = GiDispa.class_obj_from_id('window', obj.child2);
+            break;
+        }
     }
 
     for (var ix=0; ix<res.streams.length; ix++) {
         var obj = res.streams[ix];
+
         var str = GiDispa.class_obj_from_id('stream', obj.disprock);
     }
 
     for (var ix=0; ix<res.filerefs.length; ix++) {
         var obj = res.filerefs[ix];
+
         var fref = GiDispa.class_obj_from_id('fileref', obj.disprock);
     }
+
+    gli_rootwin = GiDispa.class_obj_from_id('window', res.rootwin);
+    gli_currentstr = GiDispa.class_obj_from_id('stream', res.currentstr);
 }
 
 /* This is the handler for a VM fatal error. (Not for an error in our own
