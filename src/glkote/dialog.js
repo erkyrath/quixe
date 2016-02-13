@@ -1056,6 +1056,22 @@ function format_date(date) {
     return day + ' ' + time;
 }
 
+/* Store a snapshot (a JSONable object) in a signature-dependent location.
+   We rely on JSON.stringify() and JSON.parse(); autosave is primarily
+   for the Electron environment.
+*/
+function autosave_write(signature, snapshot) {
+    var key = 'autosave:' + signature;
+    localStorage.setItem(key, JSON.stringify(snapshot));
+}
+
+/* Load a snapshot (a JSONable object) from a signature-dependent location.
+*/
+function autosave_read(signature) {
+    var key = 'autosave:' + signature;
+    return localStorage.getItem(key);
+}
+
 /* Define encode_array() and decode_array() functions. These would be
    JSON.stringify() and JSON.parse(), except not all browsers support those.
 */
@@ -1151,7 +1167,11 @@ return {
     file_read: file_read,
 
     /* stubs for not-implemented functions */
-    file_fopen: file_notimplemented
+    file_fopen: file_notimplemented,
+
+    /* support for the autosave hook */
+    autosave_write: autosave_write,
+    autosave_read: autosave_read
 };
 
 }();

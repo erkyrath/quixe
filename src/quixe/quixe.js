@@ -5932,7 +5932,12 @@ function vm_autosave(eventaddr) {
 
     var snapshot = {};
 
-    /* Push all the necessary arguments for the @glk opcode. */
+    /* When the save file is autorestored, the VM will restart the @glk
+       opcode. That means that the Glk argument (the event structure
+       address) must be waiting on the stack. Possibly also the @glk
+       opcode's operands -- these might or might not have come off the
+       stack. */
+
     var valstack = self.frame.valstack;
     var origstacklen = valstack.length;
     /* The event structure address: */
@@ -5992,6 +5997,8 @@ function vm_autosave(eventaddr) {
     // The glui32-to-Glk-ID table is handled by Glk.save_allstate
 
     snapshot.glk = Glk.save_allstate();
+
+    Dialog.autosave_write(game_signature, snapshot);
 
     var timeend = new Date().getTime(); //###stats
     qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
