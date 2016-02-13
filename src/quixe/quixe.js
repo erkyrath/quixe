@@ -6001,7 +6001,7 @@ function vm_autosave(eventaddr) {
 
 function vm_autorestore(snapshot) {
 
-    memmap = snapshot.ram.slice(0);
+    memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
     self.endmem = snapshot.endmem;
     self.pc = snapshot.pc;
 
