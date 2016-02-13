@@ -598,6 +598,78 @@ function save_allstate() {
     return res;
 }
 
+/* ###
+*/
+function restore_allstate(res)
+{
+    /* We build and register all the bare objects first. (In reverse
+       order so that the linked lists come out right way around.) */
+
+    for (var ix=res.windows.length-1; ix>=0; ix--) {
+        var obj = res.windows[ix];
+        var win = {
+            type: obj.type, rock: obj.rock, disprock: obj.disprock,
+            style: obj.style, hyperlink: obj.hyperlink
+        };
+        GiDispa.class_register('window', win, win.disprock);
+
+        win.prev = null;
+        win.next = gli_windowlist;
+        gli_windowlist = win;
+        if (win.next)
+            win.next.prev = win;
+    }
+
+    for (var ix=res.streams.length-1; ix>=0; ix--) {
+        var obj = res.streams[ix];
+        var str = {
+            type: obj.type, rock: obj.rock, disprock: obj.disprock,
+            unicode: obj.unicode, isbinary: obj.isbinary
+        };
+        GiDispa.class_register('stream', str, str.disprock);
+
+        str.prev = null;
+        str.next = gli_streamlist;
+        gli_streamlist = str;
+        if (str.next)
+            str.next.prev = str;
+    }
+
+    for (var ix=res.filerefs.length-1; ix>=0; ix--) {
+        var obj = res.filerefs[ix];
+        var fref = {
+            type: obj.type, rock: obj.rock, disprock: obj.disprock
+        };
+        GiDispa.class_register('fileref', fref, fref.disprock);
+
+        fref.prev = null;
+        fref.next = gli_filereflist;
+        gli_filereflist = fref;
+        if (fref.next)
+            fref.next.prev = fref;
+    }
+
+    /* ...Now we fill in the cross-references. */
+
+    for (var ix=0; ix<res.windows.length; ix++) {
+        var obj = res.windows[ix];
+        var win = GiDispa.class_obj_from_id('window', obj.disprock);
+        win.parent = GiDispa.class_obj_from_id('window', obj.parent);
+        win.str = GiDispa.class_obj_from_id('stream', obj.str);
+        win.echostr = GiDispa.class_obj_from_id('stream', obj.echostr);
+    }
+
+    for (var ix=0; ix<res.streams.length; ix++) {
+        var obj = res.streams[ix];
+        var str = GiDispa.class_obj_from_id('stream', obj.disprock);
+    }
+
+    for (var ix=0; ix<res.filerefs.length; ix++) {
+        var obj = res.filerefs[ix];
+        var fref = GiDispa.class_obj_from_id('fileref', obj.disprock);
+    }
+}
+
 /* This is the handler for a VM fatal error. (Not for an error in our own
    library!) We display the error message, and then push a final display
    update, which kills all input fields in all windows.
@@ -5695,6 +5767,7 @@ return {
     init : init,
     update : update,
     save_allstate : save_allstate,
+    restore_allstate : restore_allstate,
     fatal_error : fatal_error,
 
     byte_array_to_string : ByteArrayToString,

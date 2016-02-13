@@ -921,12 +921,26 @@ var last_used_id;
 
    This is called by the Glk library. The object's disprock field is
    set to a 32-bit number.
+
+   If usedisprock is set, we use that value instead of picking a new one.
+   (And bump last_used_id so that it won't collide with it in the future.)
+   This is *only* used by the autorestore feature.
 */
-function class_register(clas, obj) {
-    if (obj.disprock)
-        throw new Error('class_register: object is already registered');
-    obj.disprock = last_used_id;
-    last_used_id++;
+function class_register(clas, obj, usedisprock) {
+    if (usedisprock === undefined) {
+        /* Normal case */
+        if (obj.disprock)
+            throw new Error('class_register: object is already registered');
+        obj.disprock = last_used_id;
+        last_used_id++;
+    }
+    else {
+        /* Autorestore case */
+        if (obj.disprock != usedisprock)
+            throw new Error('class_register: object is not already registered');
+        if (last_used_id <= usedisprock)
+            last_used_id = usedisprock + 1;
+    }
 
     class_map[clas][obj.disprock] = obj;
 }
