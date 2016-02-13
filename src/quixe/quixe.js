@@ -6058,7 +6058,34 @@ function vm_autorestore(snapshot) {
     }
 
     ;;;assert_heap_valid(); //assert
-    
+
+    /* Restore miscellaneous VM things which are not part of a standard
+       save state. */
+    self.stringtable = snapshot.stringtable;
+    self.iosysmode = snapshot.iosysmode;
+    self.iosysrock = snapshot.iosysrock;
+    self.protectstart = snapshot.protectstart;
+    self.protectend = snapshot.protectend;
+
+    if (snapshot.srand_table === undefined) {
+        set_random(0);
+    }
+    else {
+        set_random(1);
+        srand_table = snapshot.srand_table.slice(0);
+        srand_index1 = snapshot.srand_index1;
+        srand_index2 = snapshot.srand_index2;
+    }
+
+    accel_params = snapshot.accel_params.slice(0);
+    for (var ix in snapshot.accel_funcnum_map) {
+        accel_funcnum_map[ix] = snapshot.accel_funcnum_map[ix];
+        accel_address_map[ix] = self.accel_func_map[accel_funcnum_map[ix]];
+    }
+
+    Glk.restore_allstate(snapshot.glk);
+
+    //### now what to do with the stack?
 }
 
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
