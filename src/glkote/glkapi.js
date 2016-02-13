@@ -567,7 +567,33 @@ function save_allstate() {
 
         //### requests and linebuf
 
-        //### grid and buffer content
+        switch (win.type) {
+        case Const.wintype_TextBuffer:
+            //### lines?
+            break;
+        case Const.wintype_TextGrid:
+            obj.gridwidth = win.gridwidth;
+            obj.gridheight = win.gridheight;
+            //### lines?
+            obj.cursorx = win.cursorx;
+            obj.cursory = win.cursory;
+            break;
+        case Const.wintype_Graphics:
+            //### no clue
+            break;
+        case Const.wintype_Pair:
+            obj.pair_dir = win.pair_dir;
+            obj.pair_division = win.pair_division;
+            obj.pair_key = win.pair_key.disprock;
+            obj.pair_keydamage = false;
+            obj.pair_size = win.pair_size;
+            obj.pair_hasborder = win.pair_hasborder;
+            obj.pair_vertical = win.pair_vertical;
+            obj.pair_backward = win.pair_backward;
+            obj.child1 = win.child1.disprock;
+            obj.child2 = win.child2.disprock;
+            break;
+        }
 
         res.windows.push(obj);
     }
