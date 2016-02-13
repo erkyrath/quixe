@@ -6061,9 +6061,8 @@ function vm_autorestore(snapshot) {
 
     /* Restore miscellaneous VM things which are not part of a standard
        save state. */
-    self.stringtable = snapshot.stringtable;
-    self.iosysmode = snapshot.iosysmode;
-    self.iosysrock = snapshot.iosysrock;
+    set_string_table(snapshot.stringtable);
+    set_iosys(snapshot.iosysmode, snapshot.iosysrock);
     self.protectstart = snapshot.protectstart;
     self.protectend = snapshot.protectend;
 
