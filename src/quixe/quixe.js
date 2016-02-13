@@ -5989,7 +5989,7 @@ function vm_autosave(eventaddr) {
     for (var ix in accel_funcnum_map)
         snapshot.accel_funcnum_map[ix] = accel_funcnum_map[ix];
 
-    //### stash library state (Glk tag-to-ID map)
+    // The glui32-to-Glk-ID table is handled by Glk.save_allstate
 
     snapshot.glk = Glk.save_allstate();
 
@@ -5997,6 +5997,28 @@ function vm_autosave(eventaddr) {
     qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
 
     console.log(snapshot); //###
+}
+
+function vm_autorestore(snapshot) {
+
+    memmap = snapshot.ram.slice(0);
+    self.endmem = snapshot.endmem;
+    self.pc = snapshot.pc;
+
+    stack = [];
+
+    var stackchunk = snapshot.stack.slice(0);
+    while (stackchunk.length) {
+        var frm = pop_deserialized_stackframe(stackchunk);
+        if (!frm) {
+            fatal_error("vm_autorestore failed: bad stack frame");
+        }
+        stack.unshift(frm);
+    }
+    for (var i = 0; i < stack.length; i++) {
+        stack[i].depth = i;
+    }
+    self.frame = stack[stack.length - 1];
 }
 
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
