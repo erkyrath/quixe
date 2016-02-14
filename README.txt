@@ -99,6 +99,12 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.1.4 (###)
+  - Fixed a bug where local variables were corrupted after restoring a
+    saved game. (Did not affect UNDO, only RESTORE.)
+  - Fixed a bug where the MORE prompt could get stuck on (particularly when
+    you use browser-view zoom).
+    
 - 2.1.3 (February 5, 2015)
   - Display a "game session has ended" message when the interpreter exits.
   - Changed the behavior of unicode files in local storage. They are now
