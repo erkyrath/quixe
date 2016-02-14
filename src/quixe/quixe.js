@@ -2579,8 +2579,10 @@ var opcode_table = {
             mayblock = Glk.call_may_not_return(Number(operands[0]));
         else
             mayblock = true;
-        if (mayblock)
+        if (mayblock) {
             context.code.push("  self.prevpc = "+context.prevcp+";");
+            context.code.push("  self.pc = "+context.cp+";");
+        }
         context.code.push("self.tempglkargs.length = " + operands[1] + ";");
         if (quot_isconstant(operands[1])) {
             var ix;
@@ -6101,7 +6103,8 @@ function vm_autorestore(snapshot) {
 
     Glk.restore_allstate(snapshot.glk);
 
-    //### now what to do with the stack?
+    /* Pop the callstub, restoring the PC to the @glk opcode (prevpc). */
+    pop_callstub(0);
 }
 
 /* Pushes a snapshot of the VM state onto the undo stack. If there are too
