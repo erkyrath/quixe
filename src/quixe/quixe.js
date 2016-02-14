@@ -751,13 +751,13 @@ function pop_deserialized_stackframe(arr) {
     for (var i = 0; i < frame.vmfunc.localsindex.length; i++) {
         var form = frame.vmfunc.localsindex[i];
         if (form.size == 4) {
-            frame.locals[form.pos] = ByteRead4(arr, 4 + localspos + form.pos);
+            frame.locals[form.pos] = ByteRead4(arr, localspos + form.pos);
         }
         else if (form.size == 2) {
-            frame.locals[form.pos] = ByteRead2(arr, 4 + localspos + form.pos);
+            frame.locals[form.pos] = ByteRead2(arr, localspos + form.pos);
         }
         else {
-            frame.locals[form.pos] = ByteRead1(arr, 4 + localspos + form.pos);
+            frame.locals[form.pos] = ByteRead1(arr, localspos + form.pos);
         }
     }
     
