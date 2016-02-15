@@ -5607,7 +5607,9 @@ function setup_vm() {
             return;
         }
         catch (ex) {
-            qlog('### autorestore failed, deleting it');
+            qlog('### autorestore failed, deleting it: ' + show_exception(ex));
+            if (ex.stack)
+                qlog('JS stack dump:\n' + ex.stack);
             Dialog.autosave_write(game_signature, null);
         }
     }
