@@ -5600,10 +5600,16 @@ function setup_vm() {
     freelist = [];
 
     if (opt_do_vm_autosave) {
-        var snapshot = Dialog.autosave_read(game_signature);
-        qlog('### found snapshot!');
-        vm_autorestore(snapshot);
-        return;
+        try {
+            var snapshot = Dialog.autosave_read(game_signature);
+            qlog('### found snapshot!');
+            vm_autorestore(snapshot);
+            return;
+        }
+        catch (ex) {
+            qlog('### autorestore failed, deleting it');
+            Dialog.autosave_write(game_signature, null);
+        }
     }
     
     vm_restart();

@@ -1057,12 +1057,19 @@ function format_date(date) {
 }
 
 /* Store a snapshot (a JSONable object) in a signature-dependent location.
+   If snapshot is null, delete the snapshot instead.
+
    We rely on JSON.stringify() and JSON.parse(); autosave is primarily
    for the Electron environment.
 */
 function autosave_write(signature, snapshot) {
     var key = 'autosave:' + signature;
-    localStorage.setItem(key, JSON.stringify(snapshot));
+    if (!snapshot) {
+        localStorage.removeItem(key);
+    }
+    else {
+        localStorage.setItem(key, JSON.stringify(snapshot));
+    }
 }
 
 /* Load a snapshot (a JSONable object) from a signature-dependent location.
