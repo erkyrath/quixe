@@ -565,6 +565,11 @@ function save_allstate() {
         if (win.echostr)
             obj.echostr = win.echostr.disprock;
 
+        obj.bbox = { 
+            left: win.bbox.left, right: win.bbox.right,
+            top: win.bbox.top, bottom: win.bbox.bottom 
+        };
+
         //### requests and linebuf
 
         switch (win.type) {
@@ -684,6 +689,11 @@ function restore_allstate(res)
         win.parent = GiDispa.class_obj_from_id('window', obj.parent);
         win.str = GiDispa.class_obj_from_id('stream', obj.str);
         win.echostr = GiDispa.class_obj_from_id('stream', obj.echostr);
+
+        win.bbox = { 
+            left: obj.bbox.left, right: obj.bbox.right,
+            top: obj.bbox.top, bottom: obj.bbox.bottom 
+        };
 
         switch (win.type) {
         case Const.wintype_TextBuffer:
