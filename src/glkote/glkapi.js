@@ -579,7 +579,15 @@ function save_allstate() {
         case Const.wintype_TextGrid:
             obj.gridwidth = win.gridwidth;
             obj.gridheight = win.gridheight;
-            //### lines?
+            obj.lines = [];
+            for (var ix=0; ix<win.lines.length; ix++) {
+                var ln = win.lines[ix];
+                obj.lines.push({
+                        chars: ln.chars.slice(0),
+                        styles: ln.styles.slice(0),
+                        hyperlinks: ln.hyperlinks.slice(0)
+                    });
+            }
             obj.cursorx = win.cursorx;
             obj.cursory = win.cursory;
             break;
@@ -706,7 +714,16 @@ function restore_allstate(res)
         case Const.wintype_TextGrid:
             win.gridwidth = obj.gridwidth;
             win.gridheight = obj.gridheight;
-            //### lines
+            win.lines = [];
+            for (var ix=0; ix<win.lines.length; ix++) {
+                var ln = obj.lines[ix];
+                win.lines.push({
+                        dirty: true,
+                        chars: ln.chars.slice(0),
+                        styles: ln.styles.slice(0),
+                        hyperlinks: ln.hyperlinks.slice(0)
+                    });
+            }
             win.cursorx = obj.cursorx;
             win.cursory = obj.cursory;
             break;
