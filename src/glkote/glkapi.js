@@ -710,12 +710,13 @@ function restore_allstate(res)
             win.accumhyperlink = 0;
             win.content = [];
             win.clearcontent = false;
+            //### clone lines
             break;
         case Const.wintype_TextGrid:
             win.gridwidth = obj.gridwidth;
             win.gridheight = obj.gridheight;
             win.lines = [];
-            for (var ix=0; ix<win.lines.length; ix++) {
+            for (var ix=0; ix<obj.lines.length; ix++) {
                 var ln = obj.lines[ix];
                 win.lines.push({
                         dirty: true,
