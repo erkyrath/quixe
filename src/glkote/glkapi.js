@@ -415,6 +415,12 @@ function update() {
                 if (!obj.text) {
                     obj.text = [];
                 }
+                win.reserve.length = 0;
+            }
+            if (obj.text && obj.text.length) {
+                for (ix=0; ix<obj.text.length; ix++) {
+                    win.reserve.push(obj.text[ix]);
+                }
             }
             break;
         case Const.wintype_TextGrid:
@@ -574,7 +580,7 @@ function save_allstate() {
 
         switch (win.type) {
         case Const.wintype_TextBuffer:
-            //### lines?
+            obj.reserve = win.reserve.slice(0);
             break;
         case Const.wintype_TextGrid:
             obj.gridwidth = win.gridwidth;
@@ -706,11 +712,11 @@ function restore_allstate(res)
         switch (win.type) {
         case Const.wintype_TextBuffer:
             win.accum = [];
-            win.accumstyle = null;
-            win.accumhyperlink = 0;
-            win.content = [];
+            win.accumstyle = win.style;
+            win.accumhyperlink = win.hyperlink;
+            win.content = obj.reserve.slice(0);
             win.clearcontent = false;
-            //### clone lines
+            win.reserve = [];
             break;
         case Const.wintype_TextGrid:
             win.gridwidth = obj.gridwidth;
@@ -2703,6 +2709,7 @@ function gli_window_close(win, recurse) {
         case Const.wintype_TextBuffer: 
             win.accum = null;
             win.content = null;
+            win.reserve = null;
             break;
         case Const.wintype_TextGrid: 
             win.lines = null;
@@ -3928,6 +3935,7 @@ function glk_window_open(splitwin, method, size, wintype, rock) {
         newwin.accumhyperlink = 0;
         newwin.content = [];
         newwin.clearcontent = false;
+        newwin.reserve = []; /* autosave of recent content */
         break;
     case Const.wintype_TextGrid:
         /* lines is a list of line objects. A line looks like
