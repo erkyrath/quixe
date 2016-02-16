@@ -41,14 +41,9 @@ self.VM = null;
 
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
-
-   If autosave_flag is set, we will call VM.do_autosave on every glk_select
-   call. (Every interesting one, that is. We don't bother after window 
-   arrange events.)
 */
-function set_vm(vm_api, autosave_flag) {
+function set_vm(vm_api) {
     self.VM = vm_api;
-    do_vm_autosave = autosave_flag;
 }
 
 /* A table of the Glk classes, and their index numbers. This is derived from
@@ -637,7 +632,7 @@ function build_function(func) {
 
     if (mayblock) {
         /* If the call blocks, we need to stash away the arguments and
-           then return early. Autosave may also happen here. */
+           then return early. */
         out.push('if (glkret === Glk.DidNotReturn) {');
         out.push('  self.set_blocked_selector(' + func.id + ', callargs);');
         out.push('  return glkret;');
@@ -761,28 +756,25 @@ function get_function(id) {
 var blocked_selector = null;
 var blocked_callargs = null;
 
-var do_vm_autosave = false; /* Does the VM want autosave calls? */
 var last_event_type = -1; /* Last event type. */
 
 /* Stash the above arguments. We make a copy of the args list, because
    we don't trust the argument to be immutable.
-
-   This is also where autosave (possibly) happens. It's an awkward spot,
-   sorry. Even more awkward: we peek at the last event type to see if
-   it's a good time to autosave. (Not if we've just started up, or
-   if the last event was arrange.) Terrible module leakage, I know.
 */
 function set_blocked_selector(sel, args) {
-    if (do_vm_autosave && sel == 0x0C0 && args[0] != 0) {
-        // glk_select
-        if (last_event_type != -1 && last_event_type != 5)
-            self.VM.do_autosave(args[0]);
-    }
-
     blocked_selector = sel;
     blocked_callargs = args.slice(0);
 }
 self.set_blocked_selector = set_blocked_selector;
+
+function check_autosave() {
+    if (blocked_selector == 0x0C0 && blocked_callargs.length > 0) {
+        if (last_event_type != -1 && last_event_type != 5) {
+            return blocked_callargs[0];
+        }
+    }
+    return null;
+}
 
 /* Prepare the VM to resume after a blocked function. The argument is
    the argument to the original blocked call. Our job is to unload
@@ -977,6 +969,7 @@ return {
     set_vm: set_vm,
     get_function: get_function,
     prepare_resume: prepare_resume,
+    check_autosave: check_autosave,
     class_register: class_register,
     class_unregister: class_unregister,
     class_obj_to_id: class_obj_to_id,
