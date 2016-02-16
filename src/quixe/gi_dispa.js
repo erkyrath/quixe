@@ -767,9 +767,22 @@ function set_blocked_selector(sel, args) {
 }
 self.set_blocked_selector = set_blocked_selector;
 
+/* Check whether this is a good time for autosave. This is an awkward
+   API call, but GiDispa is the easiest place to find this information.
+
+   It's a good time for autosave if (a) we're blocked on glk_select
+   (rather than glk_fileref_create_by_prompt or whatever); (b) we did
+   not just launch; (c) we just responded to a keyboard or mouse event
+   (as opposed to timer, resize, etc).
+
+   If it's not a good time, return null. If it is, we return the VM address
+   of the event structure, which the caller needs. (See, I told you it
+   was awkward.)
+*/
 function check_autosave() {
-    if (blocked_selector == 0x0C0 && blocked_callargs.length > 0) {
-        if (last_event_type != -1 && last_event_type != 5) {
+    if (blocked_selector == 0x0C0 && blocked_callargs && blocked_callargs.length > 0) {
+        if (last_event_type == 2 || last_event_type == 3 
+            || last_event_type == 4 || last_event_type == 8) {
             return blocked_callargs[0];
         }
     }

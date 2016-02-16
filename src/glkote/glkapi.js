@@ -547,7 +547,6 @@ function update() {
 
     GlkOte.update(dataobj);
 
-    console.log('### check autosave');
     if (option_do_vm_autosave) {
         var eventarg = GiDispa.check_autosave();
         if (eventarg)
@@ -558,7 +557,6 @@ function update() {
 /* ###
 */
 function save_allstate() {
-    console.log('### save_allstate');
     var res = {};
 
     //### metrics?
