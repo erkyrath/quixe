@@ -424,6 +424,9 @@ function update() {
                     win.reserve.push(obj.text[ix]);
                 }
             }
+            if (win.reserve.length > 50) {
+                win.reserve.splice(0, win.reserve.length-50);
+            }
             break;
         case Const.wintype_TextGrid:
             if (win.gridwidth == 0 || win.gridheight == 0)
