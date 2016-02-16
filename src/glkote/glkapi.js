@@ -548,9 +548,16 @@ function update() {
     GlkOte.update(dataobj);
 
     if (option_do_vm_autosave) {
-        var eventarg = GiDispa.check_autosave();
-        if (eventarg)
-            VM.do_autosave(eventarg);
+        if (has_exited) {
+            /* On quit or fatal error, delete the autosave. */
+            VM.do_autosave(-1);
+        }
+        else {
+            /* If this is a good time, autosave. */
+            var eventarg = GiDispa.check_autosave();
+            if (eventarg)
+                VM.do_autosave(eventarg);
+        }
     }
 }
 

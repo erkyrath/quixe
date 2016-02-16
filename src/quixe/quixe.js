@@ -5599,7 +5599,7 @@ function setup_vm() {
     usedlist = [];
     freelist = [];
 
-    if (opt_do_vm_autosave) {
+    if (0&& opt_do_vm_autosave) {
         try {
             var snapshot = Dialog.autosave_read(game_signature);
             qlog('### found snapshot!');
@@ -5943,6 +5943,13 @@ function vm_restore(streamid) {
    We're creating a JSONable object.
 */
 function vm_autosave(eventaddr) {
+    if (eventaddr < 0) {
+        /* Delete the autosave. */
+        qlog('### deleting autosave');
+        Dialog.autosave_write(game_signature, null);
+        return;
+    }
+
     var timestart = new Date().getTime(); //###stats
 
     var opmodes = parse_partial_operand();
