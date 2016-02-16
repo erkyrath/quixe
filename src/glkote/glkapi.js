@@ -784,6 +784,8 @@ function restore_allstate(res)
 
     gli_rootwin = GiDispa.class_obj_from_id('window', res.rootwin);
     gli_currentstr = GiDispa.class_obj_from_id('stream', res.currentstr);
+
+    //### metrics? Set up resize event?
 }
 
 /* This is the handler for a VM fatal error. (Not for an error in our own
