@@ -476,7 +476,7 @@ self.class_obj_to_id = class_obj_to_id;
 
 /* The converse. */
 function class_obj_from_id(clas, val) {
-    if (val == 0)
+    if (val == 0 || !val)
         return null;
     return class_map[clas][val];
 }
