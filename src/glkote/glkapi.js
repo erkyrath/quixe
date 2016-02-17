@@ -738,7 +738,9 @@ function restore_allstate(res)
             top: obj.bbox.top, bottom: obj.bbox.bottom 
         };
 
-        win.input_generation = null; //###?
+        win.input_generation = null;
+        if (obj.char_request || obj.line_request)
+            win.input_generation = event_generation;
         if (obj.linebuf !== undefined)
             win.linebuf = obj.linebuf.slice(0); //### and register
         win.char_request = obj.char_request;
