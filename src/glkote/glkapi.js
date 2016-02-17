@@ -594,7 +594,18 @@ function save_allstate() {
             top: win.bbox.top, bottom: win.bbox.bottom 
         };
 
-        //### requests and linebuf
+        if (win.linebuf !== null)
+            obj.linebuf = win.linebuf.slice(0); //### and register
+        obj.char_request = win.char_request;
+        obj.line_request = win.line_request;
+        obj.char_request_uni = win.char_request_uni;
+        obj.line_request_uni = win.line_request_uni;
+        obj.hyperlink_request = win.hyperlink_request;
+        obj.mouse_request = win.mouse_request;
+        obj.echo_line_input = win.echo_line_input;
+        obj.request_echo_line_input = win.request_echo_line_input;
+        obj.line_input_terminators = win.line_input_terminators.slice(0);
+        //### should have a request_line_input_terminators as well
 
         switch (win.type) {
         case Const.wintype_TextBuffer:
@@ -726,6 +737,20 @@ function restore_allstate(res)
             left: obj.bbox.left, right: obj.bbox.right,
             top: obj.bbox.top, bottom: obj.bbox.bottom 
         };
+
+        win.input_generation = null; //###?
+        if (obj.linebuf !== undefined)
+            win.linebuf = obj.linebuf.slice(0); //### and register
+        win.char_request = obj.char_request;
+        win.line_request = obj.line_request;
+        win.char_request_uni = obj.char_request_uni;
+        win.line_request_uni = obj.line_request_uni;
+        win.hyperlink_request = obj.hyperlink_request;
+        win.mouse_request = obj.mouse_request;
+        win.echo_line_input = obj.echo_line_input;
+        win.request_echo_line_input = obj.request_echo_line_input;
+        win.line_input_terminators = obj.line_input_terminators.slice(0);
+        //### should have a request_line_input_terminators as well
 
         switch (win.type) {
         case Const.wintype_TextBuffer:
