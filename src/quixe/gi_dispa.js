@@ -849,17 +849,28 @@ self.make_arg_array = make_arg_array;
 
 /* Retain one array. This must have been passed to make_arg_array(),
    earlier in this Glk call.
+
+   If invoked by the autorestore system, there is no previous 
+   make_arg_array() call. Instead, the necessary information is provided
+   in useobj. (The array must match.)
 */
-function retain_array(arr) {
+function retain_array(arr, useobj) {
     var ix, obj;
     if (!arr)
         return;
 
-    obj = undefined;
-    for (ix=0; ix<temp_arg_arrays.length; ix++) {
-        if (temp_arg_arrays[ix].arr === arr) {
-            obj = temp_arg_arrays[ix];
-            break;
+    if (useobj !== undefined) {
+        if (arr !== useobj.arr)
+            throw new Error('retain_array: array does not match useobj');
+        obj = useobj;
+    }
+    else {
+        obj = undefined;
+        for (ix=0; ix<temp_arg_arrays.length; ix++) {
+            if (temp_arg_arrays[ix].arr === arr) {
+                obj = temp_arg_arrays[ix];
+                break;
+            }
         }
     }
 
@@ -868,6 +879,23 @@ function retain_array(arr) {
 
     for (ix=0; !(retained_arrays[ix] === undefined); ix++) { };
     retained_arrays[ix] = obj;
+}
+
+/* Return information about one retained array. This is used *only*
+   by the autosave/autorestore system.
+*/
+function get_retained_array(arr) {
+    var ix;
+
+    for (ix=0; ix<retained_arrays.length; ix++) {
+        if (retained_arrays[ix] === undefined)
+            continue;
+        if (retained_arrays[ix].arr === arr) {
+            return retained_arrays[ix];
+        }
+    }
+
+    return null;
 }
 
 /* Unretain one array; write its contents back into memory. (We take for
@@ -929,7 +957,8 @@ var last_used_id;
 
    If usedisprock is set, we use that value instead of picking a new one.
    (And bump last_used_id so that it won't collide with it in the future.)
-   This is *only* used by the autorestore feature.
+   This is *only* used by the autorestore feature. In this case, the
+   obj's disprock must already be set to the provided value.
 */
 function class_register(clas, obj, usedisprock) {
     if (usedisprock === undefined) {
@@ -988,7 +1017,8 @@ return {
     class_obj_to_id: class_obj_to_id,
     class_obj_from_id: class_obj_from_id,
     retain_array: retain_array,
-    unretain_array: unretain_array
+    unretain_array: unretain_array,
+    get_retained_array
 };
 
 }();

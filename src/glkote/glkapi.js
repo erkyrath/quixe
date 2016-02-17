@@ -594,8 +594,10 @@ function save_allstate() {
             top: win.bbox.top, bottom: win.bbox.bottom 
         };
 
-        if (win.linebuf !== null)
-            obj.linebuf = win.linebuf.slice(0); //### and register
+        if (win.linebuf !== null) {
+            // should clone this object
+            obj.linebuf = GiDispa.get_retained_array(win.linebuf);
+        }
         obj.char_request = win.char_request;
         obj.line_request = win.line_request;
         obj.char_request_uni = win.char_request_uni;
@@ -754,8 +756,11 @@ function restore_allstate(res)
         if (obj.char_request || obj.line_request)
             win.input_generation = event_generation;
         win.linebuf = null;
-        if (obj.linebuf !== undefined)
-            win.linebuf = obj.linebuf.slice(0); //### and register
+        if (obj.linebuf !== undefined) {
+            // should clone that object
+            win.linebuf = obj.linebuf.arr;
+            GiDispa.retain_array(win.linebuf, obj.linebuf);
+        }
         win.char_request = obj.char_request;
         win.line_request = obj.line_request;
         win.char_request_uni = obj.char_request_uni;
