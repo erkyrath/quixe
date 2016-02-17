@@ -1389,6 +1389,19 @@ function glkote_get_dom_context() {
   return dom_context;
 }
 
+function glkote_save_allstate() {
+  var obj = {
+    history: {}
+  };
+
+  jQuery.each(windowdic, function(winid, win) {
+      if (win.history && win.history.length)
+        obj.history[winid] = win.history.slice(0);
+    });
+  
+  return obj;
+}
+
 /* Log the message in the browser's error log, if it has one. (This shows
    up in Safari, in Opera, and in Firefox if you have Firebug installed.)
 */
@@ -2536,6 +2549,7 @@ return {
   getinterface: glkote_get_interface,
   getdomcontext: glkote_get_dom_context,
   setdomcontext: glkote_set_dom_context,
+  save_allstate : glkote_save_allstate,
   log:      glkote_log,
   warning:  glkote_warning,
   error:    glkote_error

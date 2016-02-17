@@ -685,6 +685,8 @@ function save_allstate() {
 
     // Ignore gli_schannellist, as it's currently always empty.
 
+    res.glkote = GlkOte.save_allstate();
+
     return res;
 }
 
