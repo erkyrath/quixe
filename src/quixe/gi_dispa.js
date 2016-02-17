@@ -9,6 +9,11 @@
  * Glk entry points for every Glk call; Quixe's @glk opcode invokes these. It
  * also translates between Glk opaque objects (windows, streams, filerefs, etc)
  * to Quixe 32-bit numeric IDs.
+ *
+ * (A few calls, or arguments of calls, are marked "for autosave/autorestore
+ * only". These exist for the purpose of getting a game displayed in a known
+ * state, which is rather more complicated than the usual situation of 
+ * letting a game start up and run.)
  */
 
 //### Should split WriteWord into a WriteRefWord and WriteArrayWord,
@@ -889,7 +894,8 @@ self.make_arg_array = make_arg_array;
 
    If invoked by the autorestore system, there is no previous 
    make_arg_array() call. Instead, the necessary information is provided
-   in useobj. (The array must match.)
+   in useobj. (The array must match.) The useobj argument should *only*
+   be used by autorestore.
 */
 function retain_array(arr, useobj) {
     var ix, obj;

@@ -33,6 +33,11 @@
  * reply to the request. A proof-of-concept can be found at:
  *     https://github.com/erkyrath/remote-if-demo
  *
+ * (A few calls, or arguments of calls, are marked "for autosave/autorestore
+ * only". These exist for the purpose of getting a game displayed in a known
+ * state, which is rather more complicated than the usual situation of 
+ * letting a game start up and run.)
+ *
  * For full documentation, see the docs.html file in this package.
  */
 
@@ -1389,6 +1394,8 @@ function glkote_get_dom_context() {
   return dom_context;
 }
 
+/* Stash extra information needed for autosave only.
+*/
 function glkote_save_allstate() {
   var obj = {
     history: {}
