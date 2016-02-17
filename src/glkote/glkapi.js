@@ -650,10 +650,17 @@ function save_allstate() {
     for (var str = gli_streamlist; str; str = str.next) {
         var obj = {
             type: str.type, rock: str.rock, disprock: str.disprock,
-            unicode: str.unicode, isbinary: str.isbinary
+            unicode: str.unicode, isbinary: str.isbinary,
+            readcount: str.readcount, writecount: str.writecount,
+            readable: str.readable, writable: str.writable,
+            streaming: str.streaming
         };
 
-        //### more stuff
+        if (str.win)
+            obj.win = str.win.disprock;
+        //### str.ref?
+        //### str.file?
+        //### buf-stuff, register...
 
         res.streams.push(obj);
     }
@@ -663,6 +670,8 @@ function save_allstate() {
         var obj = {
             type: fref.type, rock: fref.rock, disprock: fref.disprock
         };
+
+        //### 
 
         res.filerefs.push(obj);
     }
@@ -698,7 +707,10 @@ function restore_allstate(res)
         var obj = res.streams[ix];
         var str = {
             type: obj.type, rock: obj.rock, disprock: obj.disprock,
-            unicode: obj.unicode, isbinary: obj.isbinary
+            unicode: obj.unicode, isbinary: obj.isbinary,
+            readcount: obj.readcount, writecount: obj.writecount,
+            readable: obj.readable, writable: obj.writable,
+            streaming: obj.streaming
         };
         GiDispa.class_register('stream', str, str.disprock);
 
@@ -741,6 +753,7 @@ function restore_allstate(res)
         win.input_generation = null;
         if (obj.char_request || obj.line_request)
             win.input_generation = event_generation;
+        win.linebuf = null;
         if (obj.linebuf !== undefined)
             win.linebuf = obj.linebuf.slice(0); //### and register
         win.char_request = obj.char_request;
@@ -799,13 +812,14 @@ function restore_allstate(res)
 
     for (var ix=0; ix<res.streams.length; ix++) {
         var obj = res.streams[ix];
-
         var str = GiDispa.class_obj_from_id('stream', obj.disprock);
+
+        str.win = GiDispa.class_obj_from_id('window', obj.win);
+        //### more...
     }
 
     for (var ix=0; ix<res.filerefs.length; ix++) {
         var obj = res.filerefs[ix];
-
         var fref = GiDispa.class_obj_from_id('fileref', obj.disprock);
     }
 
