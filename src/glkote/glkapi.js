@@ -595,8 +595,13 @@ function save_allstate() {
         };
 
         if (win.linebuf !== null) {
-            // should clone this object
-            obj.linebuf = GiDispa.get_retained_array(win.linebuf);
+            var info = GiDispa.get_retained_array(win.linebuf);
+            obj.linebuf = {
+                addr: info.addr,
+                len: info.len,
+                arr: info.arr.slice(0),
+                arg: info.arg.serialize()
+            };
         }
         obj.char_request = win.char_request;
         obj.line_request = win.line_request;
