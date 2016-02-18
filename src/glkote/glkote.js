@@ -619,7 +619,6 @@ function glkote_update(arg) {
     if (!(autorestore.metrics 
         && autorestore.metrics.width == current_metrics.width 
         && autorestore.metrics.height == current_metrics.height)) {
-      glkote_log('### metrics do not match!');
       /* The window metrics don't match what's recorded in the
          autosave. Trigger a synthetic resize event. */
       current_metrics.width += 2;
