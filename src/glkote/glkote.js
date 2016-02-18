@@ -2561,7 +2561,6 @@ function evhan_window_scroll(ev) {
    This is only used in the autorestore case.
 */
 function window_scroll_to_bottom(win) {
-  glkote_log('### window_scroll_to_bottom ' + win.id);
   var frameel = win.frameel;
 
   var frameheight = frameel.outerHeight();
