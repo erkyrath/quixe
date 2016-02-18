@@ -616,6 +616,15 @@ function glkote_update(arg) {
         }
       });
     
+    if (!(autorestore.metrics 
+        && autorestore.metrics.width == current_metrics.width 
+        && autorestore.metrics.height == current_metrics.height)) {
+      glkote_log('### metrics do not match!');
+      /* The window metrics don't match what's recorded in the
+         autosave. Trigger a synthetic resize event. */
+      current_metrics.width += 2;
+      evhan_doc_resize();
+    }
   }
 
   /* Done with the update. Exit and wait for the next input event. */
@@ -1428,6 +1437,10 @@ function glkote_get_dom_context() {
 */
 function glkote_save_allstate() {
   var obj = {
+    metrics: {
+      width: current_metrics.width,
+      height: current_metrics.height
+    },
     history: {}
   };
 
