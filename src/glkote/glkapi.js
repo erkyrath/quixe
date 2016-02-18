@@ -799,8 +799,8 @@ function restore_allstate(res)
             win.gridwidth = obj.gridwidth;
             win.gridheight = obj.gridheight;
             win.lines = [];
-            for (var ix=0; ix<obj.lines.length; ix++) {
-                var ln = obj.lines[ix];
+            for (var jx=0; jx<obj.lines.length; jx++) {
+                var ln = obj.lines[jx];
                 win.lines.push({
                         dirty: true,
                         chars: ln.chars.slice(0),
