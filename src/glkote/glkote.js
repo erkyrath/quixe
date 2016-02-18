@@ -607,6 +607,15 @@ function glkote_update(arg) {
           }
         });
     }
+
+    /* For the case of autorestore (only), we short-circuit the paging
+       mechanism and assume the player has already seen all the text. */
+    jQuery.each(windowdic, function(winid, win) {
+        if (win.type == 'buffer') {
+          window_scroll_to_bottom(win);
+        }
+      });
+    
   }
 
   /* Done with the update. Exit and wait for the next input event. */
@@ -2518,6 +2527,8 @@ function evhan_input_blur(ev) {
   currently_focussed = false;
 }
 
+/* Event handler: scrolling in buffer window 
+*/
 function evhan_window_scroll(ev) {
   var winid = ev.data;
   var win = windowdic[winid];
@@ -2543,6 +2554,35 @@ function evhan_window_scroll(ev) {
       moreel.remove();
     readjust_paging_focus(true);
     return;
+  }
+}
+
+/* Scroll a buffer window all the way down, removing the MORE prompt.
+   This is only used in the autorestore case.
+*/
+function window_scroll_to_bottom(win) {
+  glkote_log('### window_scroll_to_bottom ' + win.id);
+  var frameel = win.frameel;
+
+  var frameheight = frameel.outerHeight();
+  frameel.scrollTop(frameel.get(0).scrollHeight - frameheight);
+
+  var realbottom = last_line_top_offset(frameel);
+  var newtopunseen = frameel.scrollTop() + frameheight;
+  if (newtopunseen > realbottom)
+    newtopunseen = realbottom;
+  if (win.topunseen < newtopunseen)
+    win.topunseen = newtopunseen;
+  if (win.needspaging) {
+    /* The scroll-down might have cleared needspaging already. But 
+       if not... */
+    if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
+      win.needspaging = false;
+      var moreel = $('#win'+win.id+'_moreprompt', dom_context);
+      if (moreel.length)
+        moreel.remove();
+      readjust_paging_focus(true);
+    }
   }
 }
 

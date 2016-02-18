@@ -424,8 +424,8 @@ function update() {
                     win.reserve.push(obj.text[ix]);
                 }
             }
-            if (win.reserve.length > 50) {
-                win.reserve.splice(0, win.reserve.length-50);
+            if (win.reserve.length > 100) {
+                win.reserve.splice(0, win.reserve.length-100);
             }
             break;
         case Const.wintype_TextGrid:
