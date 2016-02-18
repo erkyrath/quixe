@@ -411,6 +411,14 @@ function measure_window() {
 function glkote_update(arg) {
   hide_loading();
 
+  /* This field is *only* for the autorestore case, and only on the very
+     first update. It contains additional information (from save_allstate)
+     which helps recreate the display. */
+  var autorestore = null;
+  if (arg.autorestore && generation == 0)
+    autorestore = arg.autorestore;
+  delete arg.autorestore; /* keep it out of the recording */
+
   if (recording)
     recording_send(arg);
 
@@ -586,6 +594,19 @@ function glkote_update(arg) {
       }
     };
     defer_func(focusfunc);
+  }
+
+  if (autorestore) {
+    glkote_log('### got autorestore info!');
+    if (autorestore.history) {
+      jQuery.each(autorestore.history, function(winid, ls) {
+          win = windowdic[winid];
+          if (win != null) {
+            win.history = ls.slice(0);
+            win.historypos = win.history.length;
+          }
+        });
+    }
   }
 
   /* Done with the update. Exit and wait for the next input event. */

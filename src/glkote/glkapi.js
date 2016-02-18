@@ -548,7 +548,14 @@ function update() {
     /* Clean this up; it's only meaningful within one run/update cycle. */
     current_partial_outputs = null;
 
-    GlkOte.update(dataobj);
+    /* If we're doing an autorestore, gli_autorestore_glkstate will 
+       contain additional setup information for the first update()
+       call only. */
+    if (gli_autorestore_glkstate)
+        dataobj.autorestore = gli_autorestore_glkstate;
+    gli_autorestore_glkstate = null;
+
+    GlkOte.update(dataobj, gli_autorestore_glkstate);
 
     if (option_do_vm_autosave) {
         if (has_exited) {
@@ -839,6 +846,9 @@ function restore_allstate(res)
     gli_currentstr = GiDispa.class_obj_from_id('stream', res.currentstr);
 
     //### metrics? Set up resize event?
+
+    /* Stash this for the next (first) GlkOte.update call. */
+    gli_autorestore_glkstate = res.glkote;
 }
 
 /* This is the handler for a VM fatal error. (Not for an error in our own
@@ -2464,6 +2474,9 @@ var strtype_File = 1;
 var strtype_Window = 2;
 var strtype_Memory = 3;
 var strtype_Resource = 4;
+
+/* Extra update information -- autorestore only. */
+var gli_autorestore_glkstate = null;
 
 /* Beginning of linked list of windows. */
 var gli_windowlist = null;
