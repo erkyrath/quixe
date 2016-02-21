@@ -5599,7 +5599,7 @@ function setup_vm() {
     usedlist = [];
     freelist = [];
 
-    if (0&& opt_do_vm_autosave) {
+    if (opt_do_vm_autosave) {
         try {
             var snapshot = Dialog.autosave_read(game_signature);
             qlog('### found snapshot!');
