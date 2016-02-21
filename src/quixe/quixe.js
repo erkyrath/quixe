@@ -5603,13 +5603,13 @@ function setup_vm() {
         try {
             var snapshot = Dialog.autosave_read(game_signature);
             if (snapshot) {
-                qlog('### found snapshot!');
+                qlog('Found autosave...');
                 vm_autorestore(snapshot);
                 return;
             }
         }
         catch (ex) {
-            qlog('### autorestore failed, deleting it: ' + show_exception(ex));
+            qlog('Autorestore failed, deleting it: ' + show_exception(ex));
             if (ex.stack)
                 qlog('JS stack dump:\n' + ex.stack);
             Dialog.autosave_write(game_signature, null);
@@ -5947,7 +5947,7 @@ function vm_restore(streamid) {
 function vm_autosave(eventaddr) {
     if (eventaddr < 0) {
         /* Delete the autosave. */
-        qlog('### deleting autosave');
+        //qlog('### deleting autosave');
         Dialog.autosave_write(game_signature, null);
         return;
     }

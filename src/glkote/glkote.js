@@ -597,7 +597,6 @@ function glkote_update(arg) {
   }
 
   if (autorestore) {
-    glkote_log('### got autorestore info!');
     if (autorestore.history) {
       jQuery.each(autorestore.history, function(winid, ls) {
           win = windowdic[winid];
