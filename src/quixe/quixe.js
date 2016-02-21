@@ -5604,6 +5604,7 @@ function setup_vm() {
             var snapshot = Dialog.autosave_read(game_signature);
             if (snapshot) {
                 qlog('Found autosave...');
+                console.log(snapshot); //###
                 vm_autorestore(snapshot);
                 return;
             }

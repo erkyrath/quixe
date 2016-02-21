@@ -682,10 +682,12 @@ function save_allstate() {
     res.filerefs = [];
     for (var fref = gli_filereflist; fref; fref = fref.next) {
         var obj = {
-            type: fref.type, rock: fref.rock, disprock: fref.disprock
+            type: fref.type, rock: fref.rock, disprock: fref.disprock,
+            filename: fref.filename, textmode: fref.textmode,
+            filetype: fref.filetype, filetypename: fref.filetypename
         };
 
-        //### 
+        obj.ref = fref.ref;
 
         res.filerefs.push(obj);
     }
@@ -740,7 +742,9 @@ function restore_allstate(res)
     for (var ix=res.filerefs.length-1; ix>=0; ix--) {
         var obj = res.filerefs[ix];
         var fref = {
-            type: obj.type, rock: obj.rock, disprock: obj.disprock
+            type: obj.type, rock: obj.rock, disprock: obj.disprock,
+            filename: obj.filename, textmode: obj.textmode,
+            filetype: obj.filetype, filetypename: obj.filetypename
         };
         GiDispa.class_register('fileref', fref, fref.disprock);
 
@@ -840,6 +844,8 @@ function restore_allstate(res)
     for (var ix=0; ix<res.filerefs.length; ix++) {
         var obj = res.filerefs[ix];
         var fref = GiDispa.class_obj_from_id('fileref', obj.disprock);
+
+        fref.ref = obj.ref; // should deep clone
     }
 
     gli_rootwin = GiDispa.class_obj_from_id('window', res.rootwin);
