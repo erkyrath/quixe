@@ -5602,9 +5602,11 @@ function setup_vm() {
     if (opt_do_vm_autosave) {
         try {
             var snapshot = Dialog.autosave_read(game_signature);
-            qlog('### found snapshot!');
-            vm_autorestore(snapshot);
-            return;
+            if (snapshot) {
+                qlog('### found snapshot!');
+                vm_autorestore(snapshot);
+                return;
+            }
         }
         catch (ex) {
             qlog('### autorestore failed, deleting it: ' + show_exception(ex));
