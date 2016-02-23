@@ -671,11 +671,29 @@ function save_allstate() {
             streaming: str.streaming
         };
 
-        if (str.win)
-            obj.win = str.win.disprock;
-        //### str.ref?
-        //### str.file?
-        //### buf-stuff, register...
+        switch (str.type) {
+
+        case strtype_Window:
+            if (str.win)
+                obj.win = str.win.disprock;
+            break;
+
+        case strtype_Memory:
+            if (str.buf !== null) {
+                var info = GiDispa.get_retained_array(str.buf);
+                obj.buf = {
+                    addr: info.addr,
+                    len: info.len,
+                    arr: info.arr.slice(0),
+                    arg: info.arg.serialize()
+                };
+            }
+            obj.buflen = str.buflen;
+            obj.bufpos = str.bufpos;
+            obj.bufeof = str.bufeof;
+            break;
+
+        }
 
         res.streams.push(obj);
     }
@@ -841,7 +859,7 @@ function restore_allstate(res)
         var str = GiDispa.class_obj_from_id('stream', obj.disprock);
 
         /* Defaults first... */
-        str.win = GiDispa.class_obj_from_id('window', obj.win);
+        str.win = null;
         str.ref = null;
         str.file = null;
 
@@ -853,6 +871,23 @@ function restore_allstate(res)
         str.flush_func = null;
         str.fstream = null;
 
+        switch (str.type) {
+
+        case strtype_Window:
+            str.win = GiDispa.class_obj_from_id('window', obj.win);
+            break;
+
+        case strtype_Memory:
+            if (obj.buf !== undefined) {
+                // should clone that object
+                str.buf = obj.buf.arr;
+                GiDispa.retain_array(str.buf, obj.buf);
+            }
+            str.buflen = obj.buflen;
+            str.bufpos = obj.bufpos;
+            str.bufeof = obj.bufeof;
+            break;
+        }
     }
 
     for (var ix=0; ix<res.filerefs.length; ix++) {
