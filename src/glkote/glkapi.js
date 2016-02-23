@@ -733,6 +733,9 @@ function save_allstate() {
 */
 function restore_allstate(res)
 {
+    if (gli_windowlist || gli_streamlist || gli_filereflist)
+        throw('restore_allstate: glkapi module has already been launched');
+
     /* We build and register all the bare objects first. (In reverse
        order so that the linked lists come out right way around.) */
 
