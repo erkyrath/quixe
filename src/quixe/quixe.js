@@ -6023,10 +6023,12 @@ function vm_autosave(eventaddr) {
     for (var ix in accel_funcnum_map)
         snapshot.accel_funcnum_map[ix] = accel_funcnum_map[ix];
 
-    // The glui32-to-Glk-ID table is handled by Glk.save_allstate
-
+    /* Tell the Glk API layer to save its own state and pass it back
+       to us. (This includes the glui32-to-Glk-ID table.) */
     snapshot.glk = Glk.save_allstate();
 
+    /* Write the snapshot into an appropriate location, which depends
+       on the game signature. */
     Dialog.autosave_write(game_signature, snapshot);
 
     var timeend = new Date().getTime(); //###stats
@@ -6035,6 +6037,9 @@ function vm_autosave(eventaddr) {
     console.log(snapshot); //###
 }
 
+/* Load a snapshot of the VM state back in. This is called at the end of
+   vm_setup, replacing the vm_restart call.
+*/
 function vm_autorestore(snapshot) {
 
     memmap = game_image.slice(0, endgamefile);
@@ -6119,6 +6124,7 @@ function vm_autorestore(snapshot) {
         accel_address_map[ix] = self.accel_func_map[accel_funcnum_map[ix]];
     }
 
+    /* Restore Glk API information. */
     Glk.restore_allstate(snapshot.glk);
 
     /* Pop the callstub, restoring the PC to the @glk opcode (prevpc). */
