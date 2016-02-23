@@ -4581,6 +4581,8 @@ function glk_stream_open_resource(filenum, rock) {
     str.unicode = false;
     str.isbinary = isbinary;
 
+    str.resfilenum = filenum;
+
     /* Resource streams always use buffer mode. */
     str.streaming = false;
 
@@ -4617,6 +4619,11 @@ function glk_stream_open_resource_uni(filenum, rock) {
         rock);
     str.unicode = true;
     str.isbinary = isbinary;
+
+    str.resfilenum = filenum;
+
+    /* Resource streams always use buffer mode. */
+    str.streaming = false;
 
     /* We have been handed an array of bytes. (They're big-endian four-byte
        chunks, or perhaps a UTF-8 byte sequence, rather than native-endian
