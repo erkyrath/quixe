@@ -693,6 +693,14 @@ function save_allstate() {
             obj.bufeof = str.bufeof;
             break;
 
+        case strtype_Resource:
+            obj.resfilenum = str.resfilenum;
+            // Don't need str.buf
+            obj.buflen = str.buflen;
+            obj.bufpos = str.bufpos;
+            obj.bufeof = str.bufeof;
+            break;
+
         }
 
         res.streams.push(obj);
@@ -887,6 +895,18 @@ function restore_allstate(res)
             str.bufpos = obj.bufpos;
             str.bufeof = obj.bufeof;
             break;
+
+        case strtype_Resource:
+            str.resfilenum = obj.resfilenum;
+            var el = GiLoad.find_data_chunk(str.resfilenum);
+            if (el) {
+                str.buf = el.data;
+            }
+            str.buflen = obj.buflen;
+            str.bufpos = obj.bufpos;
+            str.bufeof = obj.bufeof;
+            break;
+
         }
     }
 
