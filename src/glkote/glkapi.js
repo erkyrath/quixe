@@ -577,13 +577,14 @@ function update() {
 function save_allstate() {
     var res = {};
 
-    //### metrics?
-
     if (gli_rootwin)
         res.rootwin = gli_rootwin.disprock;
 
     if (gli_currentstr)
         res.currentstr = gli_currentstr.disprock;
+
+    if (gli_timer_interval)
+        res.timer_interval = gli_timer_interval;
 
     res.windows = [];
     for (var win = gli_windowlist; win; win = win.next) {
@@ -919,6 +920,9 @@ function restore_allstate(res)
 
     gli_rootwin = GiDispa.class_obj_from_id('window', res.rootwin);
     gli_currentstr = GiDispa.class_obj_from_id('stream', res.currentstr);
+
+    if (res.timer_interval)
+        glk_request_timer_events(res.timer_interval);
 
     /* Stash this for the next (first) GlkOte.update call. */
     gli_autorestore_glkstate = res.glkote;
