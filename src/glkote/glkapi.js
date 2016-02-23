@@ -571,7 +571,8 @@ function update() {
     }
 }
 
-/* ###
+/* Wrap up the current display state as a (JSONable) object. This is
+   called from Quixe.vm_autosave.
 */
 function save_allstate() {
     var res = {};
@@ -694,12 +695,14 @@ function save_allstate() {
 
     // Ignore gli_schannellist, as it's currently always empty.
 
+    /* Save GlkOte-level information. This includes the overall metrics. */
     res.glkote = GlkOte.save_allstate();
 
     return res;
 }
 
-/* ###
+/* Take display information (created by save_allstate) and set up our
+   state to match it. Called from vm_autorestore.
 */
 function restore_allstate(res)
 {
@@ -850,8 +853,6 @@ function restore_allstate(res)
 
     gli_rootwin = GiDispa.class_obj_from_id('window', res.rootwin);
     gli_currentstr = GiDispa.class_obj_from_id('stream', res.currentstr);
-
-    //### metrics? Set up resize event?
 
     /* Stash this for the next (first) GlkOte.update call. */
     gli_autorestore_glkstate = res.glkote;
