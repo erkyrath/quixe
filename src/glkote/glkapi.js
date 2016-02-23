@@ -840,8 +840,19 @@ function restore_allstate(res)
         var obj = res.streams[ix];
         var str = GiDispa.class_obj_from_id('stream', obj.disprock);
 
+        /* Defaults first... */
         str.win = GiDispa.class_obj_from_id('window', obj.win);
-        //### more...
+        str.ref = null;
+        str.file = null;
+
+        str.buf = null;
+        str.bufpos = 0;
+        str.buflen = 0;
+        str.bufeof = 0;
+        str.timer_id = null;
+        str.flush_func = null;
+        str.fstream = null;
+
     }
 
     for (var ix=0; ix<res.filerefs.length; ix++) {
