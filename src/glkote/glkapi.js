@@ -702,6 +702,20 @@ function save_allstate() {
             obj.bufeof = str.bufeof;
             break;
 
+        case strtype_File:
+            if (!Dialog.streaming) {
+                obj.ref = str.ref;
+                gli_stream_flush_file(str);
+                // Don't need str.buf
+                obj.buflen = str.buflen;
+                obj.bufpos = str.bufpos;
+                obj.bufeof = str.bufeof;
+            }
+            else {
+                /*###*/
+            }
+            break;
+
         }
 
         res.streams.push(obj);
@@ -3173,6 +3187,11 @@ function gli_stream_dirty_file(str) {
    buffer out.
 */
 function gli_stream_flush_file(str) {
+    if (str.streaming)
+        GlkOte.log('### gli_stream_flush_file called for streaming file!');
+    if (!(str.timer_id === null)) {
+        clearTimeout(str.timer_id);
+    }
     str.timer_id = null;
     Dialog.file_write(str.ref, str.buf);
 }
