@@ -925,6 +925,34 @@ function restore_allstate(res)
             str.bufeof = obj.bufeof;
             break;
 
+        case strtype_File:
+            if (!Dialog.streaming) {
+                str.ref = obj.ref;
+                str.buflen = obj.buflen;
+                str.bufpos = obj.bufpos;
+                str.bufeof = obj.bufeof;
+
+                var content = Dialog.file_read(str.ref);
+                if (content == null) {
+                    /* The file was somehow deleted. Create an empty
+                       file (even in read mode). */
+                    content = [];
+                    Dialog.file_write(str.ref, '', true);
+                }
+                str.buf = content;
+
+                /* If the file has been shortened, we might have to
+                   trim bufeof to fit within it. The game might see
+                   the file pos mysteriously move; sorry. */
+                str.bufeof = content.length;
+                if (str.bufpos > str.bufeof)
+                    str.bufpos = str.bufeof;
+            }
+            else {
+                /*###*/
+            }
+            break;
+
         }
     }
 
