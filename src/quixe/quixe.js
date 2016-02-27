@@ -3910,9 +3910,11 @@ self.accel_funcnum_map = accel_funcnum_map;
 var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 self.accel_params = accel_params;
 
-/* The code for all the functions we can accelerate. Remember that there may
-   be fewer arguments than expected, and any beyond argc should be taken as 
-   zero.
+/* The code for all the functions we can accelerate. Unrecognized indexes,
+   including zero, map to undefined.
+
+   Remember that there may be fewer arguments than expected, and any beyond
+   argc should be taken as zero.
 */
 var accel_func_map = {
     1: function func_1_z__region(argc, argv) {
