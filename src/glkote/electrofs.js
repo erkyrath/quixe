@@ -457,7 +457,41 @@ function file_fopen(fmode, ref)
 */
 function autosave_write(signature, snapshot)
 {
-    /*###*/
+    var gamedirpath = path_mod.join(userpath, 'games', signature);
+
+    /* Make sure the gamedirpath exists. */
+    var stat = null;
+    try {
+        stat = fs.statSync(gamedirpath);
+    }
+    catch (ex) {};
+    if (!stat || !stat.isDirectory()) {
+        try {
+            fs.mkdirSync(path_mod.join(userpath, 'games'));
+        }
+        catch (ex) {};
+        try {
+            fs.mkdirSync(gamedirpath);
+        }
+        catch (ex) {};
+        stat = null;
+        try {
+            stat = fs.statSync(gamedirpath);
+        }
+        catch (ex) {};
+        if (!stat || !stat.isDirectory()) {
+            /* Can't create the directory; give up. */
+            GlkOte.log('Unable to create gamedirpath: ' + gamedirpath);
+            return;
+        }
+    }
+
+    var path = path_mod.join(gamedirpath, 'current.autosave');
+
+    /* It might be faster to pull out snapshot ram and write that to
+       a separate file as a buffer. But then, it might not. */
+    var str = JSON.stringify(snapshot);
+    fs.writeFileSync(path, str, { encoding:'utf8' });
 }
 
 /* Load a snapshot (a JSONable object) from a signature-dependent location.
