@@ -498,8 +498,17 @@ function autosave_write(signature, snapshot)
 */
 function autosave_read(signature)
 {
-    /*###*/
-    return null;
+    var gamedirpath = path_mod.join(userpath, 'games', signature);
+    var path = path_mod.join(gamedirpath, 'current.autosave');
+
+    try {
+        var str = fs.readFileSync(path, { encoding:'utf8' });
+        var snapshot = JSON.parse(str);
+        return snapshot;
+    }
+    catch (ex) {
+        return null;
+    };
 }
 
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
