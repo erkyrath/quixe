@@ -452,6 +452,22 @@ function file_fopen(fmode, ref)
     return fstream;
 }
 
+/* Store a snapshot (a JSONable object) in a signature-dependent location.
+   If snapshot is null, delete the snapshot instead.
+*/
+function autosave_write(signature, snapshot)
+{
+    /*###*/
+}
+
+/* Load a snapshot (a JSONable object) from a signature-dependent location.
+*/
+function autosave_read(signature)
+{
+    /*###*/
+    return null;
+}
+
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
  *
  * This call is intended for the non-streaming API, so it does not
@@ -486,7 +502,11 @@ return {
 
     /* stubs for not-implemented functions */
     file_write: file_write,
-    file_read: file_read
+    file_read: file_read,
+
+    /* support for the autosave hook */
+    autosave_write: autosave_write,
+    autosave_read: autosave_read
 };
 
 }();
