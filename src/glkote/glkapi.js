@@ -964,6 +964,8 @@ function restore_allstate(res)
                        a new file location...) */
                     var tempref = Dialog.file_construct_temp_ref(str.ref.usage);
                     str.fstream = Dialog.file_fopen(str.origfmode, tempref);
+                    if (!str.fstream)
+                        throw('restore_allstate: could not reopen even a temp stream for: ' + str.ref.filename);
                 }
 
                 if (str.origfmode != Const.filemode_WriteAppend) {
@@ -4599,6 +4601,8 @@ function glk_stream_open_file(fref, fmode, rock) {
     }
     else {
         fstream = Dialog.file_fopen(fmode, fref.ref);
+        if (!fstream)
+            return null;
     }
 
     str = gli_new_stream(strtype_File, 
@@ -5860,6 +5864,8 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
     }
     else {
         fstream = Dialog.file_fopen(fmode, fref.ref);
+        if (!fstream)
+            return null;
     }
 
     str = gli_new_stream(strtype_File, 
