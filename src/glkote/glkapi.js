@@ -463,6 +463,7 @@ function update() {
             useobj = obj.lines.length;
             break;
         case Const.wintype_Graphics:
+            //### something something win.reserve
             if (win.content.length) {
                 obj.draw = win.content.slice(0);
                 win.content.length = 0;
@@ -643,7 +644,9 @@ function save_allstate() {
             obj.cursory = win.cursory;
             break;
         case Const.wintype_Graphics:
-            //### no clue
+            obj.graphwidth = win.graphwidth;
+            obj.graphheight = win.graphheight;
+            obj.reserve = win.reserve.slice(0);
             break;
         case Const.wintype_Pair:
             obj.pair_dir = win.pair_dir;
@@ -866,7 +869,10 @@ function restore_allstate(res)
             win.cursory = obj.cursory;
             break;
         case Const.wintype_Graphics:
-            //### no clue
+            win.graphwidth = obj.graphwidth;
+            win.graphheight = obj.graphheight;
+            win.content = obj.reserve.slice(0);
+            win.reserve = [];
             break;
         case Const.wintype_Pair:
             win.pair_dir = obj.pair_dir;
@@ -2948,6 +2954,7 @@ function gli_window_close(win, recurse) {
             break;
         case Const.wintype_Graphics:
             win.content = null;
+            win.reserve = null;
             break;
     }
     
@@ -4194,6 +4201,7 @@ function glk_window_open(splitwin, method, size, wintype, rock) {
             return null;
         }
         newwin.content = [];
+        newwin.reserve = []; /* autosave of recent content */
         break;
     case Const.wintype_Blank:
         break;
