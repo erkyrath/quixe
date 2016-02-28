@@ -703,6 +703,7 @@ function save_allstate() {
             break;
 
         case strtype_File:
+            obj.origfmode = str.origfmode;
             if (!Dialog.streaming) {
                 obj.ref = str.ref;
                 gli_stream_flush_file(str);
@@ -712,7 +713,9 @@ function save_allstate() {
                 obj.bufeof = str.bufeof;
             }
             else {
-                /*###*/
+                str.fstream.fflush();
+                obj.ref = str.ref;
+                obj.filepos = str.fstream.ftell();
             }
             break;
 
@@ -926,6 +929,7 @@ function restore_allstate(res)
             break;
 
         case strtype_File:
+            str.origfmode = obj.origfmode;
             if (!Dialog.streaming) {
                 str.ref = obj.ref;
                 str.buflen = obj.buflen;
@@ -4583,6 +4587,7 @@ function glk_stream_open_file(fref, fmode, rock) {
     str.unicode = false;
     str.isbinary = !fref.textmode;
     str.ref = fref.ref;
+    str.origfmode = fmode;
 
     if (!Dialog.streaming) {
         str.streaming = false;
