@@ -841,7 +841,6 @@ function file_construct_temp_ref(usage) {
     var timestamp = new Date().getTime();
     var filename = "_temp_" + timestamp + "_" + Math.random();
     filename = filename.replace('.', '');
-    console.log('### file_construct_temp_ref: usage='+usage);
     return file_construct_ref(filename, usage);
 }
 
