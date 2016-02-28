@@ -502,12 +502,35 @@ function autosave_write(signature, snapshot)
         }
     }
 
-    var path = path_mod.join(gamedirpath, 'current.autosave');
+    /* We'll save the snapshot in two files: a .ram file (snapshot.ram
+       as raw bytes) and a .json file (the rest of snapshot, stringified).
+    */
 
-    /* It might be faster to pull out snapshot ram and write that to
-       a separate file as a buffer. But then, it might not. */
+    var pathj = path_mod.join(gamedirpath, 'autosave.json');
+    var pathr = path_mod.join(gamedirpath, 'autosave.ram');
+
+    if (!snapshot) {
+        try {
+            fs.unlinkSync(pathj);
+        }
+        catch (ex) {};
+        try {
+            fs.unlinkSync(pathr);
+        }
+        catch (ex) {};
+        return;
+    }
+
+    /* Pull snapshot.ram out. (It's okay to munge the snapshot object,
+       the caller doesn't want it back.) */
+    var ram = snapshot.ram;
+    snapshot.ram = undefined;
+
     var str = JSON.stringify(snapshot);
-    fs.writeFileSync(path, str, { encoding:'utf8' });
+    fs.writeFileSync(pathj, str, { encoding:'utf8' });
+
+    var buf = new buffer_mod.Buffer(ram);
+    fs.writeFileSync(pathr, buf);
 }
 
 /* Load a snapshot (a JSONable object) from a signature-dependent location.
@@ -515,11 +538,17 @@ function autosave_write(signature, snapshot)
 function autosave_read(signature)
 {
     var gamedirpath = path_mod.join(userpath, 'games', signature);
-    var path = path_mod.join(gamedirpath, 'current.autosave');
+    var pathj = path_mod.join(gamedirpath, 'autosave.json');
+    var pathr = path_mod.join(gamedirpath, 'autosave.ram');
 
     try {
-        var str = fs.readFileSync(path, { encoding:'utf8' });
+        var str = fs.readFileSync(pathj, { encoding:'utf8' });
         var snapshot = JSON.parse(str);
+
+        var buf = fs.readFileSync(pathr, { encoding:null });
+        var ram = Array.from(buf.values());
+
+        snapshot.ram = ram;
         return snapshot;
     }
     catch (ex) {
