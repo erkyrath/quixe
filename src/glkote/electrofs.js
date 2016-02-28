@@ -168,6 +168,22 @@ function file_construct_ref(filename, usage, gameid)
     return ref;
 }
 
+/* Dialog.file_construct_temp_ref(usage)
+ *
+ * Create a fileref in a temporary directory. Every time this is called
+ * it should create a completely new fileref.
+ */
+function file_construct_temp_ref(usage)
+{
+    var timestamp = new Date().getTime();
+    var filename = "_temp_" + timestamp + "_" + Math.random();
+    filename = filename.replace('.', '');
+    var temppath = require('electron').remote.app.getPath('temp');
+    var path = path_mod.join(temppath, filename);
+    var ref = { filename:path, usage:usage };
+    return ref;
+}
+
 /* Dialog.file_ref_exists(ref) -- returns whether the file exists
  */
 function file_ref_exists(ref)
@@ -539,6 +555,7 @@ return {
 
     file_clean_fixed_name: file_clean_fixed_name,
     file_construct_ref: file_construct_ref,
+    file_construct_temp_ref: file_construct_temp_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
     file_fopen: file_fopen,

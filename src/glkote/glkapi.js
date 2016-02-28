@@ -4800,10 +4800,10 @@ function glk_stream_get_current() {
 }
 
 function glk_fileref_create_temp(usage, rock) {
-    var timestamp = new Date().getTime();
-    var filename = "_temp_" + timestamp + "_" + Math.random();
-    filename = filename.replace('.', '');
-    fref = gli_new_fileref(filename, usage, rock, null);
+    var filetype = (usage & Const.fileusage_TypeMask);
+    var filetypename = FileTypeMap[filetype];
+    var ref = Dialog.file_construct_temp_ref(filetypename);
+    fref = gli_new_fileref(ref.filename, usage, rock, ref);
     return fref;
 }
 
