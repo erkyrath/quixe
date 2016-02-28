@@ -95,6 +95,7 @@ function quixe_prepare(image, all_options) {
     if (all_options) {
         opt_rethrow_exceptions = all_options.rethrow_exceptions;
         opt_do_vm_autosave = all_options.do_vm_autosave;
+        opt_clear_vm_autosave = all_options.clear_vm_autosave;
     }
 
     if (all_options && all_options.debug_info_data_chunk) {
@@ -5469,6 +5470,7 @@ var game_image = null; /* the original game image, as an array of bytes */
 var game_signature = null; /* string, containing the first 64 bytes of image */
 var opt_rethrow_exceptions = null;
 var opt_do_vm_autosave = null;
+var opt_clear_vm_autosave = null;
 
 /* The VM state variables. */
 
@@ -5601,7 +5603,10 @@ function setup_vm() {
     usedlist = [];
     freelist = [];
 
-    if (opt_do_vm_autosave) {
+    if (opt_clear_vm_autosave) {
+        Dialog.autosave_write(game_signature, null);
+    }
+    if (opt_do_vm_autosave && !opt_clear_vm_autosave) {
         try {
             var snapshot = Dialog.autosave_read(game_signature);
             if (snapshot) {

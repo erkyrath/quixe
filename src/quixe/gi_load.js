@@ -58,6 +58,12 @@
  *   exit_warning: A message to display (in a blue warning pane) when
  *     the game exits. If empty or null, no message is displayed.
  *     (default: "The game session has ended.")
+ *   do_vm_autosave: If set, the VM will check for a snapshot when
+ *     launching, and load it if present. The VM will also save a snapshot
+ *     after every move. (default: false)
+ *   clear_vm_autosave: If set, the VM will clear any snapshot at launch
+ *     (so will not load one even if do_vm_autosave is set). (default:
+ *     false)
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
  *
