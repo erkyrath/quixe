@@ -5611,7 +5611,6 @@ function setup_vm() {
             var snapshot = Dialog.autosave_read(game_signature);
             if (snapshot) {
                 qlog('Found autosave...');
-                console.log(snapshot); //###
                 vm_autorestore(snapshot);
                 return;
             }
@@ -6040,8 +6039,6 @@ function vm_autosave(eventaddr) {
 
     var timeend = new Date().getTime(); //###stats
     qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
-
-    console.log(snapshot); //###
 }
 
 /* Load a snapshot of the VM state back in. This is called at the end of
