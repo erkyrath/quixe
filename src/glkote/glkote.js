@@ -606,6 +606,15 @@ function glkote_update(arg) {
           }
         });
     }
+    if (autorestore.defcolor) {
+      jQuery.each(autorestore.defcolor, function(winid, val) {
+          win = windowdic[winid];
+          if (win != null) {
+            win.defcolor = val;
+          }
+        });
+    }
+    
 
     /* For the case of autorestore (only), we short-circuit the paging
        mechanism and assume the player has already seen all the text. */
@@ -1445,6 +1454,11 @@ function glkote_save_allstate() {
   jQuery.each(windowdic, function(winid, win) {
       if (win.history && win.history.length)
         obj.history[winid] = win.history.slice(0);
+      if (win.defcolor) {
+        if (obj.defcolor === undefined)
+          obj.defcolor = {};
+        obj.defcolor[winid] = win.defcolor;
+      }
     });
   
   return obj;

@@ -463,11 +463,37 @@ function update() {
             useobj = obj.lines.length;
             break;
         case Const.wintype_Graphics:
-            //### something something win.reserve
             if (win.content.length) {
                 obj.draw = win.content.slice(0);
                 win.content.length = 0;
                 useobj = true;
+            }
+            /* Copy new drawing commands over to the reserve. Keep track
+               of the last (whole-window) fill command. */
+            var clearedat = -1;
+            if (obj.draw && obj.draw.length) {
+                for (ix=0; ix<obj.draw.length; ix++) {
+                    var drawel = obj.draw[ix];
+                    if (drawel.special == 'fill' 
+                        && drawel.x === undefined && drawel.y === undefined 
+                        && drawel.width === undefined && drawel.height === undefined) {
+                        clearedat = win.reserve.length;
+                    }
+                    win.reserve.push(drawel);
+                }
+            }
+            if (clearedat >= 0) {
+                /* We're going to delete every command before the
+                   fill, except that we save the last setcolor. */
+                var setcol = null;
+                for (ix=0; ix<win.reserve.length && ix<clearedat; ix++) {
+                    var drawel = win.reserve[ix];
+                    if (drawel.special == 'setcolor')
+                        setcol = drawel;
+                }
+                win.reserve.splice(0, clearedat);
+                if (setcol)
+                    win.reserve.unshift(setcol);
             }
             break;
         }
