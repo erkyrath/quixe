@@ -953,7 +953,18 @@ function restore_allstate(res)
                     str.bufpos = str.bufeof;
             }
             else {
-                /*###*/
+                str.ref = obj.ref;
+                str.fstream = Dialog.file_fopen(str.origfmode, str.ref);
+                if (!str.fstream) {
+                    //###...
+                }
+
+                if (str.origfmode != Const.filemode_WriteAppend) {
+                    /* Jump to the last known filepos. */
+                    str.fstream.fseek(obj.filepos, Const.seekmode_Start);
+                }
+
+                str.buffer4 = new str.fstream.BufferClass(4);
             }
             break;
 
@@ -3201,6 +3212,9 @@ function gli_stream_open_window(win) {
 
    We do this by setting a ten-second timer (if there isn't one set already).
    The timer calls a flush method on the stream.
+
+   (If autosave is on, we'll wind up flushing on most glk_select calls,
+   which isn't quite as nicely paced. But it's a minor problem.)
 */
 function gli_stream_dirty_file(str) {
     if (str.streaming)
@@ -5846,6 +5860,7 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
     str.unicode = true;
     str.isbinary = !fref.textmode;
     str.ref = fref.ref;
+    str.origfmode = fmode;
 
     if (!Dialog.streaming) {
         str.streaming = false;
