@@ -956,7 +956,14 @@ function restore_allstate(res)
                 str.ref = obj.ref;
                 str.fstream = Dialog.file_fopen(str.origfmode, str.ref);
                 if (!str.fstream) {
-                    //###...
+                    /* This is the panic case. We can't reopen the stream,
+                       but the game expects an open stream! We'll just
+                       have to open a temporary file; the user will never
+                       get their data, but at least the game won't crash.
+                       (Better policy would be to prompt the user for
+                       a new file location...) */
+                    var tempref = Dialog.file_construct_temp_ref(str.ref.usage);
+                    str.fstream = Dialog.file_fopen(str.origfmode, tempref);
                 }
 
                 if (str.origfmode != Const.filemode_WriteAppend) {
