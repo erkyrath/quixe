@@ -5855,6 +5855,8 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
                 Dialog.file_write(fref.ref, '', true);
             }
         }
+        if (content.length == null) 
+            throw('glk_stream_open_file_uni: data read had no length');
     }
     else {
         fstream = Dialog.file_fopen(fmode, fref.ref);
