@@ -5959,7 +5959,7 @@ function vm_autosave(eventaddr) {
         return;
     }
 
-    var timestart = new Date().getTime(); //###stats
+    //var timestart = new Date().getTime(); //###stats
 
     var opmodes = parse_partial_operand();
     if (!opmodes)
@@ -6037,8 +6037,8 @@ function vm_autosave(eventaddr) {
        on the game signature. */
     Dialog.autosave_write(game_signature, snapshot);
 
-    var timeend = new Date().getTime(); //###stats
-    qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
+    //var timeend = new Date().getTime(); //###stats
+    //qlog("### autosave complete; time = " + (timeend-timestart) + " ms");
 }
 
 /* Load a snapshot of the VM state back in. This is called at the end of
