@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 2.1.3.
+Quixe Library: version 2.1.4.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -99,7 +99,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
-- 2.1.4 (###)
+- 2.1.4 (March 11, 2016)
   - Autosave option: the interpreter can save state after every command
     and restore it when relaunched.
   - Fixed a bug where local variables were corrupted after restoring a
@@ -107,7 +107,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - Fixed a bug where the MORE prompt could get stuck on (particularly when
     you use browser-view zoom).
     
-- 2.1.3 (February 5, 2015)
+- 2.1.3 (February 5, 2016)
   - Display a "game session has ended" message when the interpreter exits.
   - Changed the behavior of unicode files in local storage. They are now
     byte arrays (UTF8 or BE32) instead of unichar arrays. Legacy saved files
