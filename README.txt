@@ -99,6 +99,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.1.5 (###)
+  - Hooks for extending the UI in game-specific ways.
+
 - 2.1.4 (March 11, 2016)
   - Autosave option: the interpreter can save state after every command
     and restore it when relaunched.
