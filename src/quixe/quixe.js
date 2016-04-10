@@ -96,7 +96,6 @@ function quixe_prepare(image, all_options) {
         opt_rethrow_exceptions = all_options.rethrow_exceptions;
         opt_do_vm_autosave = all_options.do_vm_autosave;
         opt_clear_vm_autosave = all_options.clear_vm_autosave;
-        opt_before_vm_autosave = all_options.before_vm_autosave;
     }
 
     if (all_options && all_options.debug_info_data_chunk) {
@@ -5472,7 +5471,6 @@ var game_signature = null; /* string, containing the first 64 bytes of image */
 var opt_rethrow_exceptions = null;
 var opt_do_vm_autosave = null;
 var opt_clear_vm_autosave = null;
-var opt_before_vm_autosave = null;
 
 /* The VM state variables. */
 
@@ -5954,13 +5952,6 @@ function vm_restore(streamid) {
    We're creating a JSONable object.
 */
 function vm_autosave(eventaddr) {
-    if (opt_before_vm_autosave) {
-        try {
-            opt_before_vm_autosave(self);
-        }
-        catch (ex) { };
-    }
-
     if (eventaddr < 0) {
         /* Delete the autosave. */
         //qlog('### deleting autosave');
@@ -6311,6 +6302,13 @@ self.perform_verify = perform_verify;
 */
 function quixe_get_signature() {
     return game_signature;
+}
+
+/* Return the internal self object. This gives the caller access to
+   the entire VM state, including memory. So use it wisely.
+*/
+function quixe_get_vm_self() {
+    return self;
 }
 
 /* Return whatever information seems useful about execution so far.
@@ -6727,6 +6725,7 @@ return {
     init: quixe_init,
     resume: quixe_resume,
     get_signature: quixe_get_signature,
+    get_vm_internals: quixe_get_vm_self,
     get_statistics: quixe_get_statistics,
     get_debuginfo: quixe_get_debuginfo,
 

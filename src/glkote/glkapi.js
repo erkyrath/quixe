@@ -51,6 +51,7 @@ var has_canvas;
 /* Options from the vm_options object. */
 var option_exit_warning;
 var option_do_vm_autosave;
+var option_before_select_hook;
 
 /* Library display state. */
 var has_exited = false;
@@ -89,6 +90,11 @@ function init(vm_options) {
 
     option_exit_warning = vm_options.exit_warning;
     option_do_vm_autosave = vm_options.do_vm_autosave;
+    option_before_select_hook = vm_options.before_select_hook;
+
+    if (option_before_select_hook) {
+        option_before_select_hook();
+    }
 }
 
 function accept_ui_event(obj) {
@@ -584,6 +590,9 @@ function update() {
 
     GlkOte.update(dataobj, gli_autorestore_glkstate);
 
+    if (option_before_select_hook) {
+        option_before_select_hook();
+    }
     if (option_do_vm_autosave) {
         if (has_exited) {
             /* On quit or fatal error, delete the autosave. */
