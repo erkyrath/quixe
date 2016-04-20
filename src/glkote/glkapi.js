@@ -220,7 +220,6 @@ function handle_external_input(res) {
         val1 = res.val1;
     if (res.val2)
         val2 = res.val2;
-    console.log('### external input: res=', res.type, val1, val2);
 
     gli_selectref.set_field(0, res.type);
     gli_selectref.set_field(1, null);
