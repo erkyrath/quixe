@@ -100,6 +100,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 * Version History
 
 - 2.1.5 (###)
+  - Graphics windows now display scaled images at full screen resolution
+    on all browsers. (Previously, Counterfeit Monkey on a Retina display
+    in Chrome was fuzzy.)
   - Hooks for extending the UI in game-specific ways.
 
 - 2.1.4 (March 11, 2016)
