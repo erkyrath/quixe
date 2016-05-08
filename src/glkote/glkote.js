@@ -754,6 +754,10 @@ function accept_one_window(arg) {
       win.defcolor = '#FFF';
       el = $('<canvas>',
         { id: 'win'+win.id+'_canvas' });
+      /* The pixel-ratio code here should work correctly on Chrome and
+         Safari, on screens of any pixel-ratio. I followed
+         http://www.html5rocks.com/en/tutorials/canvas/hidpi/ .
+      */
       win.backpixelratio = 1;
       var canvas = el.get(0);
       var ctx = canvas_get_2dcontext(el);
