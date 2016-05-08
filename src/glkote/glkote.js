@@ -183,6 +183,13 @@ function glkote_init(iface) {
 
   current_devpixelratio = window.devicePixelRatio || 1;
 
+  /* We can get callbacks on any *boolean* change in the resolution level.
+     Not, unfortunately, on all changes. */
+  window.matchMedia('screen and (min-resolution: 1.5dppx)').addListener(evhan_doc_pixelreschange);
+  window.matchMedia('screen and (min-resolution: 2dppx)').addListener(evhan_doc_pixelreschange);
+  window.matchMedia('screen and (min-resolution: 3dppx)').addListener(evhan_doc_pixelreschange);
+  window.matchMedia('screen and (min-resolution: 4dppx)').addListener(evhan_doc_pixelreschange);
+
   var res = measure_window();
   if (jQuery.type(res) === 'string') {
     glkote_error(res);
@@ -771,7 +778,7 @@ function accept_one_window(arg) {
           || 1;
       }
       win.scaleratio = current_devpixelratio / win.backpixelratio;
-      console.log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+      glkote_log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
       el.attr('width', win.graphwidth * win.scaleratio);
       el.attr('height', win.graphheight * win.scaleratio);
       el.css('width', (win.graphwidth + 'px'));
@@ -2165,6 +2172,44 @@ function send_window_redraw(winid) {
     return;
 
   send_response('redraw', win, null);
+}
+
+/* Event handler: the devicePixelRatio has changed. (Really we only get
+   this for changes across particular thresholds, but I set up a bunch.)
+*/
+function evhan_doc_pixelreschange(ev) {
+  var ratio = window.devicePixelRatio || 1;
+  if (ratio != current_devpixelratio) {
+    current_devpixelratio = ratio;
+    glkote_log('### devicePixelRatio changed to ' + current_devpixelratio);
+
+    /* If we have any graphics windows, we need to redo their size and
+       scale, and then hit them with a redraw event. */
+    jQuery.each(windowdic, function(winid, win) {
+        if (win.type == 'graphics') {
+          var el = $('#win'+win.id+'_canvas', dom_context);
+          win.scaleratio = current_devpixelratio / win.backpixelratio;
+          glkote_log('### changed canvas to scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+          var ctx = canvas_get_2dcontext(el);
+          el.attr('width', win.graphwidth * win.scaleratio);
+          el.attr('height', win.graphheight * win.scaleratio);
+          el.css('width', (win.graphwidth + 'px'));
+          el.css('height', (win.graphheight + 'px'));
+          if (ctx) {
+            /* Set scale to win.scaleratio */
+            ctx.setTransform(win.scaleratio, 0, 0, win.scaleratio, 0, 0);
+            ctx.fillStyle = win.defcolor;
+            ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
+            ctx.fillStyle = '#000000';
+          }
+          win.frameel.css('background-color', win.defcolor);
+          /* We have to trigger a redraw event for this window. But we can't do
+             a bunch of them from the same handler. We'll set up a deferred
+             function call. */
+          defer_func(function() { send_window_redraw(winid); });
+        }  
+      });
+  }
 }
 
 /* Event handler: keypress events on input fields.
