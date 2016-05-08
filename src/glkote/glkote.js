@@ -56,6 +56,7 @@ var loading_visible = null;
 var error_visible = false;
 var windowdic = null;
 var current_metrics = null;
+var current_devpixelratio = null;
 var currently_focussed = false;
 var last_known_focus = 0;
 var last_known_paging = 0;
@@ -179,6 +180,8 @@ function glkote_init(iface) {
   if (perform_paging)
     $(document).on('keypress', evhan_doc_keypress);
   $(window).on('resize', evhan_doc_resize);
+
+  current_devpixelratio = window.devicePixelRatio || 1;
 
   var res = measure_window();
   if (jQuery.type(res) === 'string') {
@@ -751,26 +754,46 @@ function accept_one_window(arg) {
       win.defcolor = '#FFF';
       el = $('<canvas>',
         { id: 'win'+win.id+'_canvas' });
-      el.attr('width', win.graphwidth);
-      el.attr('height', win.graphheight);
+      win.backpixelratio = 1;
+      var canvas = el.get(0);
+      var ctx = canvas_get_2dcontext(el);
+      if (ctx) {
+        /* This property is still namespaced as of 2016. */
+        win.backpixelratio = ctx.webkitBackingStorePixelRatio
+          || ctx.mozBackingStorePixelRatio
+          || ctx.msBackingStorePixelRatio
+          || ctx.oBackingStorePixelRatio
+          || ctx.backingStorePixelRatio 
+          || 1;
+      }
+      win.scaleratio = current_devpixelratio / win.backpixelratio;
+      console.log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+      el.attr('width', win.graphwidth * win.scaleratio);
+      el.attr('height', win.graphheight * win.scaleratio);
+      el.css('width', (win.graphwidth + 'px'));
+      el.css('height', (win.graphheight + 'px'));
       win.frameel.css('background-color', win.defcolor);
+      if (ctx) {
+        /* Set scale to win.scaleratio */
+        ctx.setTransform(win.scaleratio, 0, 0, win.scaleratio, 0, 0);
+      }
       win.frameel.append(el);
     }
     else {
       if (win.graphwidth != arg.graphwidth || win.graphheight != arg.graphheight) {
         win.graphwidth = arg.graphwidth;
         win.graphheight = arg.graphheight;
-        el.attr('width', win.graphwidth);
-        el.attr('height', win.graphheight);
+        el.attr('width', win.graphwidth * win.scaleratio);
+        el.attr('height', win.graphheight * win.scaleratio);
+        el.css('width', (win.graphwidth + 'px'));
+        el.css('height', (win.graphheight + 'px'));
         /* Clear to the default color, as if for a "fill" command. */
-        var canvas = el.get(0);
-        if (canvas && canvas.getContext) {
-          var ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = win.defcolor;
-            ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
-            ctx.fillStyle = '#000000';
-          }
+        var ctx = canvas_get_2dcontext(el);
+        if (ctx) {
+          ctx.setTransform(win.scaleratio, 0, 0, win.scaleratio, 0, 0);
+          ctx.fillStyle = win.defcolor;
+          ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
+          ctx.fillStyle = '#000000';
         }
         win.frameel.css('background-color', win.defcolor);
         /* We have to trigger a redraw event for this window. But we can't do
@@ -1657,6 +1680,18 @@ function insert_text_detecting(el, val) {
   el.append(document.createTextNode(val));
 }
 
+/* Get the CanvasRenderingContext2D from a canvas element. 
+*/
+function canvas_get_2dcontext(canvasel) {
+  if (!canvasel || !canvasel.length)
+    return undefined;
+  var canvas = canvasel.get(0);
+  if (canvas && canvas.getContext) {
+    return canvas.getContext('2d');
+  }
+  return undefined;
+}
+
 /* This is responsible for drawing the queue of graphics operations.
    It will do simple fills synchronously, but image draws must be
    handled in a callback (because the image data might need to be pulled
@@ -1687,14 +1722,9 @@ function perform_graphics_ops(loadedimg, loadedev) {
       continue;
     }
 
-    var ctx = undefined;
     var canvas = undefined;
     var el = $('#win'+win.id+'_canvas', dom_context);
-    if (el.length) {
-      canvas = el.get(0);
-      if (canvas && canvas.getContext)
-        ctx = canvas.getContext('2d');
-    }
+    var ctx = canvas_get_2dcontext(el);
     if (!ctx) {
       glkote_log('perform_graphics_ops: op for nonexistent canvas ' + win.id);
       graphics_draw_queue.shift();
