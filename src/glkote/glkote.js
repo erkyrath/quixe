@@ -778,7 +778,7 @@ function accept_one_window(arg) {
           || 1;
       }
       win.scaleratio = current_devpixelratio / win.backpixelratio;
-      glkote_log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+      //glkote_log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
       el.attr('width', win.graphwidth * win.scaleratio);
       el.attr('height', win.graphheight * win.scaleratio);
       el.css('width', (win.graphwidth + 'px'));
@@ -2189,7 +2189,7 @@ function evhan_doc_pixelreschange(ev) {
         if (win.type == 'graphics') {
           var el = $('#win'+win.id+'_canvas', dom_context);
           win.scaleratio = current_devpixelratio / win.backpixelratio;
-          glkote_log('### changed canvas to scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+          //glkote_log('### changed canvas to scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
           var ctx = canvas_get_2dcontext(el);
           el.attr('width', win.graphwidth * win.scaleratio);
           el.attr('height', win.graphheight * win.scaleratio);
