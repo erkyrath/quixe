@@ -53,6 +53,7 @@ var option_exit_warning;
 var option_do_vm_autosave;
 var option_before_select_hook;
 var option_extevent_hook;
+var option_glk_gestalt_hook;
 
 /* Library display state. */
 var has_exited = false;
@@ -93,6 +94,7 @@ function init(vm_options) {
     option_do_vm_autosave = vm_options.do_vm_autosave;
     option_before_select_hook = vm_options.before_select_hook;
     option_extevent_hook = vm_options.extevent_hook;
+    option_glk_gestalt_hook = vm_options.glk_gestalt_hook;
 
     if (option_before_select_hook) {
         option_before_select_hook();
@@ -4149,6 +4151,12 @@ function glk_gestalt_ext(sel, val, arr) {
     case 23: // gestalt_GraphicsCharInput
         return 0;
 
+    }
+
+    if (option_glk_gestalt_hook) {
+        var res = option_glk_gestalt_hook(sel, val, arr);
+        if (res !== undefined)
+            return res;
     }
 
     return 0;
