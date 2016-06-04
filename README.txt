@@ -100,6 +100,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 * Version History
 
 - 2.1.5 (###)
+  - When MORE paging, display a margin mark at the last-seen position.
   - Graphics windows now display scaled images at full screen resolution
     on all browsers. (Previously, Counterfeit Monkey on a Retina display
     in Chrome was fuzzy.)
