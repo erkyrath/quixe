@@ -1067,7 +1067,7 @@ return {
     class_obj_from_id: class_obj_from_id,
     retain_array: retain_array,
     unretain_array: unretain_array,
-    get_retained_array
+    get_retained_array: get_retained_array
 };
 
 }();
