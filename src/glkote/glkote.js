@@ -522,8 +522,9 @@ function glkote_update(arg) {
           /* Scroll the unseen content to the top. */
           frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
           /* Compute the new topunseen value. */
+          win.pagefrommark = win.topunseen;
           var frameheight = frameel.outerHeight();
-          var realbottom = last_line_top_offset(frameel);
+          var realbottom = buffer_last_line_top_offset(win);
           var newtopunseen = frameel.scrollTop() + frameheight;
           if (newtopunseen > realbottom)
             newtopunseen = realbottom;
@@ -539,11 +540,17 @@ function glkote_update(arg) {
           }
         }
 
-        /* Add or remove the more prompt, based on the new needspaging flag. */
+        /* Add or remove the more prompt and previous mark, based on the
+           new needspaging flag. Note that the more-prompt will be
+           removed when the user scrolls down; but the prev-mark
+           stays until we get back here. */
         var moreel = $('#win'+win.id+'_moreprompt', dom_context);
+        var prevel = $('#win'+win.id+'_prevmark', dom_context);
         if (!win.needspaging) {
           if (moreel.length)
             moreel.remove();
+          if (prevel.length)
+            prevel.remove();
         }
         else {
           if (!moreel.length) {
@@ -556,6 +563,12 @@ function glkote_update(arg) {
             moreel.css({ bottom:morey+'px', right:morex+'px' });
             $('#'+windowport_id, dom_context).append(moreel);
           }
+          if (!prevel.length) {
+            prevel = $('<div>',
+              { id: 'win'+win.id+'_prevmark', 'class': 'PreviousMark' } );
+            frameel.prepend(prevel);
+          }
+          prevel.css('top', (win.pagefrommark+'px'));
         }
       }
     }
@@ -714,6 +727,7 @@ function accept_one_window(arg) {
     win.needscroll = false;
     win.needspaging = false;
     win.topunseen = 0;
+    win.pagefrommark = 0;
     win.coords = { left:null, top:null, right:null, bottom:null };
     win.history = new Array();
     win.historypos = 0;
@@ -982,6 +996,7 @@ function accept_one_content(arg) {
     if (arg.clear) {
       win.frameel.empty();
       win.topunseen = 0;
+      win.pagefrommark = 0;
     }
 
     /* Accept a missing text field as doing nothing. */
@@ -1010,7 +1025,7 @@ function accept_one_content(arg) {
       if (textarg.append) {
         if (!content || !content.length)
           continue;
-        divel = last_child_of(win.frameel);
+        divel = buffer_last_line(win);
       }
       if (divel == null) {
         /* Create a new paragraph div */
@@ -1018,10 +1033,6 @@ function accept_one_content(arg) {
         divel.data('blankpara', true);
         divel.data('endswhite', true);
         win.frameel.append(divel);
-      }
-      else {
-        /* jquery-wrap the element. */
-        divel = $(divel);
       }
       if (textarg.flowbreak)
         divel.addClass('FlowBreak');
@@ -1133,29 +1144,34 @@ function accept_one_content(arg) {
     /* Trim the scrollback. If there are more than max_buffer_length
        paragraphs, delete some. (It would be better to limit by
        character count, rather than paragraph count. But this is
-       easier.) */
+       easier.) (Yeah, the prev-mark can wind up included in the count --
+       and trimmed out. It's only slightly wrong.) */
     var parals = win.frameel.children();
     if (parals.length) {
       var totrim = parals.length - max_buffer_length;
       if (totrim > 0) {
         var ix, obj;
-        win.topunseen -= parals.get(totrim).offsetTop;
+        var offtop = parals.get(totrim).offsetTop;
+        win.topunseen -= offtop;
         if (win.topunseen < 0)
           win.topunseen = 0;
+        win.pagefrommark -= offtop;
+        if (win.pagefrommark < 0)
+          win.pagefrommark = 0;
         for (ix=0; ix<totrim; ix++) {
           $(parals.get(ix)).remove();
         }
       }
     }
 
-    /* Stick the invisible cursor-marker at the end. We use this to
-       position the input box. */
-    var divel = last_child_of(win.frameel);
+    /* Stick the invisible cursor-marker inside (at the end of) the last
+       paragraph div. We use this to position the input box. */
+    var divel = buffer_last_line(win);
     if (divel) {
       cursel = $('<span>',
         { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
       cursel.append(NBSP);
-      $(divel).append(cursel);
+      divel.append(cursel);
 
       if (win.inputel) {
         /* Put back the inputel that we found earlier. */
@@ -1379,16 +1395,29 @@ function accept_specialinput(arg) {
   }
 }
 
+/* Return the element which is the last BufferLine element of the
+   window. (jQuery-wrapped.) If none, return null.
+*/
+function buffer_last_line(win) {
+  var divel = last_child_of(win.frameel); /* not wrapped */
+  if (divel == null)
+    return null;
+  /* If the sole child is the PreviousMark, there are no BufferLines. */
+  if (divel.className != 'BufferLine')
+    return null;
+  return $(divel);
+}
+
 /* Return the vertical offset (relative to the parent) of the top of the 
    last child of the parent. We use the raw DOM "offsetTop" property;
    jQuery doesn't have an accessor for it.
    (Possibly broken in MSIE7? It worked in the old version, though.)
 */
-function last_line_top_offset(el) {
-  var ls = el.children();
-  if (!ls || !ls.length)
+function buffer_last_line_top_offset(win) {
+  var divel = buffer_last_line(win);
+  if (!divel || !divel.length)
     return 0;
-  return ls.get(ls.length-1).offsetTop;
+  return divel.get(0).offsetTop;
 }
 
 /* Set windows_paging_count to the number of windows that need paging.
@@ -2263,7 +2292,7 @@ function evhan_doc_keypress(ev) {
       frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
       /* Compute the new topunseen value. */
       var frameheight = frameel.outerHeight();
-      var realbottom = last_line_top_offset(frameel);
+      var realbottom = buffer_last_line_top_offset(win);
       var newtopunseen = frameel.scrollTop() + frameheight;
       if (newtopunseen > realbottom)
         newtopunseen = realbottom;
@@ -2644,7 +2673,7 @@ function evhan_window_scroll(ev) {
 
   var frameel = win.frameel;
   var frameheight = frameel.outerHeight();
-  var realbottom = last_line_top_offset(frameel);
+  var realbottom = buffer_last_line_top_offset(win);
   var newtopunseen = frameel.scrollTop() + frameheight;
   if (newtopunseen > realbottom)
     newtopunseen = realbottom;
@@ -2670,7 +2699,7 @@ function window_scroll_to_bottom(win) {
   var frameheight = frameel.outerHeight();
   frameel.scrollTop(frameel.get(0).scrollHeight - frameheight);
 
-  var realbottom = last_line_top_offset(frameel);
+  var realbottom = buffer_last_line_top_offset(win);
   var newtopunseen = frameel.scrollTop() + frameheight;
   if (newtopunseen > realbottom)
     newtopunseen = realbottom;
