@@ -1762,7 +1762,6 @@ function perform_graphics_ops(loadedimg, loadedev) {
       continue;
     }
 
-    var canvas = undefined;
     var el = $('#win'+win.id+'_canvas', dom_context);
     var ctx = canvas_get_2dcontext(el);
     if (!ctx) {
@@ -1787,7 +1786,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
         if (op.x === undefined) {
           /* Fill the whole canvas frame. Also set the background color,
              so that future window resizes look nice. */
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
           win.frameel.css('background-color', ctx.fillStyle);
         }
         else {
