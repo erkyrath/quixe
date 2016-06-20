@@ -2256,6 +2256,12 @@ function evhan_doc_keypress(ev) {
     /* If the focus is already on an input field, don't mess with it. */
     return;
   }
+  if (ev.target.className.indexOf('CanHaveInputFocus') >= 0) {
+    /* If the focus is on an element which insists it's input-like,
+       don't mess with that either. This is necessary for input fields
+       in shadow DOM and plugins. */
+    return;
+  }
 
   if (ev.altKey || ev.metaKey || ev.ctrlKey) {
     /* Don't mess with command key combinations. This is not a perfect
