@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 2.1.4.
+Quixe Library: version 2.1.5.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -99,7 +99,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
-- 2.1.5 (###)
+- 2.1.5 (June 23, 2016)
   - When MORE paging, display a margin mark at the last-seen position.
   - Graphics windows now display scaled images at full screen resolution
     on all browsers. (Previously, Counterfeit Monkey on a Retina display
