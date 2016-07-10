@@ -521,16 +521,18 @@ function autosave_write(signature, snapshot)
         return;
     }
 
-    /* Pull snapshot.ram out. (It's okay to munge the snapshot object,
-       the caller doesn't want it back.) */
+    /* Pull snapshot.ram out, if it exists. (It's okay to munge the
+       snapshot object,the caller doesn't want it back.) */
     var ram = snapshot.ram;
     snapshot.ram = undefined;
 
     var str = JSON.stringify(snapshot);
     fs.writeFileSync(pathj, str, { encoding:'utf8' });
 
-    var buf = new buffer_mod.Buffer(ram);
-    fs.writeFileSync(pathr, buf);
+    if (ram) {
+        var buf = new buffer_mod.Buffer(ram);
+        fs.writeFileSync(pathr, buf);
+    }
 }
 
 /* Load a snapshot (a JSONable object) from a signature-dependent location.
@@ -545,10 +547,13 @@ function autosave_read(signature)
         var str = fs.readFileSync(pathj, { encoding:'utf8' });
         var snapshot = JSON.parse(str);
 
-        var buf = fs.readFileSync(pathr, { encoding:null });
-        var ram = Array.from(buf.values());
+        try {
+            var buf = fs.readFileSync(pathr, { encoding:null });
+            var ram = Array.from(buf.values());
+            snapshot.ram = ram;
+        }
+        catch (ex) {};
 
-        snapshot.ram = ram;
         return snapshot;
     }
     catch (ex) {
