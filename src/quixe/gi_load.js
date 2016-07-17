@@ -115,6 +115,7 @@ var all_options = {
 
 var gameurl = null;  /* The URL we are loading. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
+var debug_info = null; /* gameinfo.dbg file -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 var alttexts = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
@@ -408,6 +409,13 @@ function get_metadata(val) {
     return metadata[val];
 }
 
+/* Return the gameinfo.dbg file (as an array of bytes), if it was
+   loaded.
+*/
+function get_debug_info() {
+    return debug_info;
+}
+
 /* Return information describing an image. This might be loaded from static
    data or from a Blorb file.
    
@@ -557,6 +565,14 @@ function unpack_blorb(image) {
                     el = bibels[ix];
                     metadata[el.tagName.toLowerCase()] = el.textContent;
                 }
+            }
+        }
+        if (chunktype == "Dbug") {
+            /* Because this is enormous, we only save it if the option
+               is set to use it. */
+            if (all_options.debug_info_chunk) {
+                var arr = image.slice(pos, pos+chunklen);
+                debug_info = arr;
             }
         }
         if (chunktype == "RDes") {
@@ -926,6 +942,7 @@ return {
     load_run: load_run,
     find_data_chunk: find_data_chunk,
     get_metadata: get_metadata,
+    get_debug_info: get_debug_info,
     get_image_info: get_image_info,
     get_image_url: get_image_url
 };
