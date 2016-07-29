@@ -185,10 +185,12 @@ function glkote_init(iface) {
 
   /* We can get callbacks on any *boolean* change in the resolution level.
      Not, unfortunately, on all changes. */
-  window.matchMedia('screen and (min-resolution: 1.5dppx)').addListener(evhan_doc_pixelreschange);
-  window.matchMedia('screen and (min-resolution: 2dppx)').addListener(evhan_doc_pixelreschange);
-  window.matchMedia('screen and (min-resolution: 3dppx)').addListener(evhan_doc_pixelreschange);
-  window.matchMedia('screen and (min-resolution: 4dppx)').addListener(evhan_doc_pixelreschange);
+  if (window.matchMedia) {
+    window.matchMedia('screen and (min-resolution: 1.5dppx)').addListener(evhan_doc_pixelreschange);
+    window.matchMedia('screen and (min-resolution: 2dppx)').addListener(evhan_doc_pixelreschange);
+    window.matchMedia('screen and (min-resolution: 3dppx)').addListener(evhan_doc_pixelreschange);
+    window.matchMedia('screen and (min-resolution: 4dppx)').addListener(evhan_doc_pixelreschange);
+  }
 
   var res = measure_window();
   if (jQuery.type(res) === 'string') {
