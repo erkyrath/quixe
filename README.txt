@@ -99,6 +99,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.1.6 (###)
+  - Fix for graphics windows being drawn with a slight extra lower margin.
+
 - 2.1.5 (June 23, 2016)
   - When MORE paging, display a margin mark at the last-seen position.
   - Graphics windows now display scaled images at full screen resolution
