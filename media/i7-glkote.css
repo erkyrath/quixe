@@ -163,6 +163,7 @@
 }
 
 .GraphicsWindow canvas {
+  display: block;
   background-color: white;
 }
 
