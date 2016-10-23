@@ -181,6 +181,8 @@ function glkote_init(iface) {
     $(document).on('keypress', evhan_doc_keypress);
   $(window).on('resize', evhan_doc_resize);
 
+  /* Note the pixel ratio (resolution level; this is greater than 1 for
+     high-res displays. */
   current_devpixelratio = window.devicePixelRatio || 1;
 
   /* We can get callbacks on any *boolean* change in the resolution level.
@@ -192,12 +194,17 @@ function glkote_init(iface) {
     window.matchMedia('screen and (min-resolution: 4dppx)').addListener(evhan_doc_pixelreschange);
   }
 
+  /* Figure out the window size and font metrics. */
   var res = measure_window();
   if (jQuery.type(res) === 'string') {
     glkote_error(res);
     return;
   }
   current_metrics = res;
+
+  /* Add some elements which will give us notifications if the gameport
+     size changes. */
+  create_resize_sensors();
 
   /* Check the options that control whether URL-like strings in the output
      are displayed as hyperlinks. */
@@ -413,6 +420,78 @@ function measure_window() {
     metrics.outspacingy = game_interface.outspacingy;
 
   return metrics;
+}
+
+/* Create invisible divs in the gameport which will fire events if the
+   gameport changes size. (For any reason, including document CSS changes.
+   We need this to detect Lectrote's margin change, for example.)
+
+   This code is freely adapted from CSS Element Queries by Marc J. Schmidt.
+   https://github.com/marcj/css-element-queries
+*/
+function create_resize_sensors() {
+  var gameport = $('#'+gameport_id, dom_context);
+  if (!gameport.length)
+    return 'Cannot find gameport element #'+gameport_id+' in this document.';
+
+  var shrinkel = $('<div>', {
+    id: 'resize-sensor-shrink'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0', top:'0', bottom:'0',
+    overflow:'hidden', visibility:'hidden',
+    'z-index':'-1'
+  });
+  shrinkel.append($('<div>', {
+    id: 'resize-sensor-shrink-child'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0',
+    width:'200%', height:'200%'
+  }));
+
+  var expandel = $('<div>', {
+    id: 'resize-sensor-expand'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0', top:'0', bottom:'0',
+    overflow:'hidden', visibility:'hidden',
+    'z-index':'-1'
+  });
+  expandel.append($('<div>', {
+    id: 'resize-sensor-expand-child'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0'
+  }));
+
+  var shrinkdom = shrinkel.get(0);
+  var expanddom = expandel.get(0);
+  var expandchilddom = expanddom.childNodes[0];
+
+  var reset = function() {
+    shrinkdom.scrollLeft = 100000;
+    shrinkdom.scrollTop = 100000;
+
+    expandchilddom.style.width = '100000px';
+    expandchilddom.style.height = '100000px';
+    expanddom.scrollLeft = 100000;
+    expanddom.scrollTop = 100000;
+  }
+
+  gameport.append(shrinkel);
+  gameport.append(expandel);
+  reset();
+
+  var evhan = function(ev) {
+    evhan_doc_resize(ev);
+    reset();
+  }
+
+  /* These events fire copiously when the window is being resized.
+     This is one reason evhan_doc_resize() has debouncing logic. */
+  shrinkel.on('scroll', evhan);
+  expandel.on('scroll', evhan);
 }
 
 /* This function becomes GlkOte.update(). The game calls this to update
@@ -2132,8 +2211,14 @@ function recording_standard_handler(state) {
 /* DOM event handlers. */
 
 /* Detect the browser window being resized.
-   Unfortunately, this doesn't catch "make font bigger/smaller" changes,
-   which ought to trigger the same reaction.)
+
+   This event is triggered by several causes:
+
+   - A real window DOM resize event. (This should include "make font
+   bigger/smaller".)
+   - Autorestore. (The window might be a different size than the autosave
+   data expects, so we trigger this.)
+   - The magic gameport resize sensors created in create_resize_sensors().
 */
 function evhan_doc_resize(ev) {
   /* We don't want to send a whole flurry of these events, just because
