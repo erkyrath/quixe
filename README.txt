@@ -101,6 +101,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.1.6 (###)
   - Fix for graphics windows being drawn with a slight extra lower margin.
+  - Detect size changes of the gameport (even if the window does not change
+    size) and fire the appropriate rearrange event.
 
 - 2.1.5 (June 23, 2016)
   - When MORE paging, display a margin mark at the last-seen position.
