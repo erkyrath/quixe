@@ -46,7 +46,7 @@ g
 [INTERPRETERHEAD]
 <link rel="stylesheet" href="interpreter/glkote.css" type="text/css">
 <link rel="stylesheet" href="interpreter/dialog.css" type="text/css">
-<script src="interpreter/jquery-1.11.2.min.js" type="text/javascript"></script>
+<script src="interpreter/jquery-1.12.4.min.js" type="text/javascript"></script>
 <script src="interpreter/glkote.min.js" type="text/javascript"></script>
 <script src="interpreter/quixe.min.js" type="text/javascript"></script>
 
@@ -111,7 +111,7 @@ $(document).ready(function() {
 ! Non-comment lines are the names of files which are copied across when the
 ! release is made. Anything not listed here won't be copied.
 
-jquery-1.11.2.min.js
+jquery-1.12.4.min.js
 glkote.min.js
 quixe.min.js
 dialog.css

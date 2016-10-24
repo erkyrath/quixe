@@ -74,8 +74,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - glkote/...        -- copied from the GlkOte project
 
 - lib -- compressed Javascript source code
-  - jquery-1.11.2.js     -- standard jQuery library
-  - jquery-1.11.2.min.js -- ditto, minified
+  - jquery-1.12.4.js     -- standard jQuery library
+  - jquery-1.12.4.min.js -- ditto, minified
   (each of the next two files contains several files from the src directory,
   run through rjsmin.py)
   - glkote.min.js        -- glkote files
@@ -103,6 +103,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - Fix for graphics windows being drawn with a slight extra lower margin.
   - Detect size changes of the gameport (even if the window does not change
     size) and fire the appropriate rearrange event.
+  - Update to jQuery 1.12.4.
 
 - 2.1.5 (June 23, 2016)
   - When MORE paging, display a margin mark at the last-seen position.
@@ -218,8 +219,8 @@ by Andrew Plotkin. They are distributed under the MIT license; see the
 This package includes the GlkOte, GlkAPI, and Dialog libraries, also
 copyright by Andrew Plotkin under the MIT license.
 
-This package includes the jQuery JavaScript framework, version 1.11.2
-Copyright 2005, 2014 jQuery Foundation, Inc. and other contributors
+This package includes the jQuery JavaScript framework, version 1.12.4
+Copyright jQuery Foundation and other contributors
 Released under the MIT license <http://jquery.org/license>
 For details, see the jQuery web site: <http://jquery.com/>
 
