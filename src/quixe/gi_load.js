@@ -86,6 +86,9 @@
  * GiLoad.get_image_info(NUM) -- returns an object describing an image,
  *   or undefined.
  *
+ * GiLoad.get_debug_info() -- returns an array containing debug info,
+ *   or null.
+ *
  * GiLoad.get_image_url(NUM) -- returns a URL describing an image, or
  *   undefined.
  */
