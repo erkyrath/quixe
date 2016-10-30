@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 2.1.5.
+Quixe Library: version 2.1.6.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -99,7 +99,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
-- 2.1.6 (###)
+- 2.1.6 (October 30, 2016)
   - Fix for graphics windows being drawn with a slight extra lower margin.
   - Detect size changes of the gameport (even if the window does not change
     size) and fire the appropriate rearrange event.
