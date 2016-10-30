@@ -103,6 +103,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - Fix for graphics windows being drawn with a slight extra lower margin.
   - Detect size changes of the gameport (even if the window does not change
     size) and fire the appropriate rearrange event.
+  - Adjust the (experimental) debug feature to look for a "Dbug" chunk in
+    a Blorb file. (But this does not yet support the current debug format.)
   - Update to jQuery 1.12.4.
 
 - 2.1.5 (June 23, 2016)
