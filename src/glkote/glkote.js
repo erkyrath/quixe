@@ -62,6 +62,8 @@ var last_known_focus = 0;
 var last_known_paging = 0;
 var windows_paging_count = 0;
 var graphics_draw_queue = [];
+var request_timer = null;
+var request_timer_interval = null;
 var resize_timer = null;
 var retry_timer = null;
 var perform_paging = true;
@@ -571,6 +573,10 @@ function glkote_update(arg) {
     accept_contentset(arg.content);
   if (arg.input != null)
     accept_inputset(arg.input);
+
+  /* Note that a timer value of null is different from undefined. */
+  if (arg.timer !== undefined)
+    accept_timerrequest(arg.timer);
 
   if (arg.specialinput != null)
     accept_specialinput(arg.specialinput);
@@ -1450,6 +1456,30 @@ function accept_inputset(arg) {
       cursel.append(inputel);
     }
   });
+}
+
+/* Handle the change in the timer request. The argument is either null
+   (cancel the timer) or a positive value in milliseconds (reset and restart
+   the timer with that interval).
+*/
+function accept_timerrequest(arg) {
+  /* Cancel timer, if there is one. Note that if the game passes us a
+     timer value equal to our current interval, we will still reset and
+     restart the timer. */
+  if (request_timer) {
+    window.clearTimeout(request_timer);
+    request_timer = null;
+    request_timer_interval = null;
+  }
+
+  if (!arg) {
+    /* No new timer. */
+  }
+  else {
+    /* Start a new timer. */
+    request_timer_interval = arg;
+    request_timer = window.setTimeout(evhan_timer_event, request_timer_interval);
+  }
 }
 
 function accept_specialinput(arg) {
@@ -2827,6 +2857,28 @@ function build_evhan_hyperlink(winid, linkval) {
     send_response('hyperlink', win, linkval);
     return false;
   };
+}
+
+/* Event handler for the request_timer timeout that we set in 
+   accept_timerrequest().
+*/
+function evhan_timer_event() {
+  if ((!request_timer) || (!request_timer_interval)) {
+    /* This callback should have been cancelled before firing, so we
+       shouldn't even be here. */
+    return;
+  }
+
+  /* It's a repeating timer, so set it again. */
+  request_timer = window.setTimeout(evhan_timer_event, request_timer_interval);
+  
+  if (disabled) {
+    /* Can't handle the timer while the UI is disabled, so we punt.
+       It will fire again someday. */
+    return;
+  }
+
+  send_response('timer');
 }
 
 /* ---------------------------------------------- */
