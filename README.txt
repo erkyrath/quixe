@@ -99,6 +99,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.1.### (###)
+  - Adopt GlkOte's new timer API (no change in behavior).
+
 - 2.1.6 (October 30, 2016)
   - Fix for graphics windows being drawn with a slight extra lower margin.
   - Detect size changes of the gameport (even if the window does not change
