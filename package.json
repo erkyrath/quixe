@@ -1,0 +1,22 @@
+{
+  "name": "quixe",
+  "version": "2.1.6",
+  "license": "MIT",
+  "author": "Andrew Plotkin <erkyrath@eblong.com>",
+  "description": "A Glulx VM interpreter written in Javascript",
+  "keywords": [
+    "intfiction"
+  ],
+  "repository": "erkyrath/quixe.git",
+  "homepage": "https://github.com/erkyrath/quixe",
+  "bugs": "https://github.com/erkyrath/quixe/issues",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.1",
+    "gulp-replace": "^0.5.4",
+    "gulp-uglify": "^2.0.0"
+  },
+  "scripts": {
+    "build": "gulp"
+  }
+}
