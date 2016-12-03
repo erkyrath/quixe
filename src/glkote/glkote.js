@@ -2071,7 +2071,11 @@ function send_response(type, win, val, val2) {
   else if (type == 'redraw') {
     res.window = win.id;
   }
-  else if (type == 'init' || type == 'arrange') {
+  else if (type == 'init') {
+    res.metrics = val;
+    res.support = ['timer', 'graphics', 'hyperlinks'];
+  }
+  else if (type == 'arrange') {
     res.metrics = val;
   }
 

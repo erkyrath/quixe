@@ -125,6 +125,8 @@ function accept_ui_event(obj) {
     switch (obj.type) {
     case 'init':
         content_metrics = obj.metrics;
+        /* We ignore the support array. This library is updated in sync
+           with GlkOte, so we know what it supports. */
         VM.init();
         break;
 
