@@ -59,6 +59,8 @@
  *     will be left alone. (default: true)
  *   default_page_title: A default label for the game, if none could be
  *     extracted from the metadata or URL. (default: "Game")
+ *   engine_name: Label used in the page title along with default_page_title.
+ *     (default: "Quixe" or "IFVMS")
  *   default_story: The URL of the game file to load, if not otherwise
  *     provided.
  *   proxy_url: The URL of the web-app service which is used to convert
@@ -78,6 +80,10 @@
  *   clear_vm_autosave: If set, the VM will clear any snapshot at launch
  *     (so will not load one even if do_vm_autosave is set). (default:
  *     false)
+ *   game_format_name: Label used in loading error messages. (default:
+ *     "Glulx" or "Z-code".)
+ *   blorb_gamechunk_type: Chunk type to extract from a Blorb file.
+ *     (default: "GLUL" or "ZCOD")
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
  *
