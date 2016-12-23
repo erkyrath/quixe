@@ -1,17 +1,16 @@
 /* GiLoad -- a game-file loader for Quixe
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
-
-### hacked to support ifvms.js and Zcode files. The differences will be
-### merged back into mainline gi_load.js before release!
-
+ *
  * 
  * This Javascript library is copyright 2010-2016 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library loads a game image (by one of several possible methods)
  * and then starts up the display layer and game engine. It also extracts
- * data from a Blorb image, if that's what's provided.
+ * data from a Blorb image, if that's what's provided. It is distributed
+ * as part of the Quixe engine, but can also be used by IFVMS. Thus it is
+ * equipped to handle both Glulx and Z-code games (naked or Blorbed).
  *
  * (This code makes use of the jQuery library, which therefore must be
  * available.)
