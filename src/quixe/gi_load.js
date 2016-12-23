@@ -30,7 +30,7 @@
  * GiLoad.load_run(OPTIONS, IMAGE, IMAGEOPTIONS) -- run the game with the
  *   given options. The IMAGE argument, if not null, should be the game
  *   file itself (a glulx, zcode, or blorb file). The IMAGEOPTIONS describe
- *   how the game file is encoded.
+ *   how the game file is encoded. It should contain:
  *
  *   IMAGEOPTIONS.engine: Declares which engine to use:
  *     "quixe": the Quixe engine (for Glulx games)
@@ -42,9 +42,9 @@
  *     "array": an array of (numeric) byte values
  *
  *   For backwards compatibility, IMAGEOPTIONS.engine may be omitted
- *   (it defaults to Quixe). If the third argument is a string, it
- *   is taken to be IMAGEOPTIONS.format (and again, engine defaults
- *   to Quixe).
+ *   (it defaults to Quixe). If the third argument is a string rather than
+ *   an object, it is taken to be IMAGEOPTIONS.format (and again, the
+ *   engine defaults to Quixe).
  *
  *   If OPTIONS is null, the global "game_options" object is considered.
  *
@@ -197,7 +197,9 @@ function load_run(optobj, image, imageoptions) {
         return;
 
     }
-    
+
+    /* Pull in the values from the game_options, which override the defaults
+       set above. */
     if (!optobj)
         optobj = window.game_options;
     if (optobj)
