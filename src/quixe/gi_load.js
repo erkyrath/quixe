@@ -25,17 +25,28 @@
  * GiLoad.load_run(OPTIONS) -- load and run the game using the options
  *   passed as the argument. If OPTIONS is null or not provided, the
  *   global "game_options" object is considered. (The various options are
- *   described below.)
+ *   described below.) This invocation assumes Glulx format.
  *
- * GiLoad.load_run(OPTIONS, IMAGE, IMAGE_FORMAT) -- run the game with the
- *   given options. The IMAGE argument should be the game file itself
- *   (a glulx or blorb file). IMAGE_FORMAT describes how the game file
- *   is encoded:
+ * GiLoad.load_run(OPTIONS, IMAGE, IMAGEOPTIONS) -- run the game with the
+ *   given options. The IMAGE argument, if not null, should be the game
+ *   file itself (a glulx, zcode, or blorb file). The IMAGEOPTIONS describe
+ *   how the game file is encoded.
+ *
+ *   IMAGEOPTIONS.engine: Declares which engine to use:
+ *     "quixe": the Quixe engine (for Glulx games)
+ *     "ifvms": the IFVMS engine (for Zcode games)
+ *
+ *   IMAGEOPTIONS.format: Describes how the game file is encoded:
  *     "base64": a base64-encoded binary file
  *     "raw": a binary file stored in a string
  *     "array": an array of (numeric) byte values
- *   Again, if OPTIONS is null, the global "game_options" object is
- *   considered.
+ *
+ *   For backwards compatibility, IMAGEOPTIONS.engine may be omitted
+ *   (it defaults to Quixe). If the third argument is a string, it
+ *   is taken to be IMAGEOPTIONS.format (and again, engine defaults
+ *   to Quixe).
+ *
+ *   If OPTIONS is null, the global "game_options" object is considered.
  *
  * These are the game options. Most have default values, so you only have
  * to declare the ones you want to change.
