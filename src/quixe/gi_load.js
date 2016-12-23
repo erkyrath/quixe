@@ -524,13 +524,13 @@ function find_data_chunk(val) {
 }
 
 /* Look through a Blorb file (provided as a byte array) and return the
-   Glulx game file chunk (ditto). If no such chunk is found, returns 
-   null.
+   game file chunk (ditto). If no such chunk is found, returns null.
+   The gamechunktype argument should be 'ZCOD' or 'GLUL'.
 
    This also loads the IFID metadata into the metadata object, and
    caches DATA chunks where we can reach them later.
 */
-function unpack_blorb(image) {
+function unpack_blorb(image, gamechunktype) {
     var len = image.length;
     var ix;
     var rindex = [];
@@ -621,7 +621,7 @@ function unpack_blorb(image) {
         el.len = chunklen;
         el.content = null;
 
-        if (el.usage == "Exec" && el.num == 0 && chunktype == "GLUL") {
+        if (el.usage == "Exec" && el.num == 0 && chunktype == gamechunktype) {
             result = image.slice(pos, pos+chunklen);
         }
         else {
@@ -901,7 +901,7 @@ function start_game(image) {
         }
 
         try {
-            image = unpack_blorb(image);
+            image = unpack_blorb(image, 'GLUL');
         }
         catch (ex) {
             all_options.io.fatal_error("Blorb file could not be parsed: " + ex);
