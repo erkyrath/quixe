@@ -132,10 +132,16 @@ function quixe_init() {
 }
 
 /* This is called by the page after a "blocking" operation completes.
-   (That is, a user event has triggered the completion of glk_select().)
+   (That is, a user event has triggered the completion of glk_select()
+   or glk_fileref_create_by_prompt().)
    It executes until the next glk_select() or glk_exit().
+
+   The argument is only defined when resuming from an operation that
+   returns a value -- i.e. glk_fileref_create_by_prompt(). But we ignore
+   it anyhow, because that return value was handled by GiDispa. (See
+   SetResumeStore() below.)
 */
-function quixe_resume() {
+function quixe_resume(argument) {
     try {
         self.done_executing = self.vm_stopped;
         execute_loop();
