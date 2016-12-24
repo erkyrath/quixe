@@ -4964,7 +4964,7 @@ function gli_fileref_create_by_prompt_callback(obj) {
 
     if (window.GiDispa)
         GiDispa.prepare_resume(fref);
-    VM.resume();
+    VM.resume(fref);
 }
 
 function glk_fileref_destroy(fref) {
