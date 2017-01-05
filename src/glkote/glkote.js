@@ -2073,7 +2073,7 @@ function send_response(type, win, val, val2) {
   }
   else if (type == 'init') {
     res.metrics = val;
-    res.support = ['timer', 'graphics', 'hyperlinks'];
+    res.support = ['timer', 'graphics', 'graphicswin', 'hyperlinks'];
   }
   else if (type == 'arrange') {
     res.metrics = val;
