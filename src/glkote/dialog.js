@@ -93,8 +93,8 @@ function dialog_open(tosave, usage, gameid, callback) {
     if (is_open)
         throw new Error('Dialog: dialog box is already open.');
 
-    if (localStorage == null)
-        throw new Error('Dialog: your browser does not support local storage.');
+    if (!Storage)
+        throw new Error('Dialog: no storage API is available.');
 
     dialog_callback = callback;
     will_save = tosave;
@@ -885,7 +885,7 @@ function file_load_dirent(dirent) {
             return null;
     }
 
-    var statstring = localStorage.getItem(dirent.dirent);
+    var statstring = Storage.getItem(dirent.dirent);
     if (!statstring)
         return null;
 
@@ -921,7 +921,7 @@ function file_load_dirent(dirent) {
 /* Dialog.file_ref_exists(ref) -- returns whether the file exists
  */
 function file_ref_exists(ref) {
-    var statstring = localStorage.getItem(ref.dirent);
+    var statstring = Storage.getItem(ref.dirent);
     if (!statstring)
         return false;
     else
@@ -931,8 +931,8 @@ function file_ref_exists(ref) {
 /* Dialog.file_remove_ref(ref) -- delete the file, if it exists
  */
 function file_remove_ref(ref) {
-    localStorage.removeItem(ref.dirent);
-    localStorage.removeItem(ref.content);
+    Storage.removeItem(ref.dirent);
+    Storage.removeItem(ref.content);
 }
 
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
@@ -947,6 +947,7 @@ function file_remove_ref(ref) {
  */
 function file_write(dirent, content, israw) {
     var val, ls;
+    var err1, err2;
 
     var file = file_load_dirent(dirent);
     if (!file) {
@@ -970,8 +971,11 @@ function file_write(dirent, content, israw) {
     //### game name?
 
     val = ls.join(',');
-    localStorage.setItem(file.dirent.dirent, val);
-    localStorage.setItem(file.dirent.content, content);
+    err1 = Storage.setItem(file.dirent.dirent, val);
+    err2 = Storage.setItem(file.dirent.content, content);
+
+    if (err1 || err2)
+        return false;
 
     return true;
 }
@@ -990,7 +994,7 @@ function file_read(dirent, israw) {
     if (!file)
         return null;
 
-    var content = localStorage.getItem(dirent.content);
+    var content = Storage.getItem(dirent.content);
     if (content == null)
         return null;
 
@@ -1038,11 +1042,12 @@ function files_list(usage, gameid) {
     var ix;
     var ls = [];
 
-    if (!localStorage)
+    if (!Storage)
         return ls;
 
-    for (ix=0; ix<localStorage.length; ix++) {
-        var key = localStorage.key(ix);
+    var keyls = Storage.getKeys();
+    for (ix=0; ix<keyls.length; ix++) {
+        var key = keyls[ix];
         if (!key)
             continue;
         var dirent = file_decode_ref(key.toString());
@@ -1078,10 +1083,10 @@ function format_date(date) {
 function autosave_write(signature, snapshot) {
     var key = 'autosave:' + signature;
     if (!snapshot) {
-        localStorage.removeItem(key);
+        Storage.removeItem(key);
     }
     else {
-        localStorage.setItem(key, JSON.stringify(snapshot));
+        Storage.setItem(key, JSON.stringify(snapshot));
     }
 }
 
@@ -1089,7 +1094,7 @@ function autosave_write(signature, snapshot) {
 */
 function autosave_read(signature) {
     var key = 'autosave:' + signature;
-    var val = localStorage.getItem(key);
+    var val = Storage.getItem(key);
     if (val) {
         try {
             return JSON.parse(val);
@@ -1126,54 +1131,100 @@ else {
 
 /* Locate the storage object, and set up the storage event handler, at load
    time (but after all the handlers are defined).
+
+   We wrap the HTML localStorage object in a simplified wrapper (Storage),
+   which supports just four calls: getItem, setItem, removeItem, and getKeys.
+   This lets us catch storage-quota errors, which turns out to be a good
+   idea. It also makes it easier to substitute a different storage back-end.
 */
 
-var localStorage = null;
+var Storage = null;
 try {
+    var htmlLocalStorage = null;
     /* Accessing window.localStorage might throw a security exception. */
     if (window.localStorage != null) {
         /* This is the API object for HTML5 browser storage. */
-        localStorage = window.localStorage;
+        htmlLocalStorage = window.localStorage;
     }
     else if (window.globalStorage != null) {
         /* This is a non-standard API used in Firefox 3.0 (but not 3.5). */
-        localStorage = window.globalStorage[location.hostname];
+        htmlLocalStorage = window.globalStorage[location.hostname];
+    }
+
+    if (htmlLocalStorage) {
+        /* First, test to make sure we can write at all. (In a private
+           window, localStorage quota may be zero.) */
+        try {
+            htmlLocalStorage.setItem('_dialogtest', 'xyzzy');
+            if (htmlLocalStorage.getItem('_dialogtest') != 'xyzzy')
+                throw new Error('localStorage test did not match');
+            htmlLocalStorage.removeItem('_dialogtest');
+
+            Storage = {
+                getItem: function(key) {
+                    try {
+                        return htmlLocalStorage.getItem(key);
+                    }
+                    catch (ex) {
+                        return null;
+                    }
+                },
+                removeItem: function(key) {
+                    try {
+                        htmlLocalStorage.removeItem(key);
+                    }
+                    catch (ex) { }
+                },
+                setItem: function(key, val) {
+                    try {
+                        htmlLocalStorage.setItem(key, val);
+                    }
+                    catch (ex) {
+                        GlkOte.log('Dialog: localStorage failed! ' + ex);
+                        return true; /* error */
+                    }
+                },
+                getKeys: function() {
+                    var ls = [];
+                    for (var ix=0; ix<htmlLocalStorage.length; ix++)
+                        ls.push(htmlLocalStorage.key(ix));
+                    return ls;
+                }
+            };
+        }
+        catch (ex) {
+            GlkOte.log('Dialog: localStorage not available: ' + ex);
+            GlkOte.log('Dialog: falling back to window memory');
+        }
     }
 }
 catch (ex) { }
 
-if (localStorage == null) {
+if (Storage == null) {
     /* This browser doesn't support storage at all. We'll whip up a
        simple implementation. It will only last as long as the window
        does, but that's good enough for a game. */
-    localStorage = {
+    Storage = {
         data: {},
         keys: [],
-        length: 0,
         getItem: function(key) {
-            return localStorage.data[key];
+            return Storage.data[key];
         },
         setItem: function(key, val) {
-            if (localStorage.keys.indexOf(key) < 0) {
-                localStorage.keys.push(key);
-                localStorage.length = localStorage.keys.length;
+            if (Storage.keys.indexOf(key) < 0) {
+                Storage.keys.push(key);
             }
-            localStorage.data[key] = val;
+            Storage.data[key] = val;
         },
         removeItem: function(key) {
-            if (localStorage.keys.indexOf(key) >= 0) {
-                localStorage.keys = localStorage.keys.without(key);
-                localStorage.length = localStorage.keys.length;
-                delete localStorage.data[key];
+            var pos = Storage.keys.indexOf(key);
+            if (pos >= 0) {
+                Storage.keys.splice(pos, 1);
+                delete Storage.data[key];
             }
         },
-        key: function(index) {
-            return localStorage.keys[index];
-        },
-        clear: function() {
-            localStorage.data = {};
-            localStorage.keys = [];
-            localStorage.length = 0;
+        getKeys: function() {
+            return Storage.keys.slice(0);
         }
     }
 }
