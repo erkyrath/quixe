@@ -69,6 +69,7 @@ var retry_timer = null;
 var perform_paging = true;
 var detect_external_links = false;
 var regex_external_links = null;
+var debug_out_handler = null;
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -269,6 +270,21 @@ function glkote_init(iface) {
       else
         recording_state.format = 'glkote';
       glkote_log('Transcript recording active: session ' + recording_state.sessionId + ' "' + recording_state.label + '", destination ' + recording_handler_url);
+    }
+  }
+
+  if (iface.debug_commands) {
+    var debugmod = window.GiDebug;
+    if (iface.debug_commands != true)
+      debugmod = iface.debug_commands;
+    if (!debugmod) {
+      glkote_log('The debug_commands option is set, but there is no GiDebug module.');
+    }
+    else {
+      debugmod.init(evhan_debug_command);
+      debug_out_handler = debugmod.output;
+      if (iface.debug_console_open)
+        debugmod.open();
     }
   }
 
@@ -512,8 +528,13 @@ function glkote_update(arg) {
     autorestore = arg.autorestore;
   delete arg.autorestore; /* keep it out of the recording */
 
-  if (recording)
+  if (recording) {
     recording_send(arg);
+  }
+
+  if (arg.debugoutput && debug_out_handler) {
+    debug_out_handler(arg.debugoutput);
+  }
 
   if (arg.type == 'error') {
     glkote_error(arg.message);
@@ -2068,6 +2089,9 @@ function send_response(type, win, val, val2) {
     res.response = val;
     res.value = val2;
   }
+  else if (type == 'debuginput') {
+    res.value = val;
+  }
   else if (type == 'redraw') {
     res.window = win.id;
   }
@@ -2079,7 +2103,10 @@ function send_response(type, win, val, val2) {
     res.metrics = val;
   }
 
-  if (!(type == 'init' || type == 'refresh' || type == 'specialresponse')) {
+  /* Save partial inputs, unless this is an event which disables
+     or ignores the UI. */
+  if (!(type == 'init' || type == 'refresh'
+      || type == 'specialresponse' || type == 'debuginput')) {
     jQuery.each(windowdic, function(tmpid, win) {
       var savepartial = (type != 'line' && type != 'char') 
                         || (win.id != winid);
@@ -2099,6 +2126,7 @@ function send_response(type, win, val, val2) {
     recording_state.input = res;
     recording_state.timestamp = (new Date().getTime());
   }
+
   game_interface.accept(res);
 }
 
@@ -2883,6 +2911,12 @@ function evhan_timer_event() {
   }
 
   send_response('timer');
+}
+
+/* Event handler for the GiDebug command callback. 
+*/
+function evhan_debug_command(cmd) {
+  send_response('debuginput', null, cmd);
 }
 
 /* ---------------------------------------------- */
