@@ -51,6 +51,7 @@ var dom_context = undefined;
 var windowport_id = 'windowport';
 var gameport_id = 'gameport';
 var generation = 0;
+var generation_sent = -1;
 var disabled = false;
 var loading_visible = null;
 var error_visible = false;
@@ -2058,10 +2059,17 @@ function send_response(type, win, val, val2) {
   if (disabled && type != 'specialresponse')
     return;
 
+  if (generation <= generation_sent
+    && !(type == 'init' || type == 'refresh')) {
+    glkote_log('Not sending repeated generation number: ' + generation);
+    return;
+  }
+
   var winid = 0;
   if (win)
     winid = win.id;
   var res = { type: type, gen: generation };
+  generation_sent = generation;
 
   if (type == 'line') {
     res.window = win.id;
