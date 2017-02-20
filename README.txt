@@ -101,6 +101,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.1.### (###)
   - Adopt GlkOte's new timer API (no change in behavior).
+  - Test localStorage functionality; if not available, fall back to
+    Javascript memory.
 
 - 2.1.6 (October 30, 2016)
   - Fix for graphics windows being drawn with a slight extra lower margin.
