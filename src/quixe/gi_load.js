@@ -196,6 +196,7 @@ function load_run(optobj, image, imageoptions) {
         all_options.game_format_name = 'Z-code';
         all_options.vm = window.engine = new window.ZVM();
         all_options.Glk = window.Glk;
+        all_options.Dialog = window.Dialog;
         break;
 
     default:
