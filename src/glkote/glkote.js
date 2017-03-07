@@ -1147,7 +1147,7 @@ function accept_one_content(arg) {
         divel.addClass('FlowBreak');
       if (!content || !content.length) {
         if (divel.data('blankpara'))
-          divel.text(NBSP);
+          divel.append($('<span>', { 'class':'BlankLineSpan' }).text(NBSP));
         continue;
       }
       if (divel.data('blankpara')) {
