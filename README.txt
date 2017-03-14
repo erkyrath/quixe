@@ -101,6 +101,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.1.### (###)
   - Adopt GlkOte's new timer API (no change in behavior).
+  - Change to how whitespace is displayed (ditto).
   - Test localStorage functionality; if not available, fall back to
     Javascript memory.
 
