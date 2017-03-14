@@ -993,22 +993,6 @@ function close_one_window(win) {
     moreel.remove();
 }
 
-/* Regular expressions used in twiddling runs of whitespace. */
-var regex_initial_whitespace = new RegExp('^ ');
-var regex_final_whitespace = new RegExp(' $');
-var regex_long_whitespace = new RegExp('  +', 'g'); /* two or more spaces */
-
-/* Given a run of N spaces (N >= 2), return N-1 non-breaking spaces plus
-   a normal one. */
-function func_long_whitespace(match) {
-  var len = match.length;
-  if (len == 1)
-    return ' ';
-  /* Evil trick I picked up from Prototype. Gives len-1 copies of NBSP. */
-  var res = new Array(len).join(NBSP);
-  return res + ' ';
-}
-
 /* Handle all of the window content changes. */
 function accept_contentset(arg) {
   jQuery.map(arg, accept_one_content);
@@ -1116,16 +1100,14 @@ function accept_one_content(arg) {
        a new paragraph. (If the flag is false, the line gets appended
        to the previous paragraph.)
 
-       We have to keep track of two flags per paragraph div. The blankpara
+       We have to keep track of a flag per paragraph div. The blankpara
        flag indicates whether this is a completely empty paragraph (a
        blank line). We have to drop a NBSP into empty paragraphs --
        otherwise they'd collapse -- and so this flag lets us distinguish
        between an empty paragraph and one which truly contains a NBSP.
        (The difference is, when you append data to a truly empty paragraph,
        you have to delete the placeholder NBSP.)
-
-       The endswhite flag indicates whether the paragraph ends with a
-       space (or is completely empty). See below for why that's important. */
+    */
 
     for (ix=0; ix<text.length; ix++) {
       var textarg = text[ix];
@@ -1140,7 +1122,6 @@ function accept_one_content(arg) {
         /* Create a new paragraph div */
         divel = $('<div>', { 'class': 'BufferLine' });
         divel.data('blankpara', true);
-        divel.data('endswhite', true);
         win.frameel.append(divel);
       }
       if (textarg.flowbreak)
@@ -1154,14 +1135,6 @@ function accept_one_content(arg) {
         divel.data('blankpara', false);
         divel.empty();
       }
-      /* We must munge long strings of whitespace to make sure they aren't
-         collapsed. (This wouldn't be necessary if "white-space: pre-wrap"
-         were widely implemented. Mind you, these days it probably *is*,
-         but why update working code, right?)
-         The rule: if we find a block of spaces, turn all but the last one
-         into NBSP. Also, if a div's last span ends with a space (or the
-         div has no spans), and a new span begins with a space, turn that
-         into a NBSP. */
       for (sx=0; sx<content.length; sx++) {
         var rdesc = content[sx];
         var rstyle, rtext, rlink;
@@ -1213,7 +1186,6 @@ function accept_one_content(arg) {
                 el = ael;
               }
               divel.append(el);
-              divel.data('endswhite', false);
               continue;
             }
             glkote_log('Unknown special entry in line data: ' + rdesc.special);
@@ -1231,10 +1203,6 @@ function accept_one_content(arg) {
         }
         var el = $('<span>',
           { 'class': 'Style_' + rstyle } );
-        rtext = rtext.replace(regex_long_whitespace, func_long_whitespace);
-        if (divel.data('endswhite')) {
-          rtext = rtext.replace(regex_initial_whitespace, NBSP);
-        }
         if (rlink == undefined) {
           insert_text_detecting(el, rtext);
         }
@@ -1246,7 +1214,6 @@ function accept_one_content(arg) {
           el.append(ael);
         }
         divel.append(el);
-        divel.data('endswhite', regex_final_whitespace.test(rtext));
       }
     }
 
