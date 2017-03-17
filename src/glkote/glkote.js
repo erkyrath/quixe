@@ -289,7 +289,22 @@ function glkote_init(iface) {
     }
   }
 
-  send_response('init', null, current_metrics);
+  if (!iface.font_load_delay) {
+    /* Normal case: start the game (interpreter) immediately. */
+    send_response('init', null, current_metrics);
+  }
+  else {
+    /* Delay case: wait a tiny interval, then re-check the window metrics
+       and *then* start the game. We might need to do this if the window
+       fonts were not cached or loaded with the DOM. (Lectrote, for example,
+       because of the way it loads font preferences.) */
+    disabled = true;
+    defer_func(function() {
+      disabled = false;
+      current_metrics = measure_window();
+      send_response('init', null, current_metrics);
+    });
+  }
 }
 
 /* Work out various pixel measurements used to compute window sizes:
@@ -315,8 +330,9 @@ function measure_window() {
   if (!gameport.length)
     return 'Cannot find gameport element #'+gameport_id+' in this document.';
 
-  /* Backwards compatibility grace note: if the HTML file includes an
-     old-style #layouttestpane div, we discard it. */
+  /* If the HTML file includes an #layouttestpane div, we discard it.
+     We used to do metrics measurements from a predefined div with
+     that name. Nowadays, it's sometimes used as a hidden font-preloader. */
   $('#layouttestpane', dom_context).remove();
 
   /* Exclude padding and border. */
@@ -439,6 +455,27 @@ function measure_window() {
     metrics.outspacingy = game_interface.outspacingy;
 
   return metrics;
+}
+
+/* Compare two metrics objects; return whether they're "roughly"
+   similar. (We only care about window size and some of the font
+   metrics, because those are the fields likely to change out
+   from under the library.)
+*/
+function metrics_match(met1, met2) {
+  if (met1.width != met2.width)
+    return false;
+  if (met1.height != met2.height)
+    return false;
+  if (met1.gridcharwidth != met2.gridcharwidth)
+    return false;
+  if (met1.gridcharheight != met2.gridcharheight)
+    return false;
+  if (met1.buffercharwidth != met2.buffercharwidth)
+    return false;
+  if (met1.buffercharheight != met2.buffercharheight)
+    return false;
+  return true;
 }
 
 /* Create invisible divs in the gameport which will fire events if the
@@ -2294,15 +2331,10 @@ function doc_resize_real() {
   }
 
   var new_metrics = measure_window();
-  if (new_metrics.width == current_metrics.width
-    && new_metrics.height == current_metrics.height) {
+  if (metrics_match(new_metrics, current_metrics)) {
     /* If the metrics haven't changed, skip the arrange event. Necessary on
        mobile webkit, where the keyboard popping up and down causes a same-size
-       resize event.
-
-       This is not ideal; it means we'll miss metrics changes caused by
-       font-size changes. (Admittedly, we don't have any code to detect those
-       anyhow, so small loss.) */
+       resize event. */
     return;
   }
   current_metrics = new_metrics;
