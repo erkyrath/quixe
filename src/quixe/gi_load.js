@@ -32,19 +32,13 @@
  *   file itself (a glulx, zcode, or blorb file). The IMAGEOPTIONS describe
  *   how the game file is encoded. It should contain:
  *
- *   IMAGEOPTIONS.engine: Declares which engine to use:
- *     "quixe": the Quixe engine (for Glulx games)
- *     "ifvms": the IFVMS engine (for Zcode games)
- *
  *   IMAGEOPTIONS.format: Describes how the game file is encoded:
  *     "base64": a base64-encoded binary file
  *     "raw": a binary file stored in a string
  *     "array": an array of (numeric) byte values
  *
- *   For backwards compatibility, IMAGEOPTIONS.engine may be omitted
- *   (it defaults to Quixe). If the third argument is a string rather than
- *   an object, it is taken to be IMAGEOPTIONS.format (and again, the
- *   engine defaults to Quixe).
+ *   If the third argument is a string rather than an object, it is taken
+ *   to be IMAGEOPTIONS.format.
  *
  *   If OPTIONS is null, the global "game_options" object is considered.
  *
@@ -81,16 +75,21 @@
  *     (so will not load one even if do_vm_autosave is set). (default:
  *     false)
  *   game_format_name: Label used in loading error messages. (default:
- *     "Glulx" or "Z-code".)
+ *     "Glulx" for Quixe, "" otherwise)
  *   blorb_gamechunk_type: Chunk type to extract from a Blorb file.
- *     (default: "GLUL" or "ZCOD")
+ *     (default: "GLUL" for Quixe, null otherwise)
  *   vm: The game engine interface object. (default: Quixe)
  *   io: The display layer interface object. (default: Glk)
- *
+ *   
  *   You can also include any of the display options used by the GlkOte
  *   library, such as gameport, windowport, spacing, ...
  *   And also the interpreter options used by the Quixe library, such as
  *   rethrow_exceptions, ...
+ *
+ *   For backwards compatibility, if options.vm is omitted or is the
+ *   windows.Quixe object, then several other options (engine_name,
+ *   blorb_gamechunk_type, game_format_name) are set up with values
+ *   appropriate for Glulx game files.
  *
  * GiLoad.find_data_chunk(NUM) -- this finds the Data chunk of the
  *   given number from the Blorb file. The returned object looks like
@@ -131,6 +130,7 @@ var all_options = {
     default_story: null,   // story URL to use if not otherwise set
     set_page_title: true,  // set the window title to the game name
     default_page_title: 'Game', // fallback game name to use for title
+    game_format_name: '',  // used in error messages
     exit_warning: 'The game session has ended.',
     image_info_map: null,  // look for images in Blorb data
     proxy_url: 'http://zcode.appspot.com/proxy/'
@@ -172,38 +172,8 @@ function load_run(optobj, image, imageoptions) {
     /* Set the default entries for the interface objects that come from
        other libraries. (If no such libraries have been loaded, then
        these do nothing, but game_options can still supply these entries.)
-
-       We also set some other options which will be used during the loading
-       process.
     */
     all_options.io = window.Glk;
-
-    switch (imageoptions.engine) {
-
-    case 'quixe':
-    case null:
-    case undefined:
-        /* Quixe is the default if no engine is specified. */
-        all_options.engine_name = 'Quixe';
-        all_options.blorb_gamechunk_type = 'GLUL';
-        all_options.game_format_name = 'Glulx';
-        all_options.vm = window.Quixe;
-        break;
-
-    case 'ifvms':
-        all_options.engine_name = 'IFVMS';
-        all_options.blorb_gamechunk_type = 'ZCOD';
-        all_options.game_format_name = 'Z-code';
-        all_options.vm = window.engine = new window.ZVM();
-        all_options.Glk = window.Glk;
-        all_options.Dialog = window.Dialog;
-        break;
-
-    default:
-        all_options.io.fatal_error("Engine not recognized: " + imageoptions.engine);
-        return;
-
-    }
 
     /* Pull in the values from the game_options, which override the defaults
        set above. */
@@ -211,6 +181,18 @@ function load_run(optobj, image, imageoptions) {
         optobj = window.game_options;
     if (optobj)
         jQuery.extend(all_options, optobj);
+
+    if (!all_options.vm) {
+        /* Quixe is the default if no engine is specified. */
+        all_options.vm = window.Quixe;
+    }
+
+    if (window.Quixe && (all_options.vm === window.Quixe)) {
+        /* Some more defaults come along with the Quixe engine. */
+        all_options.engine_name = 'Quixe';
+        all_options.blorb_gamechunk_type = 'GLUL';
+        all_options.game_format_name = 'Glulx';
+    }
 
     /* If the image_info_map is a string, look for a global object of
        that name. If there isn't one, delete that option. (The 
@@ -972,12 +954,14 @@ function start_game(image) {
             return;
         }
 
-        try {
-            image = unpack_blorb(image, all_options.blorb_gamechunk_type);
-        }
-        catch (ex) {
-            all_options.io.fatal_error("Blorb file could not be parsed: " + ex);
-            return;
+        if (all_options.blorb_gamechunk_type) {
+            try {
+                image = unpack_blorb(image, all_options.blorb_gamechunk_type);
+            }
+            catch (ex) {
+                all_options.io.fatal_error("Blorb file could not be parsed: " + ex);
+                return;
+            }
         }
         if (!image) {
             all_options.io.fatal_error("Blorb file contains no "+all_options.game_format_name+" game!");
