@@ -174,25 +174,26 @@ function load_run(optobj, image, imageoptions) {
        these do nothing, but game_options can still supply these entries.)
     */
     all_options.io = window.Glk;
+    all_options.vm = window.Quixe;
 
-    /* Pull in the values from the game_options, which override the defaults
-       set above. */
+    /* The game_options object could be provided via an argument. If not,
+       we use the global game_options. */
     if (!optobj)
         optobj = window.game_options;
-    if (optobj)
-        jQuery.extend(all_options, optobj);
 
-    if (!all_options.vm) {
-        /* Quixe is the default if no engine is specified. */
-        all_options.vm = window.Quixe;
-    }
-
-    if (window.Quixe && (all_options.vm === window.Quixe)) {
-        /* Some more defaults come along with the Quixe engine. */
+    if (optobj && window.Quixe
+        && ((!optobj.vm) || optobj.vm === window.Quixe)) {
+        /* If we are going to wind up with the Quixe engine -- either from
+           game_options or as a default -- we throw in some more defaults. */
         all_options.engine_name = 'Quixe';
         all_options.blorb_gamechunk_type = 'GLUL';
         all_options.game_format_name = 'Glulx';
     }
+
+    /* Pull in the values from the game_options, which override the defaults
+       set above. */
+    if (optobj)
+        jQuery.extend(all_options, optobj);
 
     /* If the image_info_map is a string, look for a global object of
        that name. If there isn't one, delete that option. (The 
