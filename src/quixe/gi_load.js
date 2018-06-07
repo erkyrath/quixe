@@ -59,7 +59,7 @@
  *     provided.
  *   proxy_url: The URL of the web-app service which is used to convert
  *     binary data to Javascript, if the browser needs that. (default:
- *     http://zcode.appspot.com/proxy/)
+ *     https://zcode.appspot.com/proxy/)
  *   image_info_map: An object which describes all the available
  *     images, if they are provided as static URL data. (If this is not
  *     provided, we rely on Blorb resources.) This can be an object
@@ -133,7 +133,7 @@ var all_options = {
     game_format_name: '',  // used in error messages
     exit_warning: 'The game session has ended.',
     image_info_map: null,  // look for images in Blorb data
-    proxy_url: 'http://zcode.appspot.com/proxy/'
+    proxy_url: 'https://zcode.appspot.com/proxy/'
 };
 
 var gameurl = null;  /* The URL we are loading. */
