@@ -104,6 +104,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - Change to how whitespace is displayed (ditto).
   - Test localStorage functionality; if not available, fall back to
     Javascript memory.
+  - Changed the transcript display pane to a <pre> tag, to work around
+    a Firefox copy-paste bug.
 
 - 2.1.6 (October 30, 2016)
   - Fix for graphics windows being drawn with a slight extra lower margin.
