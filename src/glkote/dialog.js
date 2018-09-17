@@ -654,7 +654,7 @@ function evhan_storage_changed(ev) {
           
         //### use binary flag?
         if (usage_is_textual(editing_dirent.usage)) {
-          var textel = $('<div>', { 'class': 'DiaDisplayText' });
+          var textel = $('<pre>', { 'class': 'DiaDisplayText' });
           textel.text(dat);
           bodyel.append(textel);
           set_caption('Displaying file contents...', true);
