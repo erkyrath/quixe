@@ -19,7 +19,7 @@
  * dialog.js.
  */
 
-Dialog = function() {
+var Dialog = function() {
 
 const fs = require('fs');
 const path_mod = require('path');

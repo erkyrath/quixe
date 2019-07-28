@@ -59,7 +59,7 @@
 
 /* Put everything inside the Dialog namespace. */
 
-Dialog = function() {
+var Dialog = function() {
 
 var dialog_el_id = 'dialog';
 

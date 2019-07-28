@@ -43,7 +43,7 @@
 
 
 /* Put everything inside the GlkOte namespace. */
-GlkOte = function() {
+var GlkOte = function() {
 
 /* Module global variables */
 var game_interface = null;
