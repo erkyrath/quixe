@@ -33,7 +33,7 @@
    that often in (normal) gameplay.
 */
 
-GiDispa = function() {
+var GiDispa = function() {
 
 /* Create the "self" object. */
 var self = {};

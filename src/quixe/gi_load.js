@@ -113,7 +113,7 @@
  */
 
 /* Put everything inside the GiLoad namespace. */
-GiLoad = function() {
+var GiLoad = function() {
 
 /* Start with the defaults. These can be modified later by the game_options
    defined in the HTML file.

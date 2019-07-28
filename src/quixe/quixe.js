@@ -60,7 +60,7 @@
 
 /* Put everything inside the Quixe namespace. */
 
-Quixe = function() {
+var Quixe = function() {
 
 /* Create the "self" object. (No relation to the Inform "self" global.) */
 var self = {};
