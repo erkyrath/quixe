@@ -2538,6 +2538,7 @@ var opcode_table = {
     },
 
     0x1C2: function(context, operands) { /* jflt */
+        var valf0, valf1;
         valf0 = oputil_decode_float(context, operands[0]);
         valf1 = oputil_decode_float(context, operands[1]);
         context.code.push("if ("+valf0+" < "+valf1+") {");
@@ -2546,6 +2547,7 @@ var opcode_table = {
     },
 
     0x1C3: function(context, operands) { /* jfle */
+        var valf0, valf1;
         valf0 = oputil_decode_float(context, operands[0]);
         valf1 = oputil_decode_float(context, operands[1]);
         context.code.push("if ("+valf0+" <= "+valf1+") {");
@@ -2554,6 +2556,7 @@ var opcode_table = {
     },
 
     0x1C4: function(context, operands) { /* jfgt */
+        var valf0, valf1;
         valf0 = oputil_decode_float(context, operands[0]);
         valf1 = oputil_decode_float(context, operands[1]);
         context.code.push("if ("+valf0+" > "+valf1+") {");
@@ -2562,6 +2565,7 @@ var opcode_table = {
     },
 
     0x1C5: function(context, operands) { /* jfge */
+        var valf0, valf1;
         valf0 = oputil_decode_float(context, operands[0]);
         valf1 = oputil_decode_float(context, operands[1]);
         context.code.push("if ("+valf0+" >= "+valf1+") {");
