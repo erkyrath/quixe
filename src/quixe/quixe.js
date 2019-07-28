@@ -1028,6 +1028,8 @@ function oputil_record_funcop(funcop) {
    "0", and holdvars with a "_".)
 */
 function oputil_store(context, funcop, operand) {
+    var holdvar;
+
     switch (funcop.mode) {
 
     case 8: /* push on stack */
