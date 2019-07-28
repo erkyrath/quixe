@@ -5673,7 +5673,7 @@ self.vm_restart = vm_restart;
 
 /* Run-length-encode an array, for Quetzal. */
 function compress_bytes(arr) {
-    result = [];
+    var result = [];
     var i = 0;
     while (i < arr.length) {
         var zeroes = 0;
@@ -5696,7 +5696,7 @@ function compress_bytes(arr) {
 
 /* Run-length-decode an array, for Quetzal. */
 function decompress_bytes(arr) {
-    result = [];
+    var result = [];
     var i = 0;
     while (i < arr.length) {
         var b = arr[i++];
@@ -5717,7 +5717,7 @@ function decompress_bytes(arr) {
    The ID should be a 4-character string.
 */
 function pack_iff_chunks(chunks) {
-    bytes = [];
+    var bytes = [];
     for (var ix = 0; ix < chunks.length; ix++) {
         var key = chunks[ix].key;
         var chunk = chunks[ix].chunk;
@@ -5742,7 +5742,7 @@ function pack_iff_chunks(chunks) {
    The order of chunks is not preserved.
 */
 function unpack_iff_chunks(bytes) {
-    chunks = {};
+    var chunks = {};
     var pos = 0;
     while (pos < bytes.length) {
         if ((pos + 8) > bytes.length) {
@@ -5783,7 +5783,7 @@ function vm_save(streamid) {
     if (!str)
         return false;
     
-    chunks = [];
+    var chunks = [];
     
     chunks.push({ key:"IFhd", chunk:game_image.slice(0, 128) });
     
