@@ -107,6 +107,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - Changed the transcript display pane to a <pre> tag, to work around
     a Firefox copy-paste bug.
   - Fixed variable declarations to support JS-strict mode.
+  - Added a log_execution_time option to control logging of game turn
+    speed.
 
 - 2.1.6 (October 30, 2016)
   - Fix for graphics windows being drawn with a slight extra lower margin.
