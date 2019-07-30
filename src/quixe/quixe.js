@@ -92,6 +92,7 @@ function quixe_prepare(image, all_options) {
     game_signature = ls.join('');
 
     if (all_options) {
+        opt_log_execution_time = all_options.log_execution_time;
         opt_rethrow_exceptions = all_options.rethrow_exceptions;
         opt_do_vm_autosave = all_options.do_vm_autosave;
         opt_clear_vm_autosave = all_options.clear_vm_autosave;
@@ -5479,6 +5480,7 @@ self.encode_float = encode_float;
 
 var game_image = null; /* the original game image, as an array of bytes */
 var game_signature = null; /* string, containing the first 64 bytes of image */
+var opt_log_execution_time = null;
 var opt_rethrow_exceptions = null;
 var opt_do_vm_autosave = null;
 var opt_clear_vm_autosave = null;
@@ -6726,7 +6728,9 @@ function execute_loop() {
 
     Glk.update();
 
-    qlog("### done executing; path time = " + (pathend-pathstart) + " ms");
+    if (opt_log_execution_time) {
+        qlog("event executed in " + (pathend-pathstart) + " ms");
+    }
 }
 
 /* End of Quixe namespace function. Return the object which will
