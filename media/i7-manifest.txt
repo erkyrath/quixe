@@ -56,6 +56,7 @@ g
 game_options = {
   image_info_map: 'StaticImageInfo',  // image data is here, not in blorb
   use_query_story: false,
+  log_execution_time: true,
   set_page_title: false,
   inspacing: 0,     // gap between windows
   outspacing: 0     // gap between windows and edge of gameport
