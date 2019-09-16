@@ -64,6 +64,8 @@
 }
 
 .BufferLine {
+  display: flex;
+  flex-direction: row;
   white-space: pre-wrap; /* required for spaces to work right */
 }
 
@@ -85,6 +87,7 @@
      window, which would be ugly. Do not modify this CSS class. */
   position: relative;
   padding-bottom: 14px;
+  flex-grow: 1; /* fills the available horizontal space */
 }
 
 .MorePrompt {
@@ -98,6 +101,7 @@
   padding: 2px 6px;
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
+  border-radius: 4px;
 }
 
 .PreviousMark {
@@ -121,6 +125,10 @@
   outline-style: none;
   background: none;
   font-weight: bold;
+  width: 100%;
+  -webkit-appearance: none; /* removes all native styling */
+  -moz-appearance: none;     
+  appearance: none;          
 }
 
 .BufferWindow .Input {

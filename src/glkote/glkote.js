@@ -1283,25 +1283,11 @@ function accept_one_content(arg) {
     if (divel) {
       cursel = $('<span>',
         { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-      cursel.append(NBSP);
       divel.append(cursel);
 
       if (win.inputel) {
         /* Put back the inputel that we found earlier. */
-        var inputel = win.inputel;
-        var pos = cursel.position();
-        /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
-           retested in jquery...) On Firefox, buffermarginx is too high (or
-           getWidth() is too low) by the width of a scrollbar. On MSIE,
-           buffermarginx is one pixel too low. We fudge for that, giving a
-           result which errs on the low side. */
-        var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-        if (width < 1)
-          width = 1;
-        /* ### opera absolute positioning failure? */
-        inputel.css({ position: 'absolute',
-          left: '0px', top: '0px', width: width+'px' });
-        cursel.append(inputel);
+        cursel.append(win.inputel);
       }
     }
   }
@@ -1449,7 +1435,11 @@ function accept_inputset(arg) {
       var pos = lineel.position();
       var xpos = pos.left + Math.round(argi.xpos * current_metrics.gridcharwidth);
       var width = Math.round(maxlen * current_metrics.gridcharwidth);
-      /* This calculation is antsy. See below. (But grid window line input
+      /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
+         retested in jquery...) On Firefox, buffermarginx is too high (or
+         getWidth() is too low) by the width of a scrollbar. On MSIE,
+         buffermarginx is one pixel too low. We fudge for that, giving a
+         result which errs on the low side. (But grid window line input
          is rare in IF.) */
       var maxwidth = win.frameel.width() - (current_metrics.buffermarginx + xpos + 2);
       if (width > maxwidth)
@@ -1464,21 +1454,8 @@ function accept_inputset(arg) {
       if (!cursel.length) {
         cursel = $('<span>',
           { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-        cursel.append(NBSP);
         win.frameel.append(cursel);
       }
-      var pos = cursel.position();
-      /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
-           retested in jquery...) On Firefox, buffermarginx is too high (or
-           getWidth() is too low) by the width of a scrollbar. On MSIE,
-           buffermarginx is one pixel too low. We fudge for that, giving a
-           result which errs on the low side. */
-      var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-      if (width < 1)
-        width = 1;
-      /* ### opera absolute positioning failure? */
-      inputel.css({ position: 'absolute',
-        left: '0px', top: '0px', width: width+'px' });
       cursel.append(inputel);
     }
   });
