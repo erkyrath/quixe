@@ -227,7 +227,7 @@ function load_run(optobj, image, imageoptions) {
             image = decode_base64(image);
             break;
         case 'raw':
-            image = decode_text(image);
+            image = decode_raw_text(image);
             break;
         case 'array':
             /* Leave image alone */
