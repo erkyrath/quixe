@@ -6758,4 +6758,7 @@ return {
 
 }();
 
+// Node-compatible behavior
+try { exports.Quixe = Quixe; } catch (ex) {};
+
 /* End of Quixe library. */

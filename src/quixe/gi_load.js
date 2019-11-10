@@ -1009,4 +1009,7 @@ return {
 
 }();
 
+// Node-compatible behavior
+try { exports.GiLoad = GiLoad; } catch (ex) {};
+
 /* End of GiLoad library. */

@@ -1072,4 +1072,7 @@ return {
 
 }();
 
+// Node-compatible behavior
+try { exports.GiDispa = GiDispa; } catch (ex) {};
+
 /* End of GiDispa library. */

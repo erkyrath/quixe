@@ -6321,4 +6321,7 @@ return {
 
 }();
 
+// Node-compatible behavior
+try { exports.Glk = Glk; } catch (ex) {};
+
 /* End of Glk library. */
