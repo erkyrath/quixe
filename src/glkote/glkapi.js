@@ -1050,7 +1050,7 @@ function restore_allstate(res)
                     str.fstream.fseek(obj.filepos, Const.seekmode_Start);
                 }
 
-                str.buffer4 = new str.fstream.BufferClass(4);
+                str.buffer4 = str.fstream.BufferClass.alloc(4);
             }
             break;
 
@@ -3510,7 +3510,7 @@ function gli_put_array(str, arr, allbytes) {
                 }
                 else {
                     /* cheap big-endian stream */
-                    var buf = new str.fstream.BufferClass(4*arr.length);
+                    var buf = str.fstream.BufferClass.alloc(4*arr.length);
                     for (ix=0; ix<arr.length; ix++) {
                         buf.writeUInt32BE(arr[ix], 4*ix, true);
                     }
@@ -4697,7 +4697,7 @@ function glk_stream_open_file(fref, fmode, rock) {
         str.streaming = true;
         str.fstream = fstream;
         /* We'll want a Buffer object around for short and writes. */
-        str.buffer4 = new fstream.BufferClass(4);
+        str.buffer4 = fstream.BufferClass.alloc(4);
     }
 
     return str;
@@ -5953,7 +5953,7 @@ function glk_stream_open_file_uni(fref, fmode, rock) {
         str.streaming = true;
         str.fstream = fstream;
         /* We'll want a Buffer object around for short and writes. */
-        str.buffer4 = new fstream.BufferClass(4);
+        str.buffer4 = fstream.BufferClass.alloc(4);
     }
 
     return str;
