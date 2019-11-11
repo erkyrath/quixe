@@ -1256,8 +1256,6 @@ return {
 }();
 
 // Node-compatible behavior
-try { 
-    if (window.exports != undefined) exports.Dialog = Dialog;
-} catch (ex) {};
+try { exports.Dialog = Dialog; } catch (ex) {};
 
 /* End of Dialog library. */
