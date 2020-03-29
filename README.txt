@@ -100,8 +100,11 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 * Version History
 
 - 2.1.### (###)
+  - Increased the font sizes in the default stylesheet.
   - Adopt GlkOte's new timer API (no change in behavior).
   - Change to how whitespace is displayed (ditto).
+  - A change to input line handling which might reduce keyboard flicker
+    on Android.
   - Test localStorage functionality; if not available, fall back to
     Javascript memory.
   - Changed the transcript display pane to a <pre> tag, to work around
@@ -109,6 +112,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
   - Fixed variable declarations to support JS-strict mode.
   - Added a log_execution_time option to control logging of game turn
     speed.
+  - Added a warning to the Save dialog, saying that browser storage can
+    be erased by clearing cookies or by browser privacy policies. (Will
+    not appear in Lectrote, since that doesn't use browser storage.)
 
 - 2.1.6 (October 30, 2016)
   - Fix for graphics windows being drawn with a slight extra lower margin.
