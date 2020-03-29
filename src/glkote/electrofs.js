@@ -2,7 +2,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2016 by Andrew Plotkin.
+ * This Javascript library is copyright 2016-20 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This is a (mostly-) drop-in replacement for dialog.js for the Electron.io

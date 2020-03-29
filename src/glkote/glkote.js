@@ -1,9 +1,9 @@
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.2.4.
+ * GlkOte Library: version 2.2.5.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2008-16 by Andrew Plotkin.
+ * This Javascript library is copyright 2008-20 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * GlkOte is a tool for creating interactive fiction -- and other text-based
@@ -2925,7 +2925,7 @@ function evhan_debug_command(cmd) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '2.2.4',
+  version:  '2.2.5',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
