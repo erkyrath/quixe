@@ -167,6 +167,11 @@ function dialog_open(tosave, usage, gameid, callback) {
         form.append(row);
         el = $('<input>', { id: dialog_el_id+'_infield', type: 'text', name: 'filename' });
         row.append(el);
+
+        /* This was spurred by the Safari seven-day expiration policy (March 2020), but the general fragility of local storage has been a bother for years. */
+        row = $('<div>', { id: dialog_el_id+'_warning', 'class': 'DiaWarning' });
+        row.text('Warning: data may be erased by clearing cookies or browser privacy policies.');
+        form.append(row);
     }
 
     row = $('<div>', { id: dialog_el_id+'_body', 'class': 'DiaBody' });

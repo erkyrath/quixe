@@ -1298,7 +1298,6 @@ function accept_one_content(arg) {
         var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
         if (width < 1)
           width = 1;
-        /* ### opera absolute positioning failure? */
         inputel.css({ position: 'absolute',
           left: '0px', top: '0px', width: width+'px' });
         cursel.append(inputel);
@@ -1397,8 +1396,12 @@ function accept_inputset(arg) {
     if (argi.type == 'line')
       maxlen = argi.maxlen;
 
+    /* We're only going to emplace the inputel when it's freshly created. If it's lingering from a previous input, we leave it in place in the DOM. This *should* reduce soft-keyboard flashing problems without screwing up the DOM semantics. */
+    var newinputel = false;
     var inputel = win.inputel;
+    
     if (inputel == null) {
+      newinputel = true;
       var classes = 'Input';
       if (argi.type == 'line') {
         classes += ' LineInput';
@@ -1456,7 +1459,8 @@ function accept_inputset(arg) {
         width = maxwidth;
       inputel.css({ position: 'absolute',
         left: xpos+'px', top: pos.top+'px', width: width+'px' });
-      win.frameel.append(inputel);
+      if (newinputel)
+        win.frameel.append(inputel);
     }
 
     if (win.type == 'buffer') {
@@ -1476,10 +1480,10 @@ function accept_inputset(arg) {
       var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
       if (width < 1)
         width = 1;
-      /* ### opera absolute positioning failure? */
       inputel.css({ position: 'absolute',
         left: '0px', top: '0px', width: width+'px' });
-      cursel.append(inputel);
+      if (newinputel)
+        cursel.append(inputel);
     }
   });
 }
@@ -2424,16 +2428,6 @@ function evhan_doc_keypress(ev) {
        test, since option-key combos are ordinary (accented) characters
        on Mac keyboards, but it's close enough. */
     return;
-  }
-
-  if (0) { /*### opera browser?*/
-    /* Opera inexplicably generates keypress events for the shift, option,
-       and command keys. The keycodes are 16...18. We don't want those
-       to focus-and-scroll-down. */
-    if (!keycode)
-      return;
-    if (keycode < 32 && keycode != 13)
-      return;
   }
 
   var win;
