@@ -2,7 +2,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
  * 
- * This Javascript library is copyright 2010-2016 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-2020 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * For documentation, see the README.txt or the web page noted above.
@@ -5130,7 +5130,7 @@ function do_gestalt(val, val2) {
         return 0x00030102; /* Glulx spec version 3.1.2 */
 
     case 1: /* TerpVersion */
-        return 0x00020106; /* Quixe version 2.1.6 */
+        return 0x00020107; /* Quixe version 2.1.7 */
 
     case 2: /* ResizeMem */
         return 1; /* Memory resizing works. */
@@ -6736,7 +6736,7 @@ function execute_loop() {
 /* End of Quixe namespace function. Return the object which will
    become the Quixe global. */
 return {
-    version: '2.1.6', /* Quixe version */
+    version: '2.1.7', /* Quixe version */
     prepare: quixe_prepare,
     init: quixe_init,
     resume: quixe_resume,
