@@ -93,8 +93,9 @@ function dialog_open(tosave, usage, gameid, callback)
     var mainwin = require('electron').remote.getCurrentWindow();
     if (!tosave) {
         opts.properties = ['openFile'];
-        dialog.showOpenDialog(mainwin, opts, function(ls) {
-                if (!ls || !ls.length) {
+        dialog.showOpenDialog(mainwin, opts).then(function(res) {
+                var ls = res.filePaths;
+                if (res.canceled || !ls || !ls.length) {
                     callback(null);
                 }
                 else {
@@ -104,12 +105,12 @@ function dialog_open(tosave, usage, gameid, callback)
             });
     }
     else {
-        dialog.showSaveDialog(mainwin, opts, function(path) {
-                if (!path) {
+        dialog.showSaveDialog(mainwin, opts).then(function(res) {
+                if (res.canceled || !res.filePath) {
                     callback(null);
                 }
                 else {
-                    var ref = { filename:path, usage:usage };
+                    var ref = { filename:res.filePath, usage:usage };
                     callback(ref);
                 }
             });
