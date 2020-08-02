@@ -102,6 +102,10 @@
  *   no such field, or if the game was loaded from a non-Blorb
  *   file, this returns undefined.
  *
+ * GiLoad.get_cover_pict() -- this returns the number of the image
+ *   resource which contains the cover art. If there is no cover art,
+ *   this returns undefined.
+ *
  * GiLoad.get_image_info(NUM) -- returns an object describing an image,
  *   or undefined.
  *
@@ -138,6 +142,7 @@ var all_options = {
 
 var gameurl = null;  /* The URL we are loading. */
 var metadata = {}; /* Title, author, etc -- loaded from Blorb */
+var coverimageres = undefined; /* Image resource number of the cover art */
 var debug_info = null; /* gameinfo.dbg file -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 var alttexts = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
@@ -467,6 +472,13 @@ function get_metadata(val) {
     return metadata[val];
 }
 
+/* Return the resource number of the image resource containing the
+   cover art, or null if not available.
+*/
+function get_cover_pict() {
+    return coverimageres;
+}
+
 /* Return the gameinfo.dbg file (as an array of bytes), if it was
    loaded.
 */
@@ -632,6 +644,10 @@ function unpack_blorb(image, gamechunktype) {
                 var arr = image.slice(pos, pos+chunklen);
                 debug_info = arr;
             }
+        }
+        if (chunktype == "Fspc") {
+            var npos = pos;
+            coverimageres = (image[npos+0] << 24) | (image[npos+1] << 16) | (image[npos+2] << 8) | (image[npos+3]);
         }
         if (chunktype == "RDes") {
             var npos = pos;
@@ -1002,6 +1018,7 @@ return {
     load_run: load_run,
     find_data_chunk: find_data_chunk,
     get_metadata: get_metadata,
+    get_cover_pict: get_cover_pict,
     get_debug_info: get_debug_info,
     get_image_info: get_image_info,
     get_image_url: get_image_url
