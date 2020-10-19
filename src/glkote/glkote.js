@@ -320,7 +320,7 @@ function glkote_init(iface) {
 */
 function measure_window() {
   var metrics = {};
-  var winsize, line1size, line2size, spansize, canvassize;
+  var winsize, line1size, line2size, invcursize, spansize, canvassize;
 
   /* We assume the gameport is the same size as the windowport, which
      is true on all browsers but IE7. Fortunately, on IE7 it's
@@ -365,6 +365,8 @@ function measure_window() {
   var bufwin = $('<div>', {'class': 'WindowFrame BufferWindow'});
   var bufline1 = line.clone().addClass('BufferLine').appendTo(bufwin);
   var bufline2 = line.clone().addClass('BufferLine').appendTo(bufwin);
+  var invcurspan = $('<span>', {'class': 'InvisibleCursor'}).text(NBSP);
+  bufline2.append(invcurspan);
   var bufspan = bufline1.children('span');
   layout_test_pane.append(bufwin);
 
@@ -405,6 +407,7 @@ function measure_window() {
   spansize = get_size(bufspan);
   line1size = get_size(bufline1);
   line2size = get_size(bufline2);
+  invcursize = get_size(invcurspan);    
 
   metrics.buffercharheight = bufline2.position().top - bufline1.position().top;
   metrics.buffercharwidth = bufspan.width() / 8;
@@ -413,6 +416,11 @@ function measure_window() {
   /* Again, these values include both sides (left+right, top+bottom). */
   metrics.buffermarginx = winsize.width - spansize.width;
   metrics.buffermarginy = winsize.height - (line1size.height + line2size.height);
+  /* Add extra for the InvisibleCursor. This is hacky, but I have to do it this way because the height doesn't seem to show up in line2size. */
+  var extra = Math.ceil(invcursize.height - line2size.height);
+  if (extra > 0) {
+    metrics.buffermarginy += extra;
+  }
 
   /* Here we will include padding and border. */
   winsize = get_size(graphwin);
