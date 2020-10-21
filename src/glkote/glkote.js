@@ -858,7 +858,7 @@ function accept_one_window(arg) {
     var rockclass = 'WindowRock_' + arg.rock;
     frameel = $('<div>',
       { id: 'window'+arg.id,
-        'class': 'WindowFrame ' + typeclass + ' ' + rockclass });
+        'class': 'WindowFrame HasNoInputField ' + typeclass + ' ' + rockclass });
     frameel.data('winid', arg.id);
     frameel.on('mousedown', arg.id, evhan_window_mousedown);
     if (perform_paging && win.type == 'buffer')
@@ -1152,6 +1152,9 @@ function accept_one_content(arg) {
        between an empty paragraph and one which truly contains a NBSP.
        (The difference is, when you append data to a truly empty paragraph,
        you have to delete the placeholder NBSP.)
+
+       We also give the paragraph div the BlankPara class, in case
+       CSS cares.
     */
 
     for (ix=0; ix<text.length; ix++) {
@@ -1165,12 +1168,13 @@ function accept_one_content(arg) {
       }
       if (divel == null) {
         /* Create a new paragraph div */
-        divel = $('<div>', { 'class': 'BufferLine' });
+        divel = $('<div>', { 'class': 'BufferLine BlankPara' });
         divel.data('blankpara', true);
         win.frameel.append(divel);
       }
-      if (textarg.flowbreak)
+      if (textarg.flowbreak) {
         divel.addClass('FlowBreak');
+      }
       if (!content || !content.length) {
         if (divel.data('blankpara'))
           divel.append($('<span>', { 'class':'BlankLineSpan' }).text(NBSP));
@@ -1178,6 +1182,7 @@ function accept_one_content(arg) {
       }
       if (divel.data('blankpara')) {
         divel.data('blankpara', false);
+        divel.removeClass('BlankPara');
         divel.empty();
       }
       for (sx=0; sx<content.length; sx++) {
@@ -1289,7 +1294,7 @@ function accept_one_content(arg) {
        paragraph div. We use this to position the input box. */
     var divel = buffer_last_line(win);
     if (divel) {
-      cursel = $('<span>',
+      var cursel = $('<span>',
         { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
       cursel.append(NBSP);
       divel.append(cursel);
@@ -1310,6 +1315,8 @@ function accept_one_content(arg) {
           left: '0px', top: '0px', width: width+'px' });
         cursel.append(inputel);
       }
+
+      cursel = null;
     }
   }
 
@@ -1365,6 +1372,8 @@ function accept_inputcancel(arg) {
       if (argi == null || argi.gen > win.input.gen) {
         /* cancel this input. */
         win.input = null;
+        win.frameel.addClass('HasNoInputField');
+        win.frameel.removeClass('HasInputField');
         if (win.inputel) {
           win.inputel.remove();
           win.inputel = null;
@@ -1398,6 +1407,8 @@ function accept_inputset(arg) {
     if (argi == null)
       return;
     win.input = argi;
+    win.frameel.addClass('HasInputField');
+    win.frameel.removeClass('HasNoInputField');
 
     /* Maximum number of characters to accept. */
     var maxlen = 1;
@@ -1473,6 +1484,9 @@ function accept_inputset(arg) {
 
     if (win.type == 'buffer') {
       var cursel = $('#win'+win.id+'_cursor', dom_context);
+      /* Check to make sure an InvisibleCursor exists on the last line.
+         The only reason it might not is if the window is entirely blank
+         (no lines). In that case, append one to the window frame itself. */
       if (!cursel.length) {
         cursel = $('<span>',
           { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
@@ -1552,7 +1566,7 @@ function buffer_last_line(win) {
   if (divel == null)
     return null;
   /* If the sole child is the PreviousMark, there are no BufferLines. */
-  if (divel.className != 'BufferLine')
+  if (divel.className.indexOf('BufferLine') < 0)
     return null;
   return $(divel);
 }
@@ -2546,12 +2560,6 @@ function evhan_window_mousedown(ev) {
 
   if (win.inputel) {
     last_known_focus = win.id;
-    if (0 /*###Prototype.Browser.MobileSafari*/) {
-      ev.preventDefault();
-      //glkote_log("### focus to " + win.id);
-      //### This doesn't always work, blah
-      win.inputel.focus();
-    }
   }
 
   if (win.needspaging)
