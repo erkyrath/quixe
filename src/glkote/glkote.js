@@ -416,11 +416,6 @@ function measure_window() {
   /* Again, these values include both sides (left+right, top+bottom). */
   metrics.buffermarginx = winsize.width - spansize.width;
   metrics.buffermarginy = winsize.height - (line1size.height + line2size.height);
-  /* Add extra for the InvisibleCursor. This is hacky, but I have to do it this way because the height doesn't seem to show up in line2size. */
-  var extra = Math.ceil(invcursize.height - line2size.height);
-  if (extra > 0) {
-    metrics.buffermarginy += extra;
-  }
 
   /* Here we will include padding and border. */
   winsize = get_size(graphwin);
