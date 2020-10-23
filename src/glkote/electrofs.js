@@ -21,19 +21,16 @@
 
 var Dialog = function() {
 
+const electron = require('electron');
 const fs = require('fs');
 const path_mod = require('path');
 const buffer_mod = require('buffer');
-var userpath = require('electron').remote.app.getPath('userData');
-var extfilepath = path_mod.join(userpath, 'quixe-files');
 
-/* We try to create a directory for external files at launch time.
-   This will usually fail because there's already a directory there.
-*/
-try {
-    fs.mkdirSync(extfilepath);
-}
-catch (ex) {}
+/* These will be filled in at init() time. */
+var inited = false;
+var userpath = null;
+var temppath = null;
+var extfilepath = null;
 
 /* Constants -- same as in glkapi.js. */
 const filemode_Write = 0x01;
@@ -51,6 +48,33 @@ const fileusage_InputRecord = 0x03;
 /* The size of our stream buffering. */
 const BUFFER_SIZE = 256;
 
+/* Before we do any work, we must set up some path info. This is, sadly,
+   a blocking call. It has to query some information out of the main
+   process, which is an async operation.
+   TODO: Have the interpreter call this at startup, with a callback,
+   so that we can be async-clean? Then we wouldn't need to call init()
+   all over. */
+function init()
+{
+    if (inited) return;
+
+    var obj = electron.ipcRenderer.sendSync('get_app_paths'); /* block and wait for response... */
+    userpath = obj.userData;
+    temppath = obj.temp;
+    
+    extfilepath = path_mod.join(userpath, 'quixe-files');
+
+    /* We try to create a directory for external files at init time.
+       This will usually fail because there's already a directory there.
+    */
+    try {
+        fs.mkdirSync(extfilepath);
+    }
+    catch (ex) {}
+
+    inited = true;
+}
+    
 /* Construct a file-filter list for a given usage type. These lists are
    used by showOpenDialog and showSaveDialog, below. 
 */
@@ -86,11 +110,15 @@ function filters_for_usage(val)
 */
 function dialog_open(tosave, usage, gameid, callback)
 {
-    const dialog = require('electron').remote.dialog;
+    init();
+        
+    /* The use of remote.dialog and remote.getCurrentWindow() is 
+       deprecated. Change this to an explicit IPC call. */
+    const dialog = electron.remote.dialog;
     var opts = {
         filters: filters_for_usage(usage)
     };
-    var mainwin = require('electron').remote.getCurrentWindow();
+    var mainwin = electron.remote.getCurrentWindow();
     if (!tosave) {
         opts.properties = ['openFile'];
         dialog.showOpenDialog(mainwin, opts).then(function(res) {
@@ -129,7 +157,10 @@ function dialog_open(tosave, usage, gameid, callback)
  * "null" if there's nothing left. Then append an appropriate suffix:
  * ".glkdata", ".glksave", ".txt".
  */
-function file_clean_fixed_name(filename, usage) {
+function file_clean_fixed_name(filename, usage)
+{
+    init();
+        
     var res = filename.replace(/["/\\<>:|?*]/g, '');
     var pos = res.indexOf('.');
     if (pos >= 0) 
@@ -158,6 +189,8 @@ function file_clean_fixed_name(filename, usage) {
  */
 function file_construct_ref(filename, usage, gameid)
 {
+    init();
+        
     if (!filename)
         filename = '';
     if (!usage)
@@ -176,10 +209,11 @@ function file_construct_ref(filename, usage, gameid)
  */
 function file_construct_temp_ref(usage)
 {
+    init();
+        
     var timestamp = new Date().getTime();
-    var filename = "_temp_" + timestamp + "_" + Math.random();
+    var filename = "_quixe_temp_" + timestamp + "_" + Math.random();
     filename = filename.replace('.', '');
-    var temppath = require('electron').remote.app.getPath('temp');
     var path = path_mod.join(temppath, filename);
     var ref = { filename:path, usage:usage };
     return ref;
@@ -189,6 +223,8 @@ function file_construct_temp_ref(usage)
  */
 function file_ref_exists(ref)
 {
+    init();
+        
     try {
         fs.accessSync(ref.filename, fs.F_OK);
         return true;
@@ -202,6 +238,8 @@ function file_ref_exists(ref)
  */
 function file_remove_ref(ref)
 {
+    init();
+        
     try {
         fs.unlinkSync(ref.filename);
     }
@@ -403,6 +441,8 @@ FStream.prototype = {
  */
 function file_fopen(fmode, ref)
 {
+    init();
+        
     /* This object is analogous to a FILE* in C code. Yes, we're 
        reimplementing fopen() for Node.js. I'm not proud. Or tired. 
        The good news is, the logic winds up identical to that in
@@ -474,6 +514,8 @@ function file_fopen(fmode, ref)
 */
 function autosave_write(signature, snapshot)
 {
+    init();
+        
     var gamedirpath = path_mod.join(userpath, 'games', signature);
 
     /* Make sure the gamedirpath exists. */
@@ -540,6 +582,8 @@ function autosave_write(signature, snapshot)
 */
 function autosave_read(signature)
 {
+    init();
+        
     var gamedirpath = path_mod.join(userpath, 'games', signature);
     var pathj = path_mod.join(gamedirpath, 'autosave.json');
     var pathr = path_mod.join(gamedirpath, 'autosave.ram');
