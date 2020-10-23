@@ -365,7 +365,7 @@ function measure_window() {
   var bufwin = $('<div>', {'class': 'WindowFrame BufferWindow'});
   var bufline1 = line.clone().addClass('BufferLine').appendTo(bufwin);
   var bufline2 = line.clone().addClass('BufferLine').appendTo(bufwin);
-  var invcurspan = $('<span>', {'class': 'InvisibleCursor'}).text(NBSP);
+  var invcurspan = $('<span>', {'class': 'InvisibleCursor'});
   bufline2.append(invcurspan);
   var bufspan = bufline1.children('span');
   layout_test_pane.append(bufwin);
@@ -1296,7 +1296,6 @@ function accept_one_content(arg) {
     if (divel) {
       var cursel = $('<span>',
         { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-      cursel.append(NBSP);
       divel.append(cursel);
 
       if (win.inputel) {
@@ -1490,7 +1489,6 @@ function accept_inputset(arg) {
       if (!cursel.length) {
         cursel = $('<span>',
           { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-        cursel.append(NBSP);
         win.frameel.append(cursel);
       }
       var pos = cursel.position();

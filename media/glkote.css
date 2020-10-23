@@ -81,11 +81,18 @@
 }
 
 .InvisibleCursor {
-  /* This provides the padding below the last line of text (and the input
+  /* This is a relic. It used to provide the padding below the last line
+     of text, but now it has no effect. It will go away at some point. */
+  position: relative;
+}
+.BufferLine:last-child {
+  /* This provides the margin below the last line of text (and the input
      prompt). Without this, they'd be flush against the bottom of the
      window, which would be ugly. Do not modify this CSS class. */
-  position: relative;
-  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+.HasNoInputField .BufferLine:last-child .BlankLineSpan {
+  display: none;
 }
 
 .MorePrompt {
