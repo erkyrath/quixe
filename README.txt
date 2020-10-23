@@ -101,6 +101,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.1.### (###)
   - Fixed the spurious MORE prompt in fixed-size buffer windows.
+  - Hopefully fixed a fatal error with zero-height or hidden grid windows.
 
 - 2.1.7 (March 29, 2020)
   - Increased the font sizes in the default stylesheet.
