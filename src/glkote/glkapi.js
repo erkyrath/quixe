@@ -2842,7 +2842,7 @@ function gli_window_put_string(win, val) {
             }
             if (win.cursory < 0)
                 win.cursory = 0;
-            else if (win.cursory >= win.gridheight)
+            if (win.cursory >= win.gridheight)
                 break; /* outside the window */
 
             if (ch == "\n") {
@@ -2881,7 +2881,7 @@ function gli_window_grid_canonicalize(win) {
     }
     if (win.cursory < 0)
         win.cursory = 0;
-    else if (win.cursory >= win.gridheight)
+    if (win.cursory >= win.gridheight)
         return true; /* outside the window */
     return false;
 }
