@@ -123,11 +123,12 @@ function quixe_init() {
         execute_loop();
     }
     catch (ex) {
+	console.log('###', ex);
         if (ex.stack)
-            qlog('JS stack dump:\n' + ex.stack);
+            qlog('JS stack dump A:\n' + ex.stack);
         qstackdump();
         Glk.fatal_error("Quixe init: " + show_exception(ex));
-        if (opt_rethrow_exceptions)
+        if (true || opt_rethrow_exceptions)
             throw ex;
     }
 }
@@ -149,7 +150,7 @@ function quixe_resume(argument) {
     }
     catch (ex) {
         if (ex.stack)
-            qlog('JS stack dump:\n' + ex.stack);
+            qlog('JS stack dump B:\n' + ex.stack);
         qstackdump();
         Glk.fatal_error("Quixe run: " + show_exception(ex));
         if (opt_rethrow_exceptions)
@@ -5631,7 +5632,7 @@ function setup_vm() {
         catch (ex) {
             qlog('Autorestore failed, deleting it: ' + show_exception(ex));
             if (ex.stack)
-                qlog('JS stack dump:\n' + ex.stack);
+                qlog('JS stack dump C:\n' + ex.stack);
             Dialog.autosave_write(game_signature, null);
         }
     }
