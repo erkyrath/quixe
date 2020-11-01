@@ -124,7 +124,7 @@ function accept_ui_event(obj) {
 
     switch (obj.type) {
     case 'init':
-        content_metrics = obj.metrics;
+        content_metrics = complete_metrics(obj.metrics);
         /* We ignore the support array. This library is updated in sync
            with GlkOte, so we know what it supports. */
         VM.init();
@@ -169,7 +169,7 @@ function accept_ui_event(obj) {
         break;
 
     case 'arrange':
-        content_metrics = obj.metrics;
+        content_metrics = complete_metrics(obj.metrics);
         box = {
             left: content_metrics.outspacingx,
             top: content_metrics.outspacingy,
@@ -193,6 +193,134 @@ function accept_ui_event(obj) {
     }
 }
 
+/* Given a partial metrics object, return one with all the required
+   values. Missing values will default to 0 or the standard inherited
+   terms. (E.g., if "inspacingx" is missing it will default to
+   "inspacing", then "spacing", then 0. See measure_window() in 
+   glkote.js or data_metrics_parse() in RemGlk.)
+
+   All values in the given object will be copied over; defaulting only
+   applies to missing values from the required set.
+*/
+function complete_metrics(metrics) {
+
+    // Default values if absolutely nothing is specified.
+    var res = {
+        width: 80,
+        height: 50,
+        
+        gridcharwidth: 1,
+        gridcharheight: 1,
+        buffercharwidth: 1,
+        buffercharheight: 1,
+        
+        gridmarginx: 0,
+        gridmarginy: 0,
+        buffermarginx: 0,
+        buffermarginy: 0,
+        graphicsmarginx: 0,
+        graphicsmarginy: 0,
+        
+        outspacingx: 0,
+        outspacingy: 0,
+        inspacingx: 0,
+        inspacingy: 0,
+    };
+
+    // Various ways of specifying defaults.
+    var val;
+
+    val = metrics.charwidth;
+    if (val !== undefined) {
+        res.gridcharwidth = val;
+        res.buffercharwidth = val;
+    }
+    val = metrics.charheight;
+    if (val !== undefined) {
+        res.gridcharheight = val;
+        res.buffercharheight = val;
+    }
+
+    val = metrics.margin;
+    if (val !== undefined) {
+        res.gridmarginx = val;
+        res.gridmarginy = val;
+        res.buffermarginx = val;
+        res.buffermarginy = val;
+        res.graphicsmarginx = val;
+        res.graphicsmarginy = val;
+    }    
+
+    val = metrics.gridmargin;
+    if (val !== undefined) {
+        res.gridmarginx = val;
+        res.gridmarginy = val;
+    }
+    
+    val = metrics.buffermargin;
+    if (val !== undefined) {
+        res.buffermarginx = val;
+        res.buffermarginy = val;
+    }
+    
+    val = metrics.graphicsmargin;
+    if (val !== undefined) {
+        res.graphicsmarginx = val;
+        res.graphicsmarginy = val;
+    }
+
+    val = metrics.marginx;
+    if (val !== undefined) {
+        res.gridmarginx = val;
+        res.buffermarginx = val;
+        res.graphicsmarginx = val;
+    }
+    
+    val = metrics.marginy;
+    if (val !== undefined) {
+        res.gridmarginy = val;
+        res.buffermarginy = val;
+        res.graphicsmarginy = val;
+    }
+
+    val = metrics.spacing;
+    if (val !== undefined) {
+        res.inspacingx = val;
+        res.inspacingy = val;
+        res.outspacingx = val;
+        res.outspacingy = val;
+    }
+
+    val = metrics.inspacing;
+    if (val !== undefined) {
+        res.inspacingx = val;
+        res.inspacingy = val;
+    }
+
+    val = metrics.outspacing;
+    if (val !== undefined) {
+        res.outspacingx = val;
+        res.outspacingy = val;
+    }
+
+    val = metrics.spacingx;
+    if (val !== undefined) {
+        res.inspacingx = val;
+        res.outspacingx = val;
+    }
+
+    val = metrics.spacingy;
+    if (val !== undefined) {
+        res.inspacingy = val;
+        res.outspacingy = val;
+    }
+    
+    // Copy over all the supplied fields. These override the defaults above.
+    res = Object.assign(res, metrics);
+    
+    return res;
+}
+    
 function handle_arrange_input() {
     if (!gli_selectref)
         return;

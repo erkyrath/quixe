@@ -339,9 +339,6 @@ function measure_window() {
   metrics.width  = gameport.width();
   metrics.height = gameport.height();
 
-  metrics.width  = gameport.width();
-  metrics.height = gameport.height();
-
   /* Create a dummy layout div containing a grid window and a buffer window,
      each with two lines of text. */
   var layout_test_pane = $('<div>', { 'id':'layout_test_pane' });
@@ -428,7 +425,11 @@ function measure_window() {
   /* Now that we're done measuring, discard the pane. */
   layout_test_pane.remove();
   
-  /* These values come from the game interface object. */
+  /* These values come from the game interface object.
+     Specific fields like "inspacingx" will default to general terms like
+     "spacing", if not supplied.
+     (The complete_metrics() function in glkapi.js does this job too, but
+     this implementation is older and I don't want to ditch it.) */
   metrics.outspacingx = 0;
   metrics.outspacingy = 0;
   metrics.inspacingx = 0;
