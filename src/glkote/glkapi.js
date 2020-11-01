@@ -5080,12 +5080,19 @@ function glk_fileref_create_by_prompt(usage, fmode, rock) {
 
 function gli_fileref_create_by_prompt_callback(obj) {
     var ref = obj.value;
+    /* This "value" field will be a dialog.js fileref object if we are
+       connected to GlkOte. However, if we are connected to RegTest,
+       it will be a plain string. We attempt to handle both cases. */
+
     var usage = ui_specialcallback.usage;
     var rock = ui_specialcallback.rock;
 
     var fref = null;
-    if (ref) {
+    if (ref && typeof(ref) == 'object') {
         fref = gli_new_fileref(ref.filename, usage, rock, ref);
+    }
+    else if (ref && typeof(ref) == 'string') {
+        fref = gli_new_fileref(ref, usage, rock, null);
     }
 
     ui_specialinput = null;
