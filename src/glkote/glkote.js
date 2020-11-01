@@ -80,8 +80,11 @@ var max_buffer_length = 200;
 /* Size of the scrollbar, give or take some. */
 var approx_scroll_width = 20;
 /* Margin for how close you have to scroll to end-of-page to kill the
-   moreprompt. (Really this just counters rounding error.) */
-var moreprompt_margin = 2;
+   moreprompt. (Really this just counters rounding error. And the
+   measurement error of different fonts in a window. But as long as
+   this is less than the last-line bottom margin, it won't cause
+   problems.) */
+var moreprompt_margin = 4;
 
 /* Some constants for key event native values. (Not including function 
    keys.) */
@@ -410,9 +413,11 @@ function measure_window() {
   metrics.buffercharwidth = Math.max(1, bufspan.width() / 8);
   /* Again, at least 1, but not necessarily integer. */
 
-  /* Again, these values include both sides (left+right, top+bottom). */
+  /* Again, these values include both sides (left+right, top+bottom).
+     We add a couple of pixels to the vertical margin to allow for
+     measurement error in different fonts. */
   metrics.buffermarginx = winsize.width - spansize.width;
-  metrics.buffermarginy = winsize.height - (line1size.height + line2size.height);
+  metrics.buffermarginy = winsize.height - (line1size.height + line2size.height) + 2;
 
   /* Here we will include padding and border. */
   winsize = get_size(graphwin);
