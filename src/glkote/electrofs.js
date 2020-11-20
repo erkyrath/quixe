@@ -26,7 +26,7 @@ const fs = require('fs');
 const path_mod = require('path');
 const buffer_mod = require('buffer');
 
-/* These will be filled in at init() time. */
+/* These will be filled in at init_async() time. */
 var inited = false;
 var userpath = null;
 var temppath = null;
@@ -48,31 +48,35 @@ const fileusage_InputRecord = 0x03;
 /* The size of our stream buffering. */
 const BUFFER_SIZE = 256;
 
-/* Before we do any work, we must set up some path info. This is, sadly,
-   a blocking call. It has to query some information out of the main
-   process, which is an async operation.
-   TODO: Have the interpreter call this at startup, with a callback,
-   so that we can be async-clean? Then we wouldn't need to call init()
-   all over. */
-function init()
+/* Before we do any work, we must set up some path info. This is, as noted,
+   an async call.
+ */
+function init_async(callback)
 {
-    if (inited) return;
-
-    var obj = electron.ipcRenderer.sendSync('get_app_paths'); /* block and wait for response... */
-    userpath = obj.userData;
-    temppath = obj.temp;
-    
-    extfilepath = path_mod.join(userpath, 'quixe-files');
-
-    /* We try to create a directory for external files at init time.
-       This will usually fail because there's already a directory there.
-    */
-    try {
-        fs.mkdirSync(extfilepath);
+    if (inited) {
+        callback();
+        return;
     }
-    catch (ex) {}
 
-    inited = true;
+    electron.ipcRenderer.invoke('get_app_paths').then(function(obj) {
+        userpath = obj.userData;
+        temppath = obj.temp;
+        
+        extfilepath = path_mod.join(userpath, 'quixe-files');
+        
+        /* We try to create a directory for external files at init time.
+           This will usually fail because there's already a directory there.
+        */
+        try {
+            // should be async, I know
+            fs.mkdirSync(extfilepath);
+        }
+        catch (ex) {}
+        
+        inited = true;
+
+        callback();
+    });
 }
     
 /* Construct a file-filter list for a given usage type. These lists are
@@ -110,38 +114,37 @@ function filters_for_usage(val)
 */
 function dialog_open(tosave, usage, gameid, callback)
 {
-    init();
-        
-    /* The use of remote.dialog and remote.getCurrentWindow() is 
-       deprecated. Change this to an explicit IPC call. */
-    const dialog = electron.remote.dialog;
     var opts = {
         filters: filters_for_usage(usage)
     };
-    var mainwin = electron.remote.getCurrentWindow();
     if (!tosave) {
         opts.properties = ['openFile'];
-        dialog.showOpenDialog(mainwin, opts).then(function(res) {
-                var ls = res.filePaths;
-                if (res.canceled || !ls || !ls.length) {
-                    callback(null);
-                }
-                else {
-                    var ref = { filename:ls[0], usage:usage };
-                    callback(ref);
-                }
-            });
+    }
+
+    // Electron deprecates allowing a renderer process to directly access the dialog module. We pass the dialog request over to the main process.
+
+    if (!tosave) {
+        electron.ipcRenderer.invoke('dialog_open', tosave, opts).then(function(res) {
+            var ls = res.filePaths;
+            if (res.canceled || !ls || !ls.length) {
+                callback(null);
+            }
+            else {
+                var ref = { filename:ls[0], usage:usage };
+                callback(ref);
+            }
+        });
     }
     else {
-        dialog.showSaveDialog(mainwin, opts).then(function(res) {
-                if (res.canceled || !res.filePath) {
-                    callback(null);
-                }
-                else {
-                    var ref = { filename:res.filePath, usage:usage };
-                    callback(ref);
-                }
-            });
+        electron.ipcRenderer.invoke('dialog_open', tosave, opts).then(function(res) {
+            if (res.canceled || !res.filePath) {
+                callback(null);
+            }
+            else {
+                var ref = { filename:res.filePath, usage:usage };
+                callback(ref);
+            }
+        });
     }
 }
 
@@ -159,8 +162,6 @@ function dialog_open(tosave, usage, gameid, callback)
  */
 function file_clean_fixed_name(filename, usage)
 {
-    init();
-        
     var res = filename.replace(/["/\\<>:|?*]/g, '');
     var pos = res.indexOf('.');
     if (pos >= 0) 
@@ -189,8 +190,6 @@ function file_clean_fixed_name(filename, usage)
  */
 function file_construct_ref(filename, usage, gameid)
 {
-    init();
-        
     if (!filename)
         filename = '';
     if (!usage)
@@ -209,8 +208,6 @@ function file_construct_ref(filename, usage, gameid)
  */
 function file_construct_temp_ref(usage)
 {
-    init();
-        
     var timestamp = new Date().getTime();
     var filename = "_quixe_temp_" + timestamp + "_" + Math.random();
     filename = filename.replace('.', '');
@@ -223,8 +220,6 @@ function file_construct_temp_ref(usage)
  */
 function file_ref_exists(ref)
 {
-    init();
-        
     try {
         fs.accessSync(ref.filename, fs.F_OK);
         return true;
@@ -238,8 +233,6 @@ function file_ref_exists(ref)
  */
 function file_remove_ref(ref)
 {
-    init();
-        
     try {
         fs.unlinkSync(ref.filename);
     }
@@ -441,8 +434,6 @@ FStream.prototype = {
  */
 function file_fopen(fmode, ref)
 {
-    init();
-        
     /* This object is analogous to a FILE* in C code. Yes, we're 
        reimplementing fopen() for Node.js. I'm not proud. Or tired. 
        The good news is, the logic winds up identical to that in
@@ -514,8 +505,6 @@ function file_fopen(fmode, ref)
 */
 function autosave_write(signature, snapshot)
 {
-    init();
-        
     var gamedirpath = path_mod.join(userpath, 'games', signature);
 
     /* Make sure the gamedirpath exists. */
@@ -582,8 +571,6 @@ function autosave_write(signature, snapshot)
 */
 function autosave_read(signature)
 {
-    init();
-        
     var gamedirpath = path_mod.join(userpath, 'games', signature);
     var pathj = path_mod.join(gamedirpath, 'autosave.json');
     var pathr = path_mod.join(gamedirpath, 'autosave.ram');
@@ -630,6 +617,7 @@ function file_read(dirent, israw)
    become the Dialog global. */
 return {
     streaming: true,
+    init_async: init_async,
     open: dialog_open,
 
     file_clean_fixed_name: file_clean_fixed_name,

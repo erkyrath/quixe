@@ -292,6 +292,22 @@ function glkote_init(iface) {
     }
   }
 
+  /* If Dialog is ElectroFS, we need to call an async setup call.
+     If not, go straight to finish_init(). */
+  if (Dialog.init_async) {
+    Dialog.init_async(function() { finish_init(iface); })
+  }
+  else {
+    if (Dialog.init) {
+      Dialog.init();
+    }
+    finish_init(iface);
+  }
+}
+
+/* Conclude the glkote_init() procedure. This sends the VM its "init"
+   event. */
+function finish_init(iface) {
   if (!iface.font_load_delay) {
     /* Normal case: start the game (interpreter) immediately. */
     send_response('init', null, current_metrics);

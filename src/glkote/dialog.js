@@ -1239,6 +1239,7 @@ $(window).on('storage', evhan_storage_changed);
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
+    /* No init() in this library. */
     streaming: false,
     open: dialog_open,
 
