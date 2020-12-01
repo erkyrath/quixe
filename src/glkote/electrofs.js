@@ -1,3 +1,5 @@
+'use strict';
+
 /* ElectroFS -- a Javascript load/save library for IF interfaces
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>

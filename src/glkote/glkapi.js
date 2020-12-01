@@ -1,3 +1,5 @@
+'use strict';
+
 /* GlkAPI -- a Javascript Glk API for IF interfaces
  * GlkOte Library: version 2.2.5.
  * Glk API which this implements: version 0.7.4.
