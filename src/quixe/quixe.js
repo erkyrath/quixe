@@ -1,3 +1,5 @@
+'use strict';
+
 /* Quixe -- a Glulx VM interpreter written in Javascript
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>

@@ -1,3 +1,5 @@
+'use strict';
+
 /* GiLoad -- a game-file loader for Quixe
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>

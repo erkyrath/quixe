@@ -1,3 +1,5 @@
+'use strict';
+
 /* GiDispa -- a GlkAPI dispatch layer for Quixe
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
