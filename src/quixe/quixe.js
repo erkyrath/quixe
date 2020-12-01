@@ -123,7 +123,6 @@ function quixe_init() {
         execute_loop();
     }
     catch (ex) {
-	console.log('###', ex);
         if (ex.stack)
             qlog('JS stack dump A:\n' + ex.stack);
         qstackdump();
