@@ -808,7 +808,7 @@ function glkote_update(arg) {
   if (autorestore) {
     if (autorestore.history) {
       jQuery.each(autorestore.history, function(winid, ls) {
-          win = windowdic[winid];
+          var win = windowdic[winid];
           if (win != null) {
             win.history = ls.slice(0);
             win.historypos = win.history.length;
@@ -817,7 +817,7 @@ function glkote_update(arg) {
     }
     if (autorestore.defcolor) {
       jQuery.each(autorestore.defcolor, function(winid, val) {
-          win = windowdic[winid];
+          var win = windowdic[winid];
           if (win != null) {
             win.defcolor = val;
           }
