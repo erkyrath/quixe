@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.2.5.
+ * GlkOte Library: version 2.2.6.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -2421,7 +2421,7 @@ function evhan_doc_pixelreschange(ev) {
   var ratio = window.devicePixelRatio || 1;
   if (ratio != current_devpixelratio) {
     current_devpixelratio = ratio;
-    glkote_log('### devicePixelRatio changed to ' + current_devpixelratio);
+    //glkote_log('### devicePixelRatio changed to ' + current_devpixelratio);
 
     /* If we have any graphics windows, we need to redo their size and
        scale, and then hit them with a redraw event. */
@@ -2971,7 +2971,7 @@ function evhan_debug_command(cmd) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '2.2.5',
+  version:  '2.2.6',
   init:     glkote_init, 
   update:   glkote_update,
   extevent: glkote_extevent,
