@@ -9,7 +9,7 @@
 ! of the play page:
 
 [INTERPRETERVERSION]
-Quixe for Inform 7 (v. 2.1.7)
+Quixe for Inform 7 (v. 2.1.8)
 []
 
 [INTERPRETERURL]
