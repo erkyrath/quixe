@@ -59,9 +59,10 @@
 
 //### accept "return" keystroke for load-select box (already works in Chrome)
 
-/* Put everything inside the Dialog namespace. */
+/* All state is contained in DialogClass. */
+var DialogClass = function() {
 
-var Dialog = function() {
+var GlkOte = null; /* imported API object -- for GlkOte.log, GlkOte.getdomid */
 
 var dialog_el_id = 'dialog';
 
@@ -77,6 +78,29 @@ var cur_usage_name; /* the file's category as a human-readable string */
 var cur_gameid; /* a string representing the game */
 var cur_filelist; /* the files currently on display */
 
+/* Dialog.init(iface) -- initialize the library */
+function dialog_init(iface) {
+    if (iface && iface.dom_prefix) {
+        dialog_el_id = iface.dom_prefix;
+    }
+    
+    if (iface && iface.GlkOte) {
+        GlkOte = iface.GlkOte;
+    }
+    if (!GlkOte) {
+        /* Look in the global environment. */
+        GlkOte = window.GlkOte;
+    }
+    if (!GlkOte) {
+        throw new Error('Dialog: no GlkOte interface!');
+    }
+}
+
+/* Dialog.inited() -- returns whether the library is initialized */
+function dialog_inited() {
+    return (GlkOte != null);
+}
+    
 /* Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog
  *
  * The "tosave" flag should be true for a save dialog, false for a load
@@ -109,15 +133,11 @@ function dialog_open(tosave, usage, gameid, callback) {
 
     /* Figure out what the root div is called. The dialog box will be
        positioned in this div; also, the div will be greyed out by a 
-       translucent rectangle. We use the same default as GlkOte: 
-       "windowport". We also try to interrogate GlkOte to see if that
-       default has been changed. */
+       translucent rectangle. This is normally "windowport", but we
+       check with GlkOte to see if that default has changed. */
     var root_el_id = 'windowport';
-    var iface = window.Game;
     if (window.GlkOte) 
-        iface = window.GlkOte.getinterface();
-    if (iface && iface.windowport)
-        root_el_id = iface.windowport;
+        root_el_id = GlkOte.getdomid('windowport');
 
     var rootel = $('#'+root_el_id);
     if (!rootel.length)
@@ -127,7 +147,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     var screen = $('#'+dialog_el_id+'_screen');
     if (!screen.length) {
         screen = $('<div>',
-            { id: dialog_el_id+'_screen' });
+            { id: dialog_el_id+'_screen', class: 'DialogScreen' });
         rootel.append(screen);
     }
 
@@ -136,7 +156,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     var frame = $('#'+dialog_el_id+'_frame');
     if (!frame.length) {
         frame = $('<div>',
-            { id: dialog_el_id+'_frame' });
+            { id: dialog_el_id+'_frame', class: 'DialogFrame' });
         rootel.append(frame);
     }
 
@@ -144,7 +164,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     if (dia.length)
         dia.remove();
 
-    dia = $('<div>', { id: dialog_el_id });
+    dia = $('<div>', { id: dialog_el_id, class: 'Dialog' });
 
     var form, el, row;
 
@@ -1216,8 +1236,9 @@ $(window).on('storage', evhan_storage_changed);
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
-    /* No init() in this library. */
     streaming: false,
+    init: dialog_init,
+    inited: dialog_inited,
     open: dialog_open,
 
     file_clean_fixed_name: file_clean_fixed_name,
@@ -1236,9 +1257,12 @@ return {
     autosave_read: autosave_read
 };
 
-}();
+};
+
+/* Dialog is an instance of DialogClass, ready to init. */
+var Dialog = new DialogClass();
 
 // Node-compatible behavior
-try { exports.Dialog = Dialog; } catch (ex) {};
+try { exports.Dialog = Dialog; exports.DialogClass = DialogClass; } catch (ex) {};
 
 /* End of Dialog library. */

@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.2.6.
+ * GlkOte Library: version 2.3.0.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -43,11 +43,11 @@
  * For full documentation, see the docs.html file in this package.
  */
 
-
-/* Put everything inside the GlkOte namespace. */
-var GlkOte = function() {
+/* All state is contained in GlkoteClass. */
+var GlkOteClass = function() {
 
 /* Module global variables */
+var is_inited = false;
 var game_interface = null;
 var dom_context = undefined;
 var dom_prefix = '';
@@ -77,6 +77,8 @@ var perform_paging = true;
 var detect_external_links = false;
 var regex_external_links = null;
 var debug_out_handler = null;
+
+var Dialog = null; /* imported API object */
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -307,22 +309,43 @@ function glkote_init(iface) {
     }
   }
 
-  /* If Dialog is ElectroFS, we need to call an async setup call.
-     If not, go straight to finish_init(). */
-  if (Dialog.init_async) {
-    Dialog.init_async(function() { finish_init(iface); })
+  /* Either Dialog was passed in or we must create one. */
+  if (iface.Dialog) {
+    Dialog = iface.Dialog;
+    /* This might be inited or not. */
   }
-  else {
-    if (Dialog.init) {
-      Dialog.init();
+  else if (window.DialogClass) {
+    Dialog = new window.DialogClass();
+    /* Will have to init. */
+  }
+
+  /* From here, every path must call finish_init(). But it might happen async (after a delay). */
+    
+  /* If Dialog exists but has not yet been inited, we should init it. */
+  if (Dialog && !Dialog.inited()) {
+    /* Default config object for initing the Dialog library. It only cares about two fields: GlkOte and dom_prefix. (We pass along dialog_dom_prefix as dom_prefix, if supplied.) */
+    var dialogiface = { GlkOte:this };
+    if (iface.dialog_dom_prefix) {
+      dialogiface.dom_prefix = iface.dialog_dom_prefix;
     }
-    finish_init(iface);
+
+    /* We might have a sync or async init call! (ElectroFS uses the async style.) */
+    if (Dialog.init_async) {
+      Dialog.init_async(dialogiface, function() { finish_init(iface); })
+      return; /* callback will call finish_init(). */
+    }
+    else if (Dialog.init) {
+      Dialog.init(dialogiface);
+    }
   }
+    
+  finish_init(iface);
 }
 
 /* Conclude the glkote_init() procedure. This sends the VM its "init"
    event. */
 function finish_init(iface) {
+  is_inited = true;
   if (!iface.font_load_delay) {
     /* Normal case: start the game (interpreter) immediately. */
     send_response('init', null, current_metrics);
@@ -339,6 +362,10 @@ function finish_init(iface) {
       send_response('init', null, current_metrics);
     });
   }
+}
+
+function glkote_inited() {
+  return is_inited;
 }
 
 /* Work out various pixel measurements used to compute window sizes:
@@ -1673,6 +1700,36 @@ function glkote_get_interface() {
   return game_interface;
 }
 
+/* Return the library interface object that we were passed or created.
+   Call this if you want to use, e.g., the same Dialog object that GlkOte
+   is using.
+*/
+function glkote_get_library(val) {
+  switch (val) {
+    case 'Dialog': return Dialog;
+  }
+  /* Unrecognized library name. */
+  return null;
+}
+    
+/* Get the DOM element ids used for various standard elements. The argument
+   should be one of 'windowport', 'gameport', 'errorpane', 'errorcontent',
+   'loadingpane'.
+   By default you will get the same string back. However, if a different
+   element ID was set in GlkOte's configuration, you'll get that.
+*/
+function glkote_get_dom_id(val) {
+  switch (val) {
+    case 'windowport': return windowport_id;
+    case 'gameport': return gameport_id;
+    case 'errorpane': return errorpane_id;
+    case 'errorcontent': return errorcontent_id;
+    case 'loadingpane': return loadingpane_id;
+  }
+  /* Unrecognized id name; just return the same value back. */
+  return val;
+}
+    
 /* Set the DOM context. This is the jQuery element within which all Glk
    DOM elements are looked up. (#gameport, #windowport, etc.)
 
@@ -1682,9 +1739,6 @@ function glkote_get_interface() {
    detach the Glk DOM and maintain it off-screen. That's possible if you 
    set the DOM context to the detached element. I think (although I have
    not tested) that this configuration is less well-optimized.
-
-   You cannot use this to maintain two separate Glk DOMs in the same
-   document. Sorry.
 */
 function glkote_set_dom_context(val) {
   dom_context = val;
@@ -1741,6 +1795,8 @@ function glkote_error(msg) {
     msg = '???';
 
   var el = document.getElementById(errorcontent_id);
+  if (!el) return;
+    
   remove_children(el);
   el.appendChild(document.createTextNode(msg));
 
@@ -1772,6 +1828,8 @@ function glkote_warning(msg) {
   }
 
   var el = document.getElementById(errorcontent_id);
+  if (!el) return;
+
   remove_children(el);
   el.appendChild(document.createTextNode(msg));
 
@@ -2971,11 +3029,14 @@ function evhan_debug_command(cmd) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '2.2.6',
-  init:     glkote_init, 
+  version:  '2.3.0',
+  init:     glkote_init,
+  inited:   glkote_inited,
   update:   glkote_update,
   extevent: glkote_extevent,
   getinterface: glkote_get_interface,
+  getlibrary: glkote_get_library,
+  getdomid: glkote_get_dom_id,
   getdomcontext: glkote_get_dom_context,
   setdomcontext: glkote_set_dom_context,
   save_allstate : glkote_save_allstate,
@@ -2984,9 +3045,12 @@ return {
   error:    glkote_error
 };
 
-}();
+};
+
+/* GlkOte is an instance of GlkOteClass, ready to init. */
+var GlkOte = new GlkOteClass();
 
 // Node-compatible behavior
-try { exports.GlkOte = GlkOte; } catch (ex) {};
+try { exports.GlkOte = GlkOte; exports.GlkOteClass = GlkOteClass; } catch (ex) {};
 
 /* End of GlkOte library. */
