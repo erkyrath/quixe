@@ -40,9 +40,8 @@
    and will also double the write-count in a stream.
 */
 
-/* Put everything inside the Glk namespace. */
-
-var Glk = function() {
+/* All state is contained in GlkClass. */
+var GlkClass = function() {
 
 var GlkOte = null; /* imported API object */
 var VM = null; /* imported API object (the VM interface) */
@@ -109,6 +108,10 @@ function init(vm_options) {
     }
 
     GlkOte.init(vm_options);
+}
+
+function is_inited() {
+    return (VM != null && GlkOte != null);
 }
 
 function accept_ui_event(obj) {
@@ -781,6 +784,20 @@ function update() {
     }
 }
 
+/* Return the library interface object that we were passed or created.
+   Call this if you want to use, e.g., the same Dialog object that GlkOte
+   is using.
+*/
+function get_library(val) {
+    switch (val) {
+        case 'VM': return VM;
+        case 'GlkOte': return GlkOte;
+        case 'Dialog': return GlkOte.getlibrary('Dialog');
+    }
+    /* Unrecognized library name. */
+    return null;
+}
+    
 /* Wrap up the current display state as a (JSONable) object. This is
    called from Quixe.vm_autosave.
 */
@@ -6342,7 +6359,9 @@ function glk_date_to_simple_time_local(dateref, factor) {
 return {
     version: '2.3.0', /* GlkOte/GlkApi version */
     init : init,
+    inited : is_inited,
     update : update,
+    getlibrary : get_library,
     save_allstate : save_allstate,
     restore_allstate : restore_allstate,
     fatal_error : fatal_error,
@@ -6482,9 +6501,12 @@ return {
     glk_stream_open_resource_uni : glk_stream_open_resource_uni
 };
 
-}();
+};
+
+/* Glk is an instance of GlkClass, ready to init. */
+var Glk = new GlkClass();
 
 // Node-compatible behavior
-try { exports.Glk = Glk; } catch (ex) {};
+try { exports.Glk = Glk; exports.GlkClass = GlkClass; } catch (ex) {};
 
 /* End of Glk library. */
