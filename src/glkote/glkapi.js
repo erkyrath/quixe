@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkAPI -- a Javascript Glk API for IF interfaces
- * GlkOte Library: version 2.2.5.
+ * GlkOte Library: version 2.3.0.
  * Glk API which this implements: version 0.7.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
@@ -44,8 +44,8 @@
 
 var Glk = function() {
 
-/* The VM interface object. */
-var VM = null;
+var GlkOte = null; /* imported API object */
+var VM = null; /* imported API object (the VM interface) */
 
 /* Environment capabilities. (Checked at init time.) */
 var has_canvas;
@@ -81,6 +81,14 @@ var current_partial_outputs = null;
    library sets that up for you.)
 */
 function init(vm_options) {
+    /* Either GlkOte was passed in or we must create one. */
+    if (vm_options.GlkOte) {
+        GlkOte = vm_options.GlkOte;
+    }
+    else if (window.GlkOteClass) {
+        GlkOte = new window.GlkOteClass();
+    }
+
     /* Check for canvas support. We don't rely on jquery here. */
     has_canvas = (document.createElement('canvas').getContext != undefined);
 
@@ -89,8 +97,6 @@ function init(vm_options) {
         GiDispa.set_vm(VM);
 
     vm_options.accept = accept_ui_event;
-
-    GlkOte.init(vm_options);
 
     option_exit_warning = vm_options.exit_warning;
     option_do_vm_autosave = vm_options.do_vm_autosave;
@@ -101,6 +107,8 @@ function init(vm_options) {
     if (option_before_select_hook) {
         option_before_select_hook();
     }
+
+    GlkOte.init(vm_options);
 }
 
 function accept_ui_event(obj) {
@@ -777,6 +785,7 @@ function update() {
    called from Quixe.vm_autosave.
 */
 function save_allstate() {
+    var Dialog = GlkOte.getlibrary('Dialog');
     var res = {};
 
     if (gli_rootwin)
@@ -954,6 +963,8 @@ function save_allstate() {
 */
 function restore_allstate(res)
 {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     if (gli_windowlist || gli_streamlist || gli_filereflist)
         throw('restore_allstate: glkapi module has already been launched');
 
@@ -3450,6 +3461,8 @@ function gli_stream_dirty_file(str) {
    buffer out.
 */
 function gli_stream_flush_file(str) {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     if (str.streaming)
         GlkOte.log('### gli_stream_flush_file called for streaming file!');
     if (!(str.timer_id === null)) {
@@ -3460,6 +3473,8 @@ function gli_stream_flush_file(str) {
 }
 
 function gli_new_fileref(filename, usage, rock, ref) {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     var fref = {};
     fref.filename = filename;
     fref.rock = rock;
@@ -4763,6 +4778,8 @@ function glk_stream_get_rock(str) {
 }
 
 function glk_stream_open_file(fref, fmode, rock) {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     if (!fref)
         throw('glk_stream_open_file: invalid fileref');
 
@@ -4941,6 +4958,8 @@ function glk_stream_open_resource_uni(filenum, rock) {
 }
 
 function glk_stream_close(str, result) {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     if (!str)
         throw('glk_stream_close: invalid stream');
 
@@ -5021,6 +5040,7 @@ function glk_stream_get_current() {
 }
 
 function glk_fileref_create_temp(usage, rock) {
+    var Dialog = GlkOte.getlibrary('Dialog');
     var filetype = (usage & Const.fileusage_TypeMask);
     var filetypename = FileTypeMap[filetype];
     var ref = Dialog.file_construct_temp_ref(filetypename);
@@ -5029,6 +5049,8 @@ function glk_fileref_create_temp(usage, rock) {
 }
 
 function glk_fileref_create_by_name(usage, filename, rock) {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     /* Filenames that do not come from the user must be cleaned up. */
     filename = Dialog.file_clean_fixed_name(filename, (usage & Const.fileusage_TypeMask));
 
@@ -5135,12 +5157,14 @@ function glk_fileref_get_rock(fref) {
 }
 
 function glk_fileref_delete_file(fref) {
+    var Dialog = GlkOte.getlibrary('Dialog');
     if (!fref)
         throw('glk_fileref_delete_file: invalid fileref');
     Dialog.file_remove_ref(fref.ref);
 }
 
 function glk_fileref_does_file_exist(fref) {
+    var Dialog = GlkOte.getlibrary('Dialog');
     if (!fref)
         throw('glk_fileref_does_file_exist: invalid fileref');
     if (Dialog.file_ref_exists(fref.ref))
@@ -6026,6 +6050,8 @@ function glk_get_line_stream_uni(str, buf) {
 }
 
 function glk_stream_open_file_uni(fref, fmode, rock) {
+    var Dialog = GlkOte.getlibrary('Dialog');
+    
     if (!fref)
         throw('glk_stream_open_file_uni: invalid fileref');
 
@@ -6314,7 +6340,7 @@ function glk_date_to_simple_time_local(dateref, factor) {
 /* End of Glk namespace function. Return the object which will
    become the Glk global. */
 return {
-    version: '2.2.6', /* GlkOte/GlkApi version */
+    version: '2.3.0', /* GlkOte/GlkApi version */
     init : init,
     update : update,
     save_allstate : save_allstate,
