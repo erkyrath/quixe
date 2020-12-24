@@ -91,6 +91,8 @@ var self = {};
 */
 function quixe_prepare(image, all_options) {
     self.GiDispa = all_options.GiDispa;
+    //### self.Glk? And use it?
+    
     game_image = image;
 
     var ls = game_image.slice(0, 64);
@@ -115,6 +117,15 @@ function quixe_prepare(image, all_options) {
     }
 }
 
+function quixe_getlibrary(val) {
+    switch (val) {
+        case 'GiDispa': return self.GiDispa;
+        case 'Glk': return self.Glk;
+    }
+    /* Unrecognized library name. */
+    return null;
+}
+    
 /* This is called by the page (or the page's display library) when it
    starts up. It executes until the first glk_select() or glk_exit().
 
@@ -6750,6 +6761,8 @@ function execute_loop() {
 return {
     version: '2.1.8', /* Quixe version */
     prepare: quixe_prepare,
+    getlibrary: quixe_getlibrary,
+    
     init: quixe_init,
     resume: quixe_resume,
     get_signature: quixe_get_signature,
