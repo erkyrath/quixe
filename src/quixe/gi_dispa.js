@@ -45,14 +45,14 @@ var self = {};
    with Quixe, VM is just an alias for the Quixe interface object.
 */
 self.VM = null;
-//### self.Glk = null; ### and use it
+self.Glk = null;
     
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
 */
 function gidispa_init(options) {
-    self.VM = options.VM;
-    console.log('### GiDispa init: selfobj', self);
+    self.VM = options.vm;
+    self.Glk = options.io;
 }
 
 /* Has this module been inited? */
@@ -572,7 +572,7 @@ function build_function(func) {
     out.push('var self = this;');
 
     /* If this is true, the call might return DidNotReturn. */
-    mayblock = Glk.call_may_not_return(func.id);
+    mayblock = self.Glk.call_may_not_return(func.id);
 
     /* Load the argument values into local variables, for use in the
        call. For array, struct, and reference arguments, we also need
@@ -603,13 +603,13 @@ function build_function(func) {
             if ((refarg instanceof ArgInt)
                 || (refarg instanceof ArgChar)
                 || (refarg instanceof ArgClass)) {
-                out.push('  '+tmpvar+' = new Glk.RefBox();');
+                out.push('  '+tmpvar+' = new self.Glk.RefBox();');
                 val = convert_arg(refarg, arg.passin, 'self.VM.ReadWord(callargs['+argpos+'])');
                 out.push('  '+tmpvar+'.set_value('+val+');');
             }
             else if (refarg instanceof ArgStruct) {
                 subargs = refarg.form.args;
-                out.push('  '+tmpvar+' = new Glk.RefStruct('+subargs.length+');');
+                out.push('  '+tmpvar+' = new self.Glk.RefStruct('+subargs.length+');');
                 for (jx=0; jx<subargs.length; jx++) {
                     val = convert_arg(subargs[jx], arg.passin, 'self.VM.ReadStructField(callargs['+argpos+'], '+jx+')');
                     out.push('  '+tmpvar+'.push_field('+val+');');
@@ -669,7 +669,7 @@ function build_function(func) {
             out.push('  if (ix == 0) break;');
             out.push('  '+tmpvar+'.push(ix);');
             out.push('}');
-            out.push(tmpvar+' = Glk.'+confunc+'('+tmpvar+');');
+            out.push(tmpvar+' = self.Glk.'+confunc+'('+tmpvar+');');
             argpos += 1;
         }
         else {
@@ -688,12 +688,12 @@ function build_function(func) {
     else {
         retval = '';
     }
-    out.push(retval + 'Glk.glk_' + func.name + '(' + argjoin.join(', ') + ');');
+    out.push(retval + 'self.Glk.glk_' + func.name + '(' + argjoin.join(', ') + ');');
 
     if (mayblock) {
         /* If the call blocks, we need to stash away the arguments and
            then return early. */
-        out.push('if (glkret === Glk.DidNotReturn) {');
+        out.push('if (glkret === self.Glk.DidNotReturn) {');
         out.push('  self.set_blocked_selector(' + func.id + ', callargs);');
         out.push('  return glkret;');
         out.push('}');

@@ -112,7 +112,7 @@ function init(vm_options) {
     /* Initialize the lower levels. */
     
     if (GiDispa)
-        GiDispa.init({ VM:VM });
+        GiDispa.init({ io:vm_options.io, vm:vm_options.vm });
     GlkOte.init(vm_options);
 }
 
