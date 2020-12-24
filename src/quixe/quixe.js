@@ -117,6 +117,10 @@ function quixe_prepare(image, all_options) {
     }
 }
 
+function quixe_inited() {
+    return (game_image != null);
+}
+
 function quixe_getlibrary(val) {
     switch (val) {
         case 'GiDispa': return self.GiDispa;
@@ -6761,6 +6765,7 @@ function execute_loop() {
 return {
     version: '2.1.8', /* Quixe version */
     prepare: quixe_prepare,
+    inited: quixe_inited,
     getlibrary: quixe_getlibrary,
     
     init: quixe_init,

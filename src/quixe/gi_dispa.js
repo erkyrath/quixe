@@ -21,7 +21,7 @@
 //### Should split WriteWord into a WriteRefWord and WriteArrayWord,
 //### with different handling of -1. Etc.
 
-/* Put everything inside the GiDispa namespace.
+/* All state is contained in GiDispaClass.
 
    Within this namespace, "self" is an internal secondary namespace. Many
    of our private variables and functions will be copied into "self".
