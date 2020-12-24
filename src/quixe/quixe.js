@@ -90,6 +90,7 @@ var self = {};
    game file, encoded as hexadecimal digits.)
 */
 function quixe_prepare(image, all_options) {
+    self.GiDispa = all_options.GiDispa;
     game_image = image;
 
     var ls = game_image.slice(0, 64);
@@ -2632,7 +2633,7 @@ var opcode_table = {
            we just unloaded the offstack. The non-blocking case is a normal
            store. */
         context.varsused["glkret"] = true;
-        context.code.push("glkret = GiDispa.get_function("+operands[0]+")(self.tempglkargs);");
+        context.code.push("glkret = self.GiDispa.get_function("+operands[0]+")(self.tempglkargs);");
         if (mayblock) {
             context.code.push("if (glkret === Glk.DidNotReturn) {");
             context.code.push("  self.resumefuncop = "+oputil_record_funcop(operands[2])+";");
@@ -5796,7 +5797,7 @@ function vm_save(streamid) {
     if (self.iosysmode != 2)
         fatal_error("Streams are only available in Glk I/O system.");
 
-    var str = GiDispa.class_obj_from_id('stream', streamid);
+    var str = self.GiDispa.class_obj_from_id('stream', streamid);
     if (!str)
         return false;
     
@@ -5848,7 +5849,7 @@ function vm_restore(streamid) {
     if (self.iosysmode != 2)
         fatal_error("Streams are only available in Glk I/O system.");
 
-    var str = GiDispa.class_obj_from_id('stream', streamid);
+    var str = self.GiDispa.class_obj_from_id('stream', streamid);
     if (!str)
         return false;
     
