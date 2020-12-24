@@ -35,7 +35,7 @@
    that often in (normal) gameplay.
 */
 
-var GiDispa = function() {
+var GiDispaClass = function() {
 
 /* Create the "self" object. */
 var self = {};
@@ -45,12 +45,18 @@ var self = {};
    with Quixe, VM is just an alias for the Quixe interface object.
 */
 self.VM = null;
-
+//### self.Glk = null; ### and use it
+    
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
 */
-function set_vm(vm_api) {
+function gidispa_init(vm_api) {
     self.VM = vm_api;
+    console.log('### GiDispa init: selfobj', self);
+}
+
+function gidispa_inited() {
+    return (self.VM != null);
 }
 
 /* A table of the Glk classes, and their index numbers. This is derived from
@@ -1059,7 +1065,8 @@ init_module();
 /* End of GiDispa namespace function. Return the object which will
    become the GiDispa global. */
 return {
-    set_vm: set_vm,
+    init: gidispa_init,
+    inited: gidispa_inited,
     get_function: get_function,
     prepare_resume: prepare_resume,
     check_autosave: check_autosave,
@@ -1072,9 +1079,16 @@ return {
     get_retained_array: get_retained_array
 };
 
-}();
+};
+
+/* I'm breaking the rule about creating a predefined instance. This is
+   only used by Quixe via GiLoad, which always creates a new instance.
+   I don't know of any other projects which need the backwards
+   compatibility support.
+*/
+// var GiDispa = new GiDispaClass();
 
 // Node-compatible behavior
-try { exports.GiDispa = GiDispa; } catch (ex) {};
+try { exports.GiDispaClass = GiDispaClass; } catch (ex) {};
 
 /* End of GiDispa library. */
