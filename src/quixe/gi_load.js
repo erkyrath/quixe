@@ -149,6 +149,8 @@ var debug_info = null; /* gameinfo.dbg file -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 var alttexts = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
+var GlkOte = null; /* imported API object -- for GlkOte.log */
+
 /* Begin the loading process. This is what you call to start a game;
    it takes care of starting the Glk and Quixe modules, when the game
    file is available.
@@ -182,6 +184,10 @@ function load_run(optobj, image, imageoptions) {
     */
     all_options.io = window.Glk;
     all_options.vm = window.Quixe;
+    all_options.GlkOte = new window.GlkOteClass();
+    all_options.GiDispa = new window.GiDispaClass();
+    
+    GlkOte = all_options.GlkOte; /* our copy of the reference */
 
     /* The game_options object could be provided via an argument. If not,
        we use the global game_options. */
@@ -201,7 +207,7 @@ function load_run(optobj, image, imageoptions) {
        set above. */
     if (optobj)
         jQuery.extend(all_options, optobj);
-
+    
     /* If the image_info_map is a string, look for a global object of
        that name. If there isn't one, delete that option. (The 
        image_info_map could also be an object already, in which case
