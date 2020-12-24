@@ -50,15 +50,25 @@ self.VM = null;
 /* Set the VM interface object. This is called by the Glk library, before
    the VM starts running. 
 */
-function gidispa_init(vm_api) {
-    self.VM = vm_api;
+function gidispa_init(options) {
+    self.VM = options.VM;
     console.log('### GiDispa init: selfobj', self);
 }
 
+/* Has this module been inited? */
 function gidispa_inited() {
     return (self.VM != null);
 }
 
+function gidispa_getlibrary(val) {
+    switch (val) {
+        case 'VM': return self.VM;
+        case 'Glk': return self.Glk;
+    }
+    /* Unrecognized library name. */
+    return null;
+}
+    
 /* A table of the Glk classes, and their index numbers. This is derived from
    gi_dispa.c, although it's too simple to bother auto-generating.
 */
@@ -1067,6 +1077,8 @@ init_module();
 return {
     init: gidispa_init,
     inited: gidispa_inited,
+    getlibrary: gidispa_getlibrary,
+    
     get_function: get_function,
     prepare_resume: prepare_resume,
     check_autosave: check_autosave,
