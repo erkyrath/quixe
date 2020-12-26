@@ -310,6 +310,11 @@ function glkote_init(iface) {
     }
   }
 
+  /* Either GiLoad was passed in or we don't have one. */
+  if (iface.GiLoad) {
+    GiLoad = iface.GiLoad;
+  }
+
   /* Either Dialog was passed in or we must create one. */
   if (iface.Dialog) {
     Dialog = iface.Dialog;

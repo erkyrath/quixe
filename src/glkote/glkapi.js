@@ -82,7 +82,6 @@ var current_partial_outputs = null;
    library sets that up for you.)
 */
 function init(vm_options) {
-    //qlog('### GlkApi init', vm_options);
     /* Either GlkOte was passed in or we must create one. */
     if (vm_options.GlkOte) {
         GlkOte = vm_options.GlkOte;
