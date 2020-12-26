@@ -78,7 +78,8 @@ var detect_external_links = false;
 var regex_external_links = null;
 var debug_out_handler = null;
 
-var Dialog = null; /* imported API object */
+var Dialog = null; /* imported API object (the file select/open layer) */
+var GiLoad = null; /* imported API object (the loader/launcher layer) */
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -1255,7 +1256,7 @@ function accept_one_content(arg) {
                  break should disappear. This will undoubtedly cause
                  headaches for portability someday. */
               var imgurl = rdesc.url;
-              if (window.GiLoad && GiLoad.get_image_url) {
+              if (GiLoad && GiLoad.get_image_url) {
                 var newurl = GiLoad.get_image_url(rdesc.image);
                 if (newurl)
                   imgurl = newurl;
@@ -1707,6 +1708,7 @@ function glkote_get_interface() {
 function glkote_get_library(val) {
   switch (val) {
     case 'Dialog': return Dialog;
+    case 'GiLoad': return GiLoad;
   }
   /* Unrecognized library name. */
   return null;
@@ -2065,7 +2067,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
         }
         if (!loadedimg) {
           var imgurl = op.url;
-          if (window.GiLoad && GiLoad.get_image_url) {
+          if (GiLoad && GiLoad.get_image_url) {
             var newurl = GiLoad.get_image_url(op.image);
             if (newurl)
               imgurl = newurl;

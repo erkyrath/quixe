@@ -46,8 +46,8 @@ var GlkClass = function() {
 var GlkOte = null; /* imported API object */
 var VM = null; /* imported API object (the VM interface) */
 var GiDispa = null; /* imported API object (the dispatch layer) */
-//### var GiLoad...
-    
+var GiLoad = null; /* imported API object (the loader/launcher layer) */
+
 /* Environment capabilities. (Checked at init time.) */
 var has_canvas;
 
@@ -89,6 +89,11 @@ function init(vm_options) {
     }
     else if (window.GlkOteClass) {
         GlkOte = new window.GlkOteClass();
+    }
+
+    /* Either GiLoad was passed in or we don't have one. */
+    if (vm_options.GiLoad) {
+        GiLoad = vm_options.GiLoad;
     }
 
     /* Check for canvas support. We don't rely on jquery here. */
@@ -4907,7 +4912,7 @@ function glk_stream_open_memory(buf, fmode, rock) {
 function glk_stream_open_resource(filenum, rock) {
     var str;
 
-    if (!window.GiLoad || !GiLoad.find_data_chunk)
+    if (!GiLoad || !GiLoad.find_data_chunk)
         return null;
     var el = GiLoad.find_data_chunk(filenum);
     if (!el)
@@ -4946,7 +4951,7 @@ function glk_stream_open_resource(filenum, rock) {
 function glk_stream_open_resource_uni(filenum, rock) {
     var str;
 
-    if (!window.GiLoad || !GiLoad.find_data_chunk)
+    if (!GiLoad || !GiLoad.find_data_chunk)
         return null;
     var el = GiLoad.find_data_chunk(filenum);
     if (!el)
@@ -5490,7 +5495,7 @@ function glk_request_timer_events(msec) {
 /* Graphics functions. */
 
 function glk_image_get_info(imgid, widthref, heightref) {
-    if (!window.GiLoad || !GiLoad.get_image_info)
+    if (!GiLoad || !GiLoad.get_image_info)
         return null;
 
     var info = GiLoad.get_image_info(imgid);
@@ -5512,7 +5517,7 @@ function glk_image_draw(win, imgid, val1, val2) {
     if (!win)
         throw('glk_image_draw: invalid window');
 
-    if (!window.GiLoad || !GiLoad.get_image_info)
+    if (!GiLoad || !GiLoad.get_image_info)
         return 0;
     var info = GiLoad.get_image_info(imgid);
     if (!info)
@@ -5562,7 +5567,7 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
     if (!win)
         throw('glk_image_draw_scaled: invalid window');
 
-    if (!window.GiLoad || !GiLoad.get_image_info)
+    if (!GiLoad || !GiLoad.get_image_info)
         return 0;
     var info = GiLoad.get_image_info(imgid);
     if (!info)
