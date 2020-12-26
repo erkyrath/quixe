@@ -182,7 +182,8 @@ function load_run(optobj, image, imageoptions) {
 
     /* Set the default entries for the interface objects that come from
        other libraries. (If no such libraries have been loaded, then
-       these do nothing, but game_options can still supply these entries.)
+       these do nothing. The game_options passed in can override each of
+       these references!)
     */
     all_options.io = window.Glk;
     all_options.vm = window.Quixe;

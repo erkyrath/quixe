@@ -69,9 +69,9 @@
 //   (check isFinite and non-negative)
 // Should we be caching arrays instead of strings?
 
-/* Put everything inside the Quixe namespace. */
+/* All state is contained in QuixeClass. */
 
-var Quixe = function() {
+var QuixeClass = function() {
 
 /* Create the "self" object. (No relation to the Inform "self" global.) */
 var self = {};
@@ -6798,9 +6798,12 @@ return {
     do_autosave: vm_autosave
 };
 
-}();
+};
+
+/* Quixe is an instance of QuixeClass, ready to init. */
+var Quixe = new QuixeClass();
 
 // Node-compatible behavior
-try { exports.Quixe = Quixe; } catch (ex) {};
+try { exports.Quixe = Quixe; exports.QuixeClass = QuixeClass; } catch (ex) {};
 
 /* End of Quixe library. */
