@@ -1021,12 +1021,24 @@ function start_game(image) {
 function is_inited() {
     return started;
 }
+
+function get_library(val) {
+    switch (val) {
+        case 'GlkOte': return GlkOte;
+        case 'GiDispa': return all_options.GiDispa;
+        case 'VM': return all_options.vm; // typically Quixe
+        case 'IO': return all_options.io; // normally Glk
+    }
+    /* Unrecognized library name. */
+    return null;
+}
     
 /* End of GiLoad namespace function. Return the object which will
    become the GiLoad global. */
 return {
     load_run: load_run,
     inited: is_inited,
+    getlibrary: get_library,
     
     find_data_chunk: find_data_chunk,
     get_metadata: get_metadata,
