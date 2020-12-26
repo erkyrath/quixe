@@ -92,6 +92,7 @@ var self = {};
 function quixe_prepare(image, all_options) {
     console.log('### quixe_prepare', all_options);
     self.GiDispa = all_options.GiDispa;
+    self.GiLoad = all_options.GiLoad;
     self.Glk = all_options.io;
     
     game_image = image;
@@ -125,7 +126,10 @@ function quixe_inited() {
 function quixe_getlibrary(val) {
     switch (val) {
         case 'GiDispa': return self.GiDispa;
+        case 'GiLoad': return self.GiLoad;
         case 'Glk': return self.Glk;
+        case 'GlkOte': return self.Glk.getlibrary('GlkOte');
+        case 'Dialog': return self.Glk.getlibrary('Dialog');
     }
     /* Unrecognized library name. */
     return null;
@@ -5584,6 +5588,8 @@ function setup_vm() {
     if (!game_image)
         fatal_error("There is no Glulx game file loaded.");
 
+    var Dialog = self.Glk.getlibrary('Dialog');
+    
     self.vm_started = true;
     self.resumefuncop = null;
     self.resumevalue = 0;
@@ -5993,6 +5999,8 @@ function vm_restore(streamid) {
    We're creating a JSONable object.
 */
 function vm_autosave(eventaddr) {
+    var Dialog = self.Glk.getlibrary('Dialog');
+    
     if (eventaddr < 0) {
         /* Delete the autosave. */
         //qlog('### deleting autosave');
@@ -6540,7 +6548,9 @@ function quixe_get_debuginfo() {
 }
 
 function parse_inform_debug_data() {
-    var buf = GiLoad.get_debug_info();
+    if (!self.GiLoad)
+        return;
+    var buf = self.GiLoad.get_debug_info();
     if (!buf)
         return;
     var done;
@@ -6764,6 +6774,7 @@ function execute_loop() {
 /* End of Quixe namespace function. Return the object which will
    become the Quixe global. */
 return {
+    classname: 'Quixe',
     version: '2.1.8', /* Quixe version */
     prepare: quixe_prepare,
     inited: quixe_inited,
