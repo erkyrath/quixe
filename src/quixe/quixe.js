@@ -90,7 +90,6 @@ var self = {};
    game file, encoded as hexadecimal digits.)
 */
 function quixe_prepare(image, all_options) {
-    console.log('### quixe_prepare', all_options);
     self.GiDispa = all_options.GiDispa;
     self.GiLoad = all_options.GiLoad;
     self.Glk = all_options.io;
