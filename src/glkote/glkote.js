@@ -3036,6 +3036,7 @@ function evhan_debug_command(cmd) {
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
+  classname: 'GlkOte',
   version:  '2.3.0',
   init:     glkote_init,
   inited:   glkote_inited,

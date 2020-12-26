@@ -6369,6 +6369,7 @@ function glk_date_to_simple_time_local(dateref, factor) {
 /* End of Glk namespace function. Return the object which will
    become the Glk global. */
 return {
+    classname: 'Glk',
     version: '2.3.0', /* GlkOte/GlkApi version */
     init : init,
     inited : is_inited,

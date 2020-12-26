@@ -101,6 +101,16 @@ function dialog_inited() {
     return (GlkOte != null);
 }
     
+/* Dialog.getlibrary() -- return the library interface object that we were passed or created.
+*/
+function dialog_get_library(val) {
+    switch (val) {
+        case 'GlkOte': return GlkOte;
+    }
+    /* Unrecognized library name. */
+    return null;
+}
+    
 /* Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog
  *
  * The "tosave" flag should be true for a save dialog, false for a load
@@ -1236,9 +1246,12 @@ $(window).on('storage', evhan_storage_changed);
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
+    classname: 'Dialog',
     streaming: false,
     init: dialog_init,
     inited: dialog_inited,
+    getlibrary: dialog_get_library,
+    
     open: dialog_open,
 
     file_clean_fixed_name: file_clean_fixed_name,
