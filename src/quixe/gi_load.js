@@ -1036,6 +1036,7 @@ function get_library(val) {
 /* End of GiLoad namespace function. Return the object which will
    become the GiLoad global. */
 return {
+    classname: 'GiLoad',
     load_run: load_run,
     inited: is_inited,
     getlibrary: get_library,

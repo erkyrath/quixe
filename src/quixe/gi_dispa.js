@@ -1075,6 +1075,7 @@ init_module();
 /* End of GiDispa namespace function. Return the object which will
    become the GiDispa global. */
 return {
+    classname: 'GiDispa',
     init: gidispa_init,
     inited: gidispa_inited,
     getlibrary: gidispa_getlibrary,
