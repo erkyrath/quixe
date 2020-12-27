@@ -189,7 +189,10 @@ function load_run(optobj, image, imageoptions) {
     all_options.vm = window.Quixe;
     all_options.GiLoad = this;
     all_options.GlkOte = new window.GlkOteClass();
-    all_options.GiDispa = new window.GiDispaClass();
+    if (window.GiDispaClass) {
+        // We only create this if the class is available.
+        all_options.GiDispa = new window.GiDispaClass();
+    }
     
     GlkOte = all_options.GlkOte; /* our copy of the reference */
 
