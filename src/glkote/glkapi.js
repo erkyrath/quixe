@@ -150,7 +150,7 @@ function accept_ui_event(obj) {
         content_metrics = complete_metrics(obj.metrics);
         /* We ignore the support array. This library is updated in sync
            with GlkOte, so we know what it supports. */
-        VM.init();
+        VM.start();
         break;
 
     case 'external':

@@ -1012,7 +1012,7 @@ function start_game(image) {
     }
 
     /* Pass the game image file along to the VM engine. */
-    all_options.vm.prepare(image, all_options);
+    all_options.vm.init(image, all_options);
 
     started = true;
     
