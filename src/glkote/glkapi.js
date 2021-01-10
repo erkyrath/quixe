@@ -1251,6 +1251,11 @@ function restore_allstate(res)
 function fatal_error(msg) {
     has_exited = true;
     ui_disabled = true;
+    if (!GlkOte) {
+        // We haven't been initialized yet, so we can only try to log the error and hope someone sees it.
+        console.log('Fatal error:', msg);
+        return;
+    }
     GlkOte.error(msg);
     var dataobj = { type: 'update', gen: event_generation, disable: true };
     dataobj.input = [];

@@ -4,6 +4,10 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  *
+ * All of these calls are safe to call even if the library has not
+ * been initialized. They will return null, as if no resource were
+ * found.
+ *
  * Blorb.init(image, opts) -- ###
  *
  * Blorb.get_exec_chunk() -- ###
@@ -12,25 +16,25 @@
  *   given number from the Blorb file. The returned object looks like
  *   { data:[...], type:"..." } (where the type is TEXT or BINA).
  *   If there was no such chunk, or if the game was loaded from a non-
- *   Blorb file, this returns undefined.
+ *   Blorb file, this returns null.
  *
  * Blorb.get_metadata(FIELD) -- this returns a metadata field (a
  *   string) from the iFiction <bibliographic> section. If there is
  *   no such field, or if the game was loaded from a non-Blorb
- *   file, this returns undefined.
+ *   file, this returns null.
  *
  * Blorb.get_cover_pict() -- this returns the number of the image
  *   resource which contains the cover art. If there is no cover art,
- *   this returns undefined.
+ *   this returns null.
  *
  * Blorb.get_image_info(NUM) -- returns an object describing an image,
- *   or undefined.
+ *   or null.
  *
  * Blorb.get_debug_info() -- returns an array containing debug info,
  *   or null.
  *
  * Blorb.get_image_url(NUM) -- returns a URL describing an image, or
- *   undefined.
+ *   null.
  */
 
 /* All state is contained in BlorbClass. */
@@ -356,6 +360,7 @@ function get_image_url(val) {
         else if (chunk.type == 'png')
             mimetype = 'image/png';
         var b64dat = encode_base64(chunk.content);
+        // Cache the dataurl for next time.
         chunk.dataurl = 'data:'+mimetype+';base64,'+b64dat;
         return chunk.dataurl;
     }
