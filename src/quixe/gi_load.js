@@ -488,69 +488,6 @@ function decode_raw_text(str) {
     return arr;
 }
 
-/* Convert an array of numeric byte values (containing UTF-8 encoded text)
-   into a string.
-*/
-function encode_utf8_text(arr) {
-    var res = [];
-    var ch;
-    var pos = 0;
-
-    while (pos < arr.length) {
-        var val0, val1, val2, val3;
-        if (pos >= arr.length)
-            break;
-        val0 = arr[pos];
-        pos++;
-        if (val0 < 0x80) {
-            ch = val0;
-        }
-        else {
-            if (pos >= arr.length)
-                break;
-            val1 = arr[pos];
-            pos++;
-            if ((val1 & 0xC0) != 0x80)
-                break;
-            if ((val0 & 0xE0) == 0xC0) {
-                ch = (val0 & 0x1F) << 6;
-                ch |= (val1 & 0x3F);
-            }
-            else {
-                if (pos >= arr.length)
-                    break;
-                val2 = arr[pos];
-                pos++;
-                if ((val2 & 0xC0) != 0x80)
-                    break;
-                if ((val0 & 0xF0) == 0xE0) {
-                    ch = (((val0 & 0xF)<<12)  & 0x0000F000);
-                    ch |= (((val1 & 0x3F)<<6) & 0x00000FC0);
-                    ch |= (((val2 & 0x3F))    & 0x0000003F);
-                }
-                else if ((val0 & 0xF0) == 0xF0) {
-                    if (pos >= arr.length)
-                        break;
-                    val3 = arr[pos];
-                    pos++;
-                    if ((val3 & 0xC0) != 0x80)
-                        break;
-                    ch = (((val0 & 0x7)<<18)   & 0x1C0000);
-                    ch |= (((val1 & 0x3F)<<12) & 0x03F000);
-                    ch |= (((val2 & 0x3F)<<6)  & 0x000FC0);
-                    ch |= (((val3 & 0x3F))     & 0x00003F);
-                }
-                else {
-                    break;
-                }
-            }
-        }
-        res.push(ch);
-    }
-
-    return String.fromCharCode.apply(this, res);
-}
-
 /* Convert a base64 string into an array of numeric byte values.
 */
 function decode_base64(base64data)
