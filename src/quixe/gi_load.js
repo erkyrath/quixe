@@ -62,11 +62,13 @@
  *   proxy_url: The URL of the web-app service which is used to convert
  *     binary data to Javascript, if the browser needs that. (default:
  *     https://zcode.appspot.com/proxy/)
- *   image_info_map: An object which describes all the available
- *     images, if they are provided as static URL data. (If this is not
+ *   resources: An object which describes all the available
+ *     resources, if they are provided as static URL data. (If this is not
  *     provided, we rely on Blorb resources.) This can be an object
  *     or a string; in the latter case, we look up a global object with
  *     that name.
+ *   image_info_map: Same as resources, but the data only describes
+ *     image data. (This is an older format, still supported.)
  *   exit_warning: A message to display (in a blue warning pane) when
  *     the game exits. If empty or null, no message is displayed.
  *     (default: "The game session has ended.")
@@ -116,6 +118,7 @@ var all_options = {
     default_page_title: 'Game', // fallback game name to use for title
     game_format_name: '',  // used in error messages
     exit_warning: 'The game session has ended.',
+    resources: null,       // look for resources in Blorb data
     image_info_map: null,  // look for images in Blorb data
     proxy_url: 'https://zcode.appspot.com/proxy/'
 };
@@ -195,10 +198,20 @@ function load_run(optobj, image, imageoptions) {
         jQuery.extend(all_options, optobj);
     }
     
-    /* If the image_info_map is a string, look for a global object of
+    /* If the resources is a string, look for a global object of
        that name. If there isn't one, delete that option. (The 
-       image_info_map could also be an object already, in which case
+       resources could also be an object already, in which case
        we leave it as is.) */
+    if (all_options.resources != undefined) {
+        if (jQuery.type(all_options.resources) === 'string') {
+            if (window[all_options.resources])
+                all_options.resources = window[all_options.resources];
+            else
+                delete all_options.resources;
+        }
+    }
+    /* Same deal for image_info_map. (You wouldn't usually have both,
+       mind you.) */
     if (all_options.image_info_map != undefined) {
         if (jQuery.type(all_options.image_info_map) === 'string') {
             if (window[all_options.image_info_map])
@@ -523,6 +536,20 @@ function start_game(image) {
         }
     }
 
+    /* If Blorb wasn't inited from the image data, we try to init it
+       some other way. */
+    if (all_options.Blorb && !all_options.Blorb.inited()) {
+        if (all_options.image_info_map) {
+            all_options.Blorb.init(all_options.image_info_map, 'infomap');
+        }
+        else if (all_options.resources) {
+            all_options.Blorb.init(all_options.resource_array);
+        }
+        else {
+            /* Init with no resources. */
+            all_options.Blorb.init([]);
+        }
+    }
 
     /* Figure out the title. */
     {
