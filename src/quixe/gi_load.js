@@ -548,7 +548,7 @@ function start_game(image) {
        some other way. */
     if (all_options.Blorb && !all_options.Blorb.inited()) {
         if (all_options.image_info_map) {
-            all_options.Blorb.init(all_options.image_info_map, 'infomap');
+            all_options.Blorb.init(all_options.image_info_map, { format:'infomap' });
         }
         else if (all_options.resources) {
             all_options.Blorb.init(all_options.resource_array);
