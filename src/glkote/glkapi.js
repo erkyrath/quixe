@@ -46,7 +46,7 @@ var GlkClass = function() {
 var GlkOte = null; /* imported API object */
 var VM = null; /* imported API object (the VM interface) */
 var GiDispa = null; /* imported API object (the dispatch layer) */
-var GiLoad = null; /* imported API object (the loader/launcher layer) */
+var Blorb = null; /* imported API object (the resource layer) */
 
 /* Environment capabilities. (Checked at init time.) */
 var has_canvas;
@@ -90,9 +90,9 @@ function init(vm_options) {
         GlkOte = new window.GlkOteClass();
     }
 
-    /* Either GiLoad was passed in or we don't have one. */
-    if (vm_options.GiLoad) {
-        GiLoad = vm_options.GiLoad;
+    /* Either Blorb was passed in or we don't have one. */
+    if (vm_options.Blorb) {
+        Blorb = vm_options.Blorb;
     }
 
     /* Check for canvas support. We don't rely on jquery here. */
@@ -803,7 +803,7 @@ function get_library(val) {
         case 'VM': return VM;
         case 'GlkOte': return GlkOte;
         case 'GiDispa': return GiDispa;
-        case 'GiLoad': return GiLoad;
+        case 'Blorb': return Blorb;
         case 'Dialog': return GlkOte.getlibrary('Dialog');
     }
     /* Unrecognized library name. */
@@ -1166,7 +1166,7 @@ function restore_allstate(res)
 
         case strtype_Resource:
             str.resfilenum = obj.resfilenum;
-            var el = GiLoad.find_data_chunk(str.resfilenum);
+            var el = Blorb.get_data_chunk(str.resfilenum);
             if (el) {
                 str.buf = el.data;
             }
@@ -4911,21 +4911,20 @@ function glk_stream_open_memory(buf, fmode, rock) {
 function glk_stream_open_resource(filenum, rock) {
     var str;
 
-    if (!GiLoad || !GiLoad.find_data_chunk)
+    if (!Blorb)
         return null;
-    var el = GiLoad.find_data_chunk(filenum);
+    var el = Blorb.get_data_chunk(filenum);
     if (!el)
         return null;
 
     var buf = el.data;
-    var isbinary = (el.type == 'BINA');
 
     str = gli_new_stream(strtype_Resource,
         true, 
         false, 
         rock);
     str.unicode = false;
-    str.isbinary = isbinary;
+    str.isbinary = el.binary;
 
     str.resfilenum = filenum;
 
@@ -4950,21 +4949,20 @@ function glk_stream_open_resource(filenum, rock) {
 function glk_stream_open_resource_uni(filenum, rock) {
     var str;
 
-    if (!GiLoad || !GiLoad.find_data_chunk)
+    if (!Blorb)
         return null;
-    var el = GiLoad.find_data_chunk(filenum);
+    var el = Blorb.get_data_chunk(filenum);
     if (!el)
         return null;
 
     var buf = el.data;
-    var isbinary = (el.type == 'BINA');
 
     str = gli_new_stream(strtype_Resource,
         true, 
         false, 
         rock);
     str.unicode = true;
-    str.isbinary = isbinary;
+    str.isbinary = el.binary;
 
     str.resfilenum = filenum;
 
@@ -5494,10 +5492,10 @@ function glk_request_timer_events(msec) {
 /* Graphics functions. */
 
 function glk_image_get_info(imgid, widthref, heightref) {
-    if (!GiLoad || !GiLoad.get_image_info)
+    if (!Blorb || !Blorb.get_image_info)
         return null;
 
-    var info = GiLoad.get_image_info(imgid);
+    var info = Blorb.get_image_info(imgid);
     if (info) {
         if (widthref)
             widthref.set_value(info.width);
@@ -5516,9 +5514,9 @@ function glk_image_draw(win, imgid, val1, val2) {
     if (!win)
         throw('glk_image_draw: invalid window');
 
-    if (!GiLoad || !GiLoad.get_image_info)
+    if (!Blorb || !Blorb.get_image_info)
         return 0;
-    var info = GiLoad.get_image_info(imgid);
+    var info = Blorb.get_image_info(imgid);
     if (!info)
         return 0;
 
@@ -5566,9 +5564,9 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
     if (!win)
         throw('glk_image_draw_scaled: invalid window');
 
-    if (!GiLoad || !GiLoad.get_image_info)
+    if (!Blorb || !Blorb.get_image_info)
         return 0;
-    var info = GiLoad.get_image_info(imgid);
+    var info = Blorb.get_image_info(imgid);
     if (!info)
         return 0;
 

@@ -79,7 +79,7 @@ var regex_external_links = null;
 var debug_out_handler = null;
 
 var Dialog = null; /* imported API object (the file select/open layer) */
-var GiLoad = null; /* imported API object (the loader/launcher layer) */
+var Blorb = null; /* imported API object (the resource layer) */
 
 /* Some handy constants */
 /* A non-breaking space character. */
@@ -310,9 +310,9 @@ function glkote_init(iface) {
     }
   }
 
-  /* Either GiLoad was passed in or we don't have one. */
-  if (iface.GiLoad) {
-    GiLoad = iface.GiLoad;
+  /* Either Blorb was passed in or we don't have one. */
+  if (iface.Blorb) {
+    Blorb = iface.Blorb;
   }
 
   /* Either Dialog was passed in or we must create one. */
@@ -1261,8 +1261,8 @@ function accept_one_content(arg) {
                  break should disappear. This will undoubtedly cause
                  headaches for portability someday. */
               var imgurl = rdesc.url;
-              if (GiLoad && GiLoad.get_image_url) {
-                var newurl = GiLoad.get_image_url(rdesc.image);
+              if (Blorb && Blorb.get_image_url) {
+                var newurl = Blorb.get_image_url(rdesc.image);
                 if (newurl)
                   imgurl = newurl;
               }
@@ -1713,7 +1713,7 @@ function glkote_get_interface() {
 function glkote_get_library(val) {
   switch (val) {
     case 'Dialog': return Dialog;
-    case 'GiLoad': return GiLoad;
+    case 'Blorb': return Blorb;
   }
   /* Unrecognized library name. */
   return null;
@@ -2072,8 +2072,8 @@ function perform_graphics_ops(loadedimg, loadedev) {
         }
         if (!loadedimg) {
           var imgurl = op.url;
-          if (GiLoad && GiLoad.get_image_url) {
-            var newurl = GiLoad.get_image_url(op.image);
+          if (Blorb && Blorb.get_image_url) {
+            var newurl = Blorb.get_image_url(op.image);
             if (newurl)
               imgurl = newurl;
           }
