@@ -587,13 +587,6 @@ return {
     load_run: load_run,
     inited: is_inited,
     getlibrary: get_library,
-    
-    find_data_chunk: find_data_chunk,
-    get_metadata: get_metadata,
-    get_cover_pict: get_cover_pict,
-    get_debug_info: get_debug_info,
-    get_image_info: get_image_info,
-    get_image_url: get_image_url
 };
 
 };
