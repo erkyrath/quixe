@@ -45,6 +45,7 @@ compress_source(
     'lib/glkote.min.js', [
         'src/glkote/glkote.js',
         'src/glkote/dialog.js',
+        'src/glkote/gi_blorb.js',
         'src/glkote/glkapi.js',
         ])
 
@@ -52,6 +53,7 @@ compress_source(
     'lib/elkote.min.js', [
         'src/glkote/glkote.js',
         'src/glkote/electrofs.js',
+        'src/glkote/gi_blorb.js',
         'src/glkote/glkapi.js',
         ])
 
