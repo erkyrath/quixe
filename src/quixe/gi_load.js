@@ -163,20 +163,10 @@ function load_run(optobj, image, imageoptions) {
     all_options.io = window.Glk;
     all_options.vm = window.Quixe;
     all_options.GiLoad = this;
-    all_options.GlkOte = new window.GlkOteClass();
+    all_options.GlkOte = null;
     all_options.GiDispa = null;
-    if (window.GiDispaClass) {
-        // We only create this default if the class is available.
-        all_options.GiDispa = new window.GiDispaClass();
-    }
     all_options.Blorb = null;
-    if (window.BlorbClass) {
-        // We only create this default if the class is available.
-        all_options.Blorb = new window.BlorbClass();
-    }
     
-    GlkOte = all_options.GlkOte; /* our copy of the reference */
-
     /* The game_options object could be provided via an argument. If not,
        we use the global game_options. */
     if (!optobj)
@@ -192,12 +182,25 @@ function load_run(optobj, image, imageoptions) {
     }
 
     /* Pull in the values from the game_options, which override the defaults
-       set above. (This means, in particular, that the game_options could
-       pass in an uninited GlkOte or Blorb or whatever.) */
+       set above. */
     if (optobj) {
         jQuery.extend(all_options, optobj);
     }
+
+    /* If the GlkOte, GiDispa, Blorb classes were not provided, create
+       them now (if possible). */
+    if ((!all_options.GlkOte) && window.GlkOteClass) {
+        all_options.GlkOte = new window.GlkOteClass();
+    }
+    if ((!all_options.GiDispa) && window.GiDispaClass) {
+        all_options.GiDispa = new window.GiDispaClass();
+    }
+    if ((!all_options.Blorb) && window.BlorbClass) {
+        all_options.Blorb = new window.BlorbClass();
+    }
     
+    GlkOte = all_options.GlkOte; /* our copy of the reference */
+
     /* If the resources is a string, look for a global object of
        that name. If there isn't one, delete that option. (The 
        resources could also be an object already, in which case
