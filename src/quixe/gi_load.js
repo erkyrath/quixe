@@ -166,6 +166,11 @@ function load_run(optobj, image, imageoptions) {
         // We only create this default if the class is available.
         all_options.GiDispa = new window.GiDispaClass();
     }
+    all_options.Blorb = null;
+    if (window.BlorbClass) {
+        // We only create this default if the class is available.
+        all_options.Blorb = new window.BlorbClass();
+    }
     
     GlkOte = all_options.GlkOte; /* our copy of the reference */
 
@@ -184,9 +189,11 @@ function load_run(optobj, image, imageoptions) {
     }
 
     /* Pull in the values from the game_options, which override the defaults
-       set above. */
-    if (optobj)
+       set above. (This means, in particular, that the game_options could
+       pass in an uninited GlkOte or Blorb or whatever.) */
+    if (optobj) {
         jQuery.extend(all_options, optobj);
+    }
     
     /* If the image_info_map is a string, look for a global object of
        that name. If there isn't one, delete that option. (The 
@@ -497,8 +504,13 @@ function start_game(image) {
         }
 
         if (all_options.blorb_gamechunk_type) {
+            if (!all_options.Blorb) {
+                all_options.io.fatal_error("Blorb file could not be parsed because no BlorbClass is available.");
+                return;
+            }
             try {
-                image = unpack_blorb(image, all_options.blorb_gamechunk_type);
+                all_options.Blorb.init(image, { format:'blorbbytes' });
+                image = all_options.Blorb.get_exec_data(all_options.blorb_gamechunk_type);
             }
             catch (ex) {
                 all_options.io.fatal_error("Blorb file could not be parsed: " + ex);
@@ -511,11 +523,12 @@ function start_game(image) {
         }
     }
 
+
+    /* Figure out the title. */
     {
         var title = null;
-	//###
-        if (metadata)
-            title = metadata.title;
+        if (all_options.Blorb)
+            title = all_options.Blorb.get_metadata('title');
         if (!title && gameurl) 
             title = gameurl.slice(gameurl.lastIndexOf("/") + 1);
         if (!title)
@@ -550,6 +563,7 @@ function get_library(val) {
     switch (val) {
         case 'GlkOte': return GlkOte;
         case 'GiDispa': return all_options.GiDispa;
+        case 'Blorb': return all_options.Blorb;
         case 'VM': return all_options.vm; // typically Quixe
         case 'IO': return all_options.io; // normally Glk
     }
