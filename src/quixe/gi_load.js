@@ -525,7 +525,12 @@ function start_game(image) {
                 return;
             }
             try {
-                all_options.Blorb.init(image, { format:'blorbbytes' });
+                // Normally we are only interested in the game file and images.
+                var retainuses = { 'exec':true, 'pict':true };
+                if (all_options.retainuses !== undefined) {
+                    retainuses = all_options.retainuses;
+                }
+                all_options.Blorb.init(image, { format:'blorbbytes', retainuses:retainuses });
                 image = all_options.Blorb.get_exec_data(all_options.blorb_gamechunk_type);
             }
             catch (ex) {
