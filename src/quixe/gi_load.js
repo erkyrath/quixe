@@ -144,11 +144,7 @@ var all_options = {
 };
 
 var gameurl = null;  /* The URL we are loading. */
-var metadata = {}; /* Title, author, etc -- loaded from Blorb */
-var coverimageres = undefined; /* Image resource number of the cover art */
-var debug_info = null; /* gameinfo.dbg file -- loaded from Blorb */
-var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
-var alttexts = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
+var metadata = {}; /* Title, author, etc -- loaded from Blorb */ //###
 var started = false; /* True once start_game() runs */
     
 var GlkOte = null; /* imported API object -- for GlkOte.log */
