@@ -551,98 +551,18 @@ function encode_utf8_text(arr) {
     return String.fromCharCode.apply(this, res);
 }
 
-/* Convert a base64 string into an array of numeric byte values. Some
-   browsers supply an atob() function that does this; on others, we
-   have to implement decode_base64() ourselves. 
+/* Convert a base64 string into an array of numeric byte values.
 */
-if (window.atob) {
-    decode_base64 = function(base64data) {
-        var data = atob(base64data);
-        var image = Array(data.length);
-        var ix;
-        
-        for (ix=0; ix<data.length; ix++)
-            image[ix] = data.charCodeAt(ix);
-        
-        return image;
-    }
-}
-else {
-    /* No atob() in Internet Explorer, so we have to invent our own.
-       This implementation is adapted from Parchment. */
-    var b64decoder = (function() {
-            var b64encoder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-            var out = [];
-            var ix;
-            for (ix=0; ix<b64encoder.length; ix++)
-                out[b64encoder.charAt(ix)] = ix;
-            return out;
-        })();
-        
-    decode_base64 = function(base64data) {
-        var out = [];
-        var c1, c2, c3, e1, e2, e3, e4;
-        var i = 0, len = base64data.length;
-        while (i < len) {
-            e1 = b64decoder[base64data.charAt(i++)];
-            e2 = b64decoder[base64data.charAt(i++)];
-            e3 = b64decoder[base64data.charAt(i++)];
-            e4 = b64decoder[base64data.charAt(i++)];
-            c1 = (e1 << 2) + (e2 >> 4);
-            c2 = ((e2 & 15) << 4) + (e3 >> 2);
-            c3 = ((e3 & 3) << 6) + e4;
-            out.push(c1, c2, c3);
-        }
-        if (e4 == 64)
-            out.pop();
-        if (e3 == 64)
-            out.pop();
-        return out;
-    }
-}
-
-var encode_base64;
-var decode_base64;
-
-/* Convert an array of numeric byte values into a base64 string. (Converse
-   of the above.)
-*/
-if (window.btoa) {
-    encode_base64 = function(image) {
-        /* There's a limit on how much can be piped into .apply() at a 
-           time -- that is, JS interpreters choke on too many arguments
-           in a function call. 16k is a conservative limit. */
-        var blocks = [];
-        var imglen = image.length;
-        for (var ix = 0; ix < imglen; ix += 16384) {
-            blocks.push(String.fromCharCode.apply(String, image.slice(ix, ix + 16384)));
-        }
-
-        return btoa(blocks.join(''));
-    };
-}
-else {
-    encode_base64 = function(arr) {
-        var coder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-        var res = [];
-        var byte0, byte1, byte2;
-        for (var ix=0; ix<arr.length; ix += 3) {
-            byte0 = arr[ix];
-            byte1 = arr[ix+1];
-            byte2 = arr[ix+2];
-            res.push(coder.charAt((byte0 >> 2) & 0x3F));
-            res.push(coder.charAt(((byte0 << 4) & 0x30) | ((byte1 >> 4) & 0x0F)));
-            res.push(coder.charAt(((byte1 << 2) & 0x3C) | ((byte2 >> 6) & 0x03)));
-            res.push(coder.charAt((byte2) & 0x3F));
-        }
-        if (byte1 === undefined && res.length >= 2) {
-            res[res.length-2] = '=';
-        }
-        if (byte2 === undefined && res.length >= 1) {
-            res[res.length-1] = '=';
-        }
-        return res.join('');
-    }
+function decode_base64(base64data)
+{
+    var data = atob(base64data);
+    var image = Array(data.length);
+    var ix;
+    
+    for (ix=0; ix<data.length; ix++)
+        image[ix] = data.charCodeAt(ix);
+    
+    return image;
 }
 
 /* Start the game (after de-blorbing, if necessary).
