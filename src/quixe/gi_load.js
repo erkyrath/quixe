@@ -93,29 +93,6 @@
  *   blorb_gamechunk_type, game_format_name) are set up with values
  *   appropriate for Glulx game files.
  *
- * GiLoad.find_data_chunk(NUM) -- this finds the Data chunk of the
- *   given number from the Blorb file. The returned object looks like
- *   { data:[...], type:"..." } (where the type is TEXT or BINA).
- *   If there was no such chunk, or if the game was loaded from a non-
- *   Blorb file, this returns undefined.
- *
- * GiLoad.get_metadata(FIELD) -- this returns a metadata field (a
- *   string) from the iFiction <bibliographic> section. If there is
- *   no such field, or if the game was loaded from a non-Blorb
- *   file, this returns undefined.
- *
- * GiLoad.get_cover_pict() -- this returns the number of the image
- *   resource which contains the cover art. If there is no cover art,
- *   this returns undefined.
- *
- * GiLoad.get_image_info(NUM) -- returns an object describing an image,
- *   or undefined.
- *
- * GiLoad.get_debug_info() -- returns an array containing debug info,
- *   or null.
- *
- * GiLoad.get_image_url(NUM) -- returns a URL describing an image, or
- *   undefined.
  */
 
 /* All state is contained in GiLoadClass. */
@@ -144,7 +121,6 @@ var all_options = {
 };
 
 var gameurl = null;  /* The URL we are loading. */
-var metadata = {}; /* Title, author, etc -- loaded from Blorb */ //###
 var started = false; /* True once start_game() runs */
     
 var GlkOte = null; /* imported API object -- for GlkOte.log */
@@ -537,6 +513,7 @@ function start_game(image) {
 
     {
         var title = null;
+	//###
         if (metadata)
             title = metadata.title;
         if (!title && gameurl) 
