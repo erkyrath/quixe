@@ -46,9 +46,8 @@ var coverimageres = undefined; /* Image resource number of the cover art */
 var debug_info = null; /* gameinfo.dbg file -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
-/* Look through a Blorb file (provided as a byte array) and return the
+/* Look through a Blorb file (provided as ### a byte array) and return the
    game file chunk (ditto). If no such chunk is found, returns null.
-   The gamechunktype option should be 'ZCOD' or 'GLUL'.
 
    This also loads the IFID metadata into the metadata object, and
    caches DATA chunks where we can reach them later.
@@ -58,7 +57,6 @@ function blorb_init(data, opts) {
     var gamechunktype = null;
     if (opts) {
         format = opts.format;
-        gamechunktype = opts.gamechunktype;
     }
 
     if (format == 'infomap') {
@@ -120,7 +118,7 @@ function blorb_init(data, opts) {
         return;
     }
 
-    if (format != 'array') {
+    if (format != 'blorbbytes') {
         throw new Error('Blorb: unrecognized format');
     }
 
@@ -260,11 +258,20 @@ function get_library(val)
     /* This module doesn't rely on any others. */
     return null;
 }
-    
-function get_exec_data()
+
+/* Return the game file chunk. Returns null if there is none.
+   If type is provided ('ZCOD' or 'GLUL'), the game file is checked
+   against that type; will return null if the game file is the wrong
+   type.
+*/
+function get_exec_data(gametype)
 {
     var chunk = blorbchunks['exec:0'];
     if (!chunk) {
+        return null;
+    }
+
+    if (gametype && chunk.type != gametype) {
         return null;
     }
 
