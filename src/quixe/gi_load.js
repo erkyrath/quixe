@@ -62,11 +62,11 @@
  *   proxy_url: The URL of the web-app service which is used to convert
  *     binary data to Javascript, if the browser needs that. (default:
  *     https://zcode.appspot.com/proxy/)
- *   resources: An object which describes all the available
- *     resources, if they are provided as static URL data. (If this is not
- *     provided, we rely on Blorb resources.) This can be an object
- *     or a string; in the latter case, we look up a global object with
- *     that name.
+ *   resources: An object which describes all the available resources
+ *     if they are provided as static URL data. (If this is not provided,
+ *     we rely on Blorb resources.) This can be an object or a string;
+ *     in the latter case, we look up a global object with that name.
+ *     (See the gi_blorb.js library for the format.)
  *   image_info_map: Same as resources, but the data only describes
  *     image data. (This is an older format, still supported.)
  *   exit_warning: A message to display (in a blue warning pane) when
