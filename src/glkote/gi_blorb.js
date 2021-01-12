@@ -342,7 +342,8 @@ function blorb_init(data, opts) {
             el.usage = 'data';
             
             el.binary = false;
-            if (el.blorbtype == 'FORM')
+            // IFF sub-chunks count as binary.
+            if (el.blorbtype == 'BINA' || el.blorbtype == 'FORM')
                 el.binary = true;
         }
         else {
