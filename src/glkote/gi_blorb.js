@@ -4,37 +4,134 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  *
- * All of these calls are safe to call even if the library has not
- * been initialized. They will return null, as if no resource were
- * found.
+ * This library is really more general than the name implies. It
+ * can load resources from a Blorb file (given as a byte array), but
+ * it can also store an arbitrary collection of resources (given as
+ * JS objects). The GlkOte library (and other interpreter libraries)
+ * can then access the resources through the Blorb API.
  *
- * Blorb.init(image, opts) -- ###
+ * This means it is possible to store your resource info as JSON
+ * and allow the interpreter to load it directly, with no Blorb decoding
+ * necessary.
  *
- * Blorb.get_exec_chunk() -- ###
+ * Library API:
  *
- * Blorb.get_data_chunk(NUM) -- this finds the Data chunk of the
- *   given number from the Blorb file. The returned object looks like
- *   { data:[...], type:"..." } (where the type is TEXT or BINA).
- *   If there was no such chunk, or if the game was loaded from a non-
- *   Blorb file, this returns null.
+ * Blorb.init(data, opts): Read the data and extract the resources.
+ *   Options:
+ *   - format: The data format. See below.
+ *   - retainuses: Which usage types to retain data (chunk.content)
+ *     for.
  *
- * Blorb.get_metadata(FIELD) -- this returns a metadata field (a
- *   string) from the iFiction <bibliographic> section. If there is
- *   no such field, or if the game was loaded from a non-Blorb
- *   file, this returns null.
+ *   (Note: All of the calls below return null if a resource or field
+ *   could not be found. Also, they will all safely return null if the
+ *   library has not been initialized.)
  *
- * Blorb.get_cover_pict() -- this returns the number of the image
- *   resource which contains the cover art. If there is no cover art,
- *   this returns null.
+ * Blorb.get_chunk(USAGE, NUM): Find a chunk by usage and number.
  *
- * Blorb.get_image_info(NUM) -- returns an object describing an image,
- *   or null.
+ * Blorb.get_exec_data(TYPE): Find the 'exec' (executable game file)
+ *   chunk and return it. If TYPE is given, this checks that the
+ *   game file is of that type ('ZCOD' or 'GLUL'). If it does not match,
+ *   returns null.
  *
- * Blorb.get_debug_info() -- returns an array containing debug info,
- *   or null.
+ * Blorb.get_data_chunk(NUM): Find the 'data' chunk of the given 
+ *   number from the Blorb file. The returned object looks like
+ *   { data:[...], type:str, binary:bool }
  *
- * Blorb.get_image_url(NUM) -- returns a URL describing an image, or
+ * Blorb.get_metadata(FIELD): Return a metadata field (a string)
+ *   from the iFiction <bibliographic> section.
+ *
+ * Blorb.get_cover_pict(): Return the number of the image resource
+ *   which contains the cover art. If there is no cover art, this
+ *   returns null.
+ *
+ * Blorb.get_image_info(NUM): Return an object describing an image,
+ *   or null. The result will contain (at least) image (number), width,
+ *   height, and type ('png' or 'jpeg').
+ *
+ * Blorb.get_debug_info(): Return an array containing debug info, or
  *   null.
+ *
+ * Blorb.get_image_url(NUM): Return a URL describing an image, or null.
+ *   If the image comes from Blorb data, this will be a data: URL.
+ *
+ * --------------------------------------------------------------------
+ *
+ * Resources are indexed by *usage* and *number*. Usage is a string;
+ * these currently include 'pict', 'snd', 'exec' (for executable
+ * game file), 'data' (arbitrary data). The number can be any
+ * non-negative integer. (The numbers do not have to be consecutive.)
+ *
+ * The pair (usage, usagenum) should be unique within the resource
+ * collection.
+ *
+ * The Blorb spec (https://eblong.com/zarf/blorb/) uses the same structure.
+ * When you load a Blorb file, the resources get imported directly.
+ * (The usage codes aren't exactly the same, but you don't have to worry
+ * about this.) To do this, call
+ *
+ *   Blorb.init(array, { format:'blorbbytes' });
+ *
+ * In this form, the resource info (i.e. the objects returned by
+ * get_image_info()) will include Blorb data fields as well as
+ * image, type, width, and height.
+ *
+ * To provide resources directly, create a JS array that looks like:
+ *
+ * [
+ *   {
+ *     usage: 'pict',
+ *     usagenum: 5,
+ *     type: 'jpeg',  // 'jpeg' or 'png'
+ *     imagesize: { width:100, height:200 },  // only for 'pict' resources
+ *     url: URL,
+ *     // you may alternately provide the image data as content:bytearray;
+ *     // the library can convert that into a data: URL.
+ *     alttext: 'Alternate text'  // optional
+ *   },
+ *   {
+ *     usage: 'exec',
+ *     usagenum: 0,  // executable chunk must have num 0
+ *     content: bytearray
+ *   },
+ *   {
+ *     usage: 'data',
+ *     usagenum: 1,
+ *     binary: bool,
+ *     content: bytearray
+ *   },
+ *   // ... more resources...
+ * ]
+ *
+ * Then call
+ *
+ *   Blorb.init(resourcearray);
+ *
+ * If your data consists only of images, you can use this simpler format:
+ *
+ * {
+ *   5: {  // usagenum is the object key
+ *     // usage:'pict' is assumed
+ *     type: 'jpeg',  // 'jpeg' or 'png'
+ *     width:100, height:200,  // note separate fields
+ *     url: URL,
+ *     // you may alternately provide the image data as content:bytearray;
+ *     // the library can convert that into a data: URL.
+ *     alttext: 'Alternate text'  // optional
+ *   },
+ *   // ... more resources...
+ * }
+ * 
+ * For this key-map format, call
+ *
+ *   Blorb.init(map, { format:'infomap' });
+ *
+ * Note that when you are providing resource objects, any fields you add
+ * will be passed through unchanged to get_image_info(). This means that
+ * you can do a lot that this library wasn't really designed for! It
+ * also means that the library internals are more exposed than my
+ * crusty software-engineer soul desires. (E.g., the blorb fields
+ * leaking out, as noted above.) Try not to cut yourself.
+ *
  */
 
 /* All state is contained in BlorbClass. */
@@ -46,11 +143,10 @@ var coverimageres = undefined; /* Image resource number of the cover art */
 var debug_info = null; /* gameinfo.dbg file -- loaded from Blorb */
 var blorbchunks = {}; /* Indexed by "USE:NUMBER" -- loaded from Blorb */
 
-/* Look through a Blorb file (provided as ### a byte array) and return the
-   game file chunk (ditto). If no such chunk is found, returns null.
+/* Load the resource data, according to opts.format.
 
    This also loads the IFID metadata into the metadata object, and
-   caches DATA chunks where we can reach them later.
+   caches other data we might want.
 */
 function blorb_init(data, opts) {
     if (inited) {
@@ -244,6 +340,10 @@ function blorb_init(data, opts) {
         }
         else if (el.blorbusage == 'Data') {
             el.usage = 'data';
+            
+            el.binary = false;
+            if (el.blorbtype == 'FORM')
+                el.binary = true;
         }
         else {
             el.usage = '????';
@@ -308,8 +408,7 @@ function get_exec_data(gametype)
     return chunk.content;
 }
     
-/* Return a metadata field, or undefined if there is no such field
-   (or if no metadata was loaded).
+/* Return a metadata field.
 */
 function get_metadata(val) {
     return metadata[val];
@@ -327,6 +426,15 @@ function get_cover_pict() {
 */
 function get_debug_info() {
     return debug_info;
+}
+
+/* Return a chunk given its usage string and number. */
+function get_chunk(usage, num) {
+    var chunk = blorbchunks[usage+':'+val];
+    if (!chunk) {
+        return null;
+    }
+    return chunk;
 }
 
 /* Return information describing an image. This might be loaded from static
@@ -408,7 +516,7 @@ function get_image_url(val) {
     return null;
 }
 
-/* Return the Data chunk with the given number, or undefined if there
+/* Return the 'data' chunk with the given number, or null if there
    is no such chunk. (This is used by the glk_stream_open_resource()
    functions.)
 */
@@ -417,12 +525,7 @@ function get_data_chunk(val) {
     if (!chunk)
         return null;
 
-    //### move upstairs?
-    var isbinary = false;
-    if (chunk.blorbtype == 'FORM')
-        isbinary = true;
-
-    return { data:chunk.content, type:chunk.type, binary:isbinary };
+    return { data:chunk.content, type:chunk.type, binary:chunk.binary };
 }
 
 /* Convert an array of numeric byte values into a base64 string. */
@@ -578,6 +681,7 @@ return {
     inited: is_inited,
     getlibrary: get_library,
 
+    get_chunk: get_chunk,
     get_exec_data: get_exec_data,
     get_data_chunk: get_data_chunk,
     get_metadata: get_metadata,
