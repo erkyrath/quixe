@@ -430,7 +430,7 @@ function get_debug_info() {
 
 /* Return a chunk given its usage string and number. */
 function get_chunk(usage, num) {
-    var chunk = blorbchunks[usage+':'+val];
+    var chunk = blorbchunks[usage+':'+num];
     if (!chunk) {
         return null;
     }
