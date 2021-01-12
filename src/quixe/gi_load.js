@@ -526,7 +526,7 @@ function start_game(image) {
             }
             try {
                 // Normally we are only interested in the game file and images.
-                var retainuses = { 'exec':true, 'pict':true };
+                var retainuses = { 'exec':true, 'pict':true, 'data':true };
                 if (all_options.retainuses !== undefined) {
                     retainuses = all_options.retainuses;
                 }
