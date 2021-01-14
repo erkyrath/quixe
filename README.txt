@@ -104,6 +104,8 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
     (QuixeClass, GiLoadClass, GiDispaClass). Each file exports this class
     plus a single instance (Quixe, GiLoad). (There's no global GiDispa
     instance because GiLoad always creates its own.)
+  - The Blorb functionality has been moved out of gi_load.js and into
+    a new file, glkote/gi_blorb.js.
 
 - 2.1.8 (December 1, 2020)
   - Fixed the spurious MORE prompt in fixed-size buffer windows.
