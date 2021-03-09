@@ -56,6 +56,7 @@ var gameport_id = 'gameport';
 var errorpane_id = 'errorpane';
 var errorcontent_id = 'errorcontent';
 var loadingpane_id = 'loadingpane';
+var max_buffer_length = 800; /* scrollback paragraphs to retain */
 var generation = 0;
 var generation_sent = -1;
 var disabled = false;
@@ -84,8 +85,6 @@ var Blorb = null; /* imported API object (the resource layer) */
 /* Some handy constants */
 /* A non-breaking space character. */
 var NBSP = "\xa0";
-/* Number of paragraphs to retain in a buffer window's scrollback. */
-var max_buffer_length = 200;
 /* Size of the scrollbar, give or take some. */
 var approx_scroll_width = 20;
 /* Margin for how close you have to scroll to end-of-page to kill the
@@ -231,6 +230,9 @@ function glkote_init(iface) {
      size changes. */
   create_resize_sensors();
 
+  if (iface.max_buffer_length)
+    max_buffer_length = iface.max_buffer_length;
+    
   /* Check the options that control whether URL-like strings in the output
      are displayed as hyperlinks. */
   detect_external_links = iface.detect_external_links;
