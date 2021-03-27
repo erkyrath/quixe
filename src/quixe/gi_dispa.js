@@ -4,7 +4,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glulx/quixe/>
  * 
- * This Javascript library is copyright 2010-2020 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-2021 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This is the code layer that sits in between Quixe and GlkAPI. It provides
