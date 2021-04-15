@@ -1,8 +1,10 @@
+'use strict';
+
 /* Dialog -- a Javascript load/save library for IF interfaces
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010-15 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-20 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a "file" for saving
@@ -12,6 +14,11 @@
  *
  * This library also contains utility routines to manage "files", which are
  * actually entries in the browser's localStorage object.
+ *
+ * If you are in the Electron.io environment, you want to include electrofs.js
+ * instead of this module. To distinguish this from electrofs.js, look at
+ * Dialog.streaming, which will be true for electrofs.js and false for
+ * dialog.js.
  *
  * The primary function to call:
  *
@@ -25,7 +32,9 @@
  * (These fileref objects are not the same as the filerefs used in the Glk API.
  * A Glk fileref contains one of these filerefs, however.)
  *
+ * Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
  * Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
+ * Dialog.file_construct_temp_ref(usage) -- create a temporary fileref
  * Dialog.file_write(ref, content, israw) -- write data to the file
  * Dialog.file_read(ref, israw) -- read data from the file
  * Dialog.file_ref_exists(ref) -- returns whether the file exists
@@ -50,9 +59,10 @@
 
 //### accept "return" keystroke for load-select box (already works in Chrome)
 
-/* Put everything inside the Dialog namespace. */
+/* All state is contained in DialogClass. */
+var DialogClass = function() {
 
-Dialog = function() {
+var GlkOte = null; /* imported API object -- for GlkOte.log, GlkOte.getdomid */
 
 var dialog_el_id = 'dialog';
 
@@ -68,6 +78,39 @@ var cur_usage_name; /* the file's category as a human-readable string */
 var cur_gameid; /* a string representing the game */
 var cur_filelist; /* the files currently on display */
 
+/* Dialog.init(iface) -- initialize the library */
+function dialog_init(iface) {
+    if (iface && iface.dom_prefix) {
+        dialog_el_id = iface.dom_prefix;
+    }
+    
+    if (iface && iface.GlkOte) {
+        GlkOte = iface.GlkOte;
+    }
+    if (!GlkOte) {
+        /* Look in the global environment. */
+        GlkOte = window.GlkOte;
+    }
+    if (!GlkOte) {
+        throw new Error('Dialog: no GlkOte interface!');
+    }
+}
+
+/* Dialog.inited() -- returns whether the library is initialized */
+function dialog_inited() {
+    return (GlkOte != null);
+}
+    
+/* Dialog.getlibrary() -- return the library interface object that we were passed or created.
+*/
+function dialog_get_library(val) {
+    switch (val) {
+        case 'GlkOte': return GlkOte;
+    }
+    /* Unrecognized library name. */
+    return null;
+}
+    
 /* Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog
  *
  * The "tosave" flag should be true for a save dialog, false for a load
@@ -84,10 +127,10 @@ var cur_filelist; /* the files currently on display */
 */
 function dialog_open(tosave, usage, gameid, callback) {
     if (is_open)
-        throw 'Dialog: dialog box is already open.';
+        throw new Error('Dialog: dialog box is already open.');
 
-    if (localStorage == null)
-        throw 'Dialog: your browser does not support local storage.';
+    if (!Storage)
+        throw new Error('Dialog: no storage API is available.');
 
     dialog_callback = callback;
     will_save = tosave;
@@ -100,25 +143,21 @@ function dialog_open(tosave, usage, gameid, callback) {
 
     /* Figure out what the root div is called. The dialog box will be
        positioned in this div; also, the div will be greyed out by a 
-       translucent rectangle. We use the same default as GlkOte: 
-       "windowport". We also try to interrogate GlkOte to see if that
-       default has been changed. */
+       translucent rectangle. This is normally "windowport", but we
+       check with GlkOte to see if that default has changed. */
     var root_el_id = 'windowport';
-    var iface = window.Game;
     if (window.GlkOte) 
-        iface = window.GlkOte.getinterface();
-    if (iface && iface.windowport)
-        root_el_id = iface.windowport;
+        root_el_id = GlkOte.getdomid('windowport');
 
     var rootel = $('#'+root_el_id);
     if (!rootel.length)
-        throw 'Dialog: unable to find root element #' + root_el_id + '.';
+        throw new Error('Dialog: unable to find root element #' + root_el_id + '.');
 
     /* Create the grey-out screen. */
     var screen = $('#'+dialog_el_id+'_screen');
     if (!screen.length) {
         screen = $('<div>',
-            { id: dialog_el_id+'_screen' });
+            { id: dialog_el_id+'_screen', class: 'DialogScreen' });
         rootel.append(screen);
     }
 
@@ -127,7 +166,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     var frame = $('#'+dialog_el_id+'_frame');
     if (!frame.length) {
         frame = $('<div>',
-            { id: dialog_el_id+'_frame' });
+            { id: dialog_el_id+'_frame', class: 'DialogFrame' });
         rootel.append(frame);
     }
 
@@ -135,7 +174,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     if (dia.length)
         dia.remove();
 
-    dia = $('<div>', { id: dialog_el_id });
+    dia = $('<div>', { id: dialog_el_id, class: 'Dialog' });
 
     var form, el, row;
 
@@ -160,6 +199,11 @@ function dialog_open(tosave, usage, gameid, callback) {
         form.append(row);
         el = $('<input>', { id: dialog_el_id+'_infield', type: 'text', name: 'filename' });
         row.append(el);
+
+        /* This was spurred by the Safari seven-day expiration policy (March 2020), but the general fragility of local storage has been a bother for years. */
+        row = $('<div>', { id: dialog_el_id+'_warning', 'class': 'DiaWarning' });
+        row.text('Warning: data may be erased by clearing cookies or browser privacy policies.');
+        form.append(row);
     }
 
     row = $('<div>', { id: dialog_el_id+'_body', 'class': 'DiaBody' });
@@ -647,7 +691,7 @@ function evhan_storage_changed(ev) {
           
         //### use binary flag?
         if (usage_is_textual(editing_dirent.usage)) {
-          var textel = $('<div>', { 'class': 'DiaDisplayText' });
+          var textel = $('<pre>', { 'class': 'DiaDisplayText' });
           textel.text(dat);
           bodyel.append(textel);
           set_caption('Displaying file contents...', true);
@@ -676,8 +720,10 @@ function evhan_storage_changed(ev) {
         }
         /* Sort by usage, then date modified */
         ls.sort(function(f1, f2) {
-                if (f1.dirent.usage != f2.dirent.usage)
-                    return (f1.dirent.usage < f2.dirent.usage);
+                if (f1.dirent.usage < f2.dirent.usage) 
+                    return -1;
+                else if (f1.dirent.usage > f2.dirent.usage) 
+                    return 1;
                 return f2.modified.getTime() - f1.modified.getTime(); 
             });
 
@@ -790,6 +836,20 @@ function evhan_storage_changed(ev) {
     }
 }
 
+/* Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
+ *
+ * Take an arbitrary string and convert it into a filename that can
+ * validly be stored in the user's directory. This is called for filenames
+ * that come from the game file, but not for filenames selected directly
+ * by the user (i.e. from a file selection dialog).
+ *
+ * Because we store everything in browser local storage, we have no
+ * filename restrictions.
+ */
+function file_clean_fixed_name(filename, usage) {
+    return filename;
+}
+
 /* Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
  *
  * Create a fileref. This does not create a file; it's just a thing you can use
@@ -800,13 +860,25 @@ function file_construct_ref(filename, usage, gameid) {
     if (!filename)
         filename = '';
     if (!usage)
-        useage = '';
+        usage = '';
     if (!gameid)
         gameid = '';
     var key = usage + ':' + gameid + ':' + filename;
     var ref = { dirent: 'dirent:'+key, content: 'content:'+key,
                 filename: filename, usage: usage, gameid: gameid };
     return ref;
+}
+
+/* Dialog.file_construct_temp_ref(usage)
+ *
+ * Create a fileref in a temporary directory. Every time this is called
+ * it should create a completely new fileref.
+ */
+function file_construct_temp_ref(usage) {
+    var timestamp = new Date().getTime();
+    var filename = "_temp_" + timestamp + "_" + Math.random();
+    filename = filename.replace('.', '');
+    return file_construct_ref(filename, usage);
 }
 
 /* Create a fileref from a browser storage key (string). If the key does not
@@ -850,7 +922,7 @@ function file_load_dirent(dirent) {
             return null;
     }
 
-    var statstring = localStorage.getItem(dirent.dirent);
+    var statstring = Storage.getItem(dirent.dirent);
     if (!statstring)
         return null;
 
@@ -886,7 +958,7 @@ function file_load_dirent(dirent) {
 /* Dialog.file_ref_exists(ref) -- returns whether the file exists
  */
 function file_ref_exists(ref) {
-    var statstring = localStorage.getItem(ref.dirent);
+    var statstring = Storage.getItem(ref.dirent);
     if (!statstring)
         return false;
     else
@@ -896,8 +968,8 @@ function file_ref_exists(ref) {
 /* Dialog.file_remove_ref(ref) -- delete the file, if it exists
  */
 function file_remove_ref(ref) {
-    localStorage.removeItem(ref.dirent);
-    localStorage.removeItem(ref.content);
+    Storage.removeItem(ref.dirent);
+    Storage.removeItem(ref.content);
 }
 
 /* Dialog.file_write(dirent, content, israw) -- write data to the file
@@ -912,6 +984,7 @@ function file_remove_ref(ref) {
  */
 function file_write(dirent, content, israw) {
     var val, ls;
+    var err1, err2;
 
     var file = file_load_dirent(dirent);
     if (!file) {
@@ -922,7 +995,7 @@ function file_write(dirent, content, israw) {
     file.modified = new Date();
 
     if (!israw)
-        content = encode_array(content);
+        content = JSON.stringify(content);
 
     ls = [];
 
@@ -935,8 +1008,11 @@ function file_write(dirent, content, israw) {
     //### game name?
 
     val = ls.join(',');
-    localStorage.setItem(file.dirent.dirent, val);
-    localStorage.setItem(file.dirent.content, content);
+    err1 = Storage.setItem(file.dirent.dirent, val);
+    err2 = Storage.setItem(file.dirent.content, content);
+
+    if (err1 || err2)
+        return false;
 
     return true;
 }
@@ -955,7 +1031,7 @@ function file_read(dirent, israw) {
     if (!file)
         return null;
 
-    var content = localStorage.getItem(dirent.content);
+    var content = Storage.getItem(dirent.content);
     if (content == null)
         return null;
 
@@ -970,7 +1046,11 @@ function file_read(dirent, israw) {
     if (israw)
         return content;
     else
-        return decode_array(content);
+        return JSON.parse(content);
+}
+
+function file_notimplemented() {
+    throw new Error('streaming function not implemented in Dialog');
 }
 
 /* Check whether a given fileref matches the given usage and gameid strings. If
@@ -999,11 +1079,12 @@ function files_list(usage, gameid) {
     var ix;
     var ls = [];
 
-    if (!localStorage)
+    if (!Storage)
         return ls;
 
-    for (ix=0; ix<localStorage.length; ix++) {
-        var key = localStorage.key(ix);
+    var keyls = Storage.getKeys();
+    for (ix=0; ix<keyls.length; ix++) {
+        var key = keyls[ix];
         if (!key)
             continue;
         var dirent = file_decode_ref(key.toString());
@@ -1030,81 +1111,132 @@ function format_date(date) {
     return day + ' ' + time;
 }
 
-/* Define encode_array() and decode_array() functions. These would be
-   JSON.stringify() and JSON.parse(), except not all browsers support those.
+/* Store a snapshot (a JSONable object) in a signature-dependent location.
+   If snapshot is null, delete the snapshot instead.
+
+   We rely on JSON.stringify() and JSON.parse(); autosave is primarily
+   for the Electron environment.
 */
-
-var encode_array = null;
-var decode_array = null;
-
-if (window.JSON) {
-    encode_array = function(arr) {
-        var res = JSON.stringify(arr);
-        var len = res.length;
-        /* Safari's JSON quotes arrays for some reason; we need to strip
-           the quotes off. */
-        if (res[0] == '"' && res[len-1] == '"')
-            res = res.slice(1, len-1);
-        return res;
+function autosave_write(signature, snapshot) {
+    var key = 'autosave:' + signature;
+    if (!snapshot) {
+        Storage.removeItem(key);
     }
-    decode_array = function(val) { return JSON.parse(val); }
+    else {
+        Storage.setItem(key, JSON.stringify(snapshot));
+    }
 }
-else {
-    /* Not-very-safe substitutes for JSON in old browsers. */
-    encode_array = function(arr) { return '[' + arr + ']'; }
-    decode_array = function(val) { return eval(val); }
+
+/* Load a snapshot (a JSONable object) from a signature-dependent location.
+*/
+function autosave_read(signature) {
+    var key = 'autosave:' + signature;
+    var val = Storage.getItem(key);
+    if (val) {
+        try {
+            return JSON.parse(val);
+        }
+        catch (ex) { }
+    }
+    return null;
 }
 
 /* Locate the storage object, and set up the storage event handler, at load
    time (but after all the handlers are defined).
+
+   We wrap the HTML localStorage object in a simplified wrapper (Storage),
+   which supports just four calls: getItem, setItem, removeItem, and getKeys.
+   This lets us catch storage-quota errors, which turns out to be a good
+   idea. It also makes it easier to substitute a different storage back-end.
 */
 
-var localStorage = null;
+var Storage = null;
 try {
+    var htmlLocalStorage = null;
     /* Accessing window.localStorage might throw a security exception. */
     if (window.localStorage != null) {
         /* This is the API object for HTML5 browser storage. */
-        localStorage = window.localStorage;
+        htmlLocalStorage = window.localStorage;
     }
     else if (window.globalStorage != null) {
         /* This is a non-standard API used in Firefox 3.0 (but not 3.5). */
-        localStorage = window.globalStorage[location.hostname];
+        htmlLocalStorage = window.globalStorage[location.hostname];
+    }
+
+    if (htmlLocalStorage) {
+        /* First, test to make sure we can write at all. (In a private
+           window, localStorage quota may be zero.) */
+        try {
+            htmlLocalStorage.setItem('_dialogtest', 'xyzzy');
+            if (htmlLocalStorage.getItem('_dialogtest') != 'xyzzy')
+                throw new Error('localStorage test did not match');
+            htmlLocalStorage.removeItem('_dialogtest');
+
+            Storage = {
+                getItem: function(key) {
+                    try {
+                        return htmlLocalStorage.getItem(key);
+                    }
+                    catch (ex) {
+                        return null;
+                    }
+                },
+                removeItem: function(key) {
+                    try {
+                        htmlLocalStorage.removeItem(key);
+                    }
+                    catch (ex) { }
+                },
+                setItem: function(key, val) {
+                    try {
+                        htmlLocalStorage.setItem(key, val);
+                    }
+                    catch (ex) {
+                        GlkOte.log('Dialog: localStorage failed! ' + ex);
+                        return true; /* error */
+                    }
+                },
+                getKeys: function() {
+                    var ls = [];
+                    for (var ix=0; ix<htmlLocalStorage.length; ix++)
+                        ls.push(htmlLocalStorage.key(ix));
+                    return ls;
+                }
+            };
+        }
+        catch (ex) {
+            GlkOte.log('Dialog: localStorage not available: ' + ex);
+            GlkOte.log('Dialog: falling back to window memory');
+        }
     }
 }
 catch (ex) { }
 
-if (localStorage == null) {
+if (Storage == null) {
     /* This browser doesn't support storage at all. We'll whip up a
        simple implementation. It will only last as long as the window
        does, but that's good enough for a game. */
-    localStorage = {
+    Storage = {
         data: {},
         keys: [],
-        length: 0,
         getItem: function(key) {
-            return localStorage.data[key];
+            return Storage.data[key];
         },
         setItem: function(key, val) {
-            if (localStorage.keys.indexOf(key) < 0) {
-                localStorage.keys.push(key);
-                localStorage.length = localStorage.keys.length;
+            if (Storage.keys.indexOf(key) < 0) {
+                Storage.keys.push(key);
             }
-            localStorage.data[key] = val;
+            Storage.data[key] = val;
         },
         removeItem: function(key) {
-            if (localStorage.keys.indexOf(key) >= 0) {
-                localStorage.keys = localStorage.keys.without(key);
-                localStorage.length = localStorage.keys.length;
-                delete localStorage.data[key];
+            var pos = Storage.keys.indexOf(key);
+            if (pos >= 0) {
+                Storage.keys.splice(pos, 1);
+                delete Storage.data[key];
             }
         },
-        key: function(index) {
-            return localStorage.keys[index];
-        },
-        clear: function() {
-            localStorage.data = {};
-            localStorage.keys = [];
-            localStorage.length = 0;
+        getKeys: function() {
+            return Storage.keys.slice(0);
         }
     }
 }
@@ -1114,15 +1246,36 @@ $(window).on('storage', evhan_storage_changed);
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
+    classname: 'Dialog',
+    streaming: false,
+    init: dialog_init,
+    inited: dialog_inited,
+    getlibrary: dialog_get_library,
+    
     open: dialog_open,
 
+    file_clean_fixed_name: file_clean_fixed_name,
     file_construct_ref: file_construct_ref,
+    file_construct_temp_ref: file_construct_temp_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
     file_write: file_write,
-    file_read: file_read
+    file_read: file_read,
+
+    /* stubs for not-implemented functions */
+    file_fopen: file_notimplemented,
+
+    /* support for the autosave hook */
+    autosave_write: autosave_write,
+    autosave_read: autosave_read
 };
 
-}();
+};
+
+/* Dialog is an instance of DialogClass, ready to init. */
+var Dialog = new DialogClass();
+
+// Node-compatible behavior
+try { exports.Dialog = Dialog; exports.DialogClass = DialogClass; } catch (ex) {};
 
 /* End of Dialog library. */

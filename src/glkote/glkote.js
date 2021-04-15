@@ -1,9 +1,11 @@
+'use strict';
+
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.1.0.
+ * GlkOte Library: version 2.3.0.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2008-15 by Andrew Plotkin.
+ * This Javascript library is copyright 2008-20 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * GlkOte is a tool for creating interactive fiction -- and other text-based
@@ -33,39 +35,64 @@
  * reply to the request. A proof-of-concept can be found at:
  *     https://github.com/erkyrath/remote-if-demo
  *
+ * (A few calls, or arguments of calls, are marked "for autosave/autorestore
+ * only". These exist for the purpose of getting a game displayed in a known
+ * state, which is rather more complicated than the usual situation of 
+ * letting a game start up and run.)
+ *
  * For full documentation, see the docs.html file in this package.
  */
 
-
-/* Put everything inside the GlkOte namespace. */
-GlkOte = function() {
+/* All state is contained in GlkoteClass. */
+var GlkOteClass = function() {
 
 /* Module global variables */
+var is_inited = false;
 var game_interface = null;
 var dom_context = undefined;
+var dom_prefix = '';
 var windowport_id = 'windowport';
 var gameport_id = 'gameport';
+var errorpane_id = 'errorpane';
+var errorcontent_id = 'errorcontent';
+var loadingpane_id = 'loadingpane';
+var max_buffer_length = 800; /* scrollback paragraphs to retain */
 var generation = 0;
+var generation_sent = -1;
 var disabled = false;
 var loading_visible = null;
+var error_visible = false;
 var windowdic = null;
 var current_metrics = null;
+var current_devpixelratio = null;
 var currently_focussed = false;
 var last_known_focus = 0;
 var last_known_paging = 0;
 var windows_paging_count = 0;
 var graphics_draw_queue = [];
+var request_timer = null;
+var request_timer_interval = null;
 var resize_timer = null;
 var retry_timer = null;
 var perform_paging = true;
 var detect_external_links = false;
 var regex_external_links = null;
+var debug_out_handler = null;
+
+var Dialog = null; /* imported API object (the file select/open layer) */
+var Blorb = null; /* imported API object (the resource layer) */
 
 /* Some handy constants */
 /* A non-breaking space character. */
 var NBSP = "\xa0";
-/* Number of paragraphs to retain in a buffer window's scrollback. */
-var max_buffer_length = 200;
+/* Size of the scrollbar, give or take some. */
+var approx_scroll_width = 20;
+/* Margin for how close you have to scroll to end-of-page to kill the
+   moreprompt. (Really this just counters rounding error. And the
+   measurement error of different fonts in a window. But as long as
+   this is less than the last-line bottom margin, it won't cause
+   problems.) */
+var moreprompt_margin = 4;
 
 /* Some constants for key event native values. (Not including function 
    keys.) */
@@ -154,10 +181,19 @@ function glkote_init(iface) {
   /* Object mapping window ID (strings) to window description objects. */
   windowdic = {};
 
+  /* Set the top-level DOM element ids, if provided. */
+  if (iface.dom_prefix)
+    dom_prefix = iface.dom_prefix;
   if (iface.windowport)
-      windowport_id = iface.windowport;
+    windowport_id = iface.windowport;
   if (iface.gameport)
-      gameport_id = iface.gameport;
+    gameport_id = iface.gameport;
+  if (iface.errorpane)
+    errorpane_id = iface.errorpane;
+  if (iface.errorcontent)
+    errorcontent_id = iface.errorcontent;
+  if (iface.loadingpane)
+    loadingpane_id = iface.loadingpane;
 
   var el = $('#'+windowport_id, dom_context);
   if (!el.length) {
@@ -169,6 +205,20 @@ function glkote_init(iface) {
     $(document).on('keypress', evhan_doc_keypress);
   $(window).on('resize', evhan_doc_resize);
 
+  /* Note the pixel ratio (resolution level; this is greater than 1 for
+     high-res displays. */
+  current_devpixelratio = window.devicePixelRatio || 1;
+
+  /* We can get callbacks on any *boolean* change in the resolution level.
+     Not, unfortunately, on all changes. */
+  if (window.matchMedia) {
+    window.matchMedia('screen and (min-resolution: 1.5dppx)').addListener(evhan_doc_pixelreschange);
+    window.matchMedia('screen and (min-resolution: 2dppx)').addListener(evhan_doc_pixelreschange);
+    window.matchMedia('screen and (min-resolution: 3dppx)').addListener(evhan_doc_pixelreschange);
+    window.matchMedia('screen and (min-resolution: 4dppx)').addListener(evhan_doc_pixelreschange);
+  }
+
+  /* Figure out the window size and font metrics. */
   var res = measure_window();
   if (jQuery.type(res) === 'string') {
     glkote_error(res);
@@ -176,6 +226,13 @@ function glkote_init(iface) {
   }
   current_metrics = res;
 
+  /* Add some elements which will give us notifications if the gameport
+     size changes. */
+  create_resize_sensors();
+
+  if (iface.max_buffer_length)
+    max_buffer_length = iface.max_buffer_length;
+    
   /* Check the options that control whether URL-like strings in the output
      are displayed as hyperlinks. */
   detect_external_links = iface.detect_external_links;
@@ -240,7 +297,83 @@ function glkote_init(iface) {
     }
   }
 
-  send_response('init', null, current_metrics);
+  if (iface.debug_commands) {
+    var debugmod = window.GiDebug;
+    if (iface.debug_commands != true)
+      debugmod = iface.debug_commands;
+    if (!debugmod) {
+      glkote_log('The debug_commands option is set, but there is no GiDebug module.');
+    }
+    else {
+      debugmod.init(evhan_debug_command);
+      debug_out_handler = debugmod.output;
+      if (iface.debug_console_open)
+        debugmod.open();
+    }
+  }
+
+  /* Either Blorb was passed in or we don't have one. */
+  if (iface.Blorb) {
+    Blorb = iface.Blorb;
+  }
+
+  /* Either Dialog was passed in or we must create one. */
+  if (iface.Dialog) {
+    Dialog = iface.Dialog;
+    /* This might be inited or not. */
+  }
+  else if (window.DialogClass) {
+    Dialog = new window.DialogClass();
+    /* Will have to init. */
+  }
+
+  /* From here, every path must call finish_init(). But it might happen async (after a delay). */
+    
+  /* If Dialog exists but has not yet been inited, we should init it. */
+  if (Dialog && !Dialog.inited()) {
+    /* Default config object for initing the Dialog library. It only cares about two fields: GlkOte and dom_prefix. (We pass along dialog_dom_prefix as dom_prefix, if supplied.) */
+    var dialogiface = { GlkOte:this };
+    if (iface.dialog_dom_prefix) {
+      dialogiface.dom_prefix = iface.dialog_dom_prefix;
+    }
+
+    /* We might have a sync or async init call! (ElectroFS uses the async style.) */
+    if (Dialog.init_async) {
+      Dialog.init_async(dialogiface, function() { finish_init(iface); })
+      return; /* callback will call finish_init(). */
+    }
+    else if (Dialog.init) {
+      Dialog.init(dialogiface);
+    }
+  }
+    
+  finish_init(iface);
+}
+
+/* Conclude the glkote_init() procedure. This sends the VM its "init"
+   event. */
+function finish_init(iface) {
+  is_inited = true;
+  if (!iface.font_load_delay) {
+    /* Normal case: start the game (interpreter) immediately. */
+    send_response('init', null, current_metrics);
+  }
+  else {
+    /* Delay case: wait a tiny interval, then re-check the window metrics
+       and *then* start the game. We might need to do this if the window
+       fonts were not cached or loaded with the DOM. (Lectrote, for example,
+       because of the way it loads font preferences.) */
+    disabled = true;
+    defer_func(function() {
+      disabled = false;
+      current_metrics = measure_window();
+      send_response('init', null, current_metrics);
+    });
+  }
+}
+
+function glkote_inited() {
+  return is_inited;
 }
 
 /* Work out various pixel measurements used to compute window sizes:
@@ -256,7 +389,7 @@ function glkote_init(iface) {
 */
 function measure_window() {
   var metrics = {};
-  var winsize, line1size, line2size, spansize, canvassize;
+  var winsize, line1size, line2size, invcursize, spansize, canvassize;
 
   /* We assume the gameport is the same size as the windowport, which
      is true on all browsers but IE7. Fortunately, on IE7 it's
@@ -266,20 +399,18 @@ function measure_window() {
   if (!gameport.length)
     return 'Cannot find gameport element #'+gameport_id+' in this document.';
 
-  /* Backwards compatibility grace note: if the HTML file includes an
-     old-style #layouttestpane div, we discard it. */
-  $('#layouttestpane', dom_context).remove();
+  /* If the HTML file includes an #layouttestpane div, we discard it.
+     We used to do metrics measurements from a predefined div with
+     that name. Nowadays, it's sometimes used as a hidden font-preloader. */
+  $('#'+dom_prefix+'layouttestpane', dom_context).remove();
 
   /* Exclude padding and border. */
   metrics.width  = gameport.width();
   metrics.height = gameport.height();
 
-  metrics.width  = gameport.width();
-  metrics.height = gameport.height();
-
   /* Create a dummy layout div containing a grid window and a buffer window,
      each with two lines of text. */
-  var layout_test_pane = $('<div>', { 'id':'layout_test_pane' });
+  var layout_test_pane = $('<div>', { id:dom_prefix+'layout_test_pane' });
   layout_test_pane.text('This should not be visible');
   layout_test_pane.css({
     /* "display:none" would make the pane not render at all, making it
@@ -300,6 +431,8 @@ function measure_window() {
   var bufwin = $('<div>', {'class': 'WindowFrame BufferWindow'});
   var bufline1 = line.clone().addClass('BufferLine').appendTo(bufwin);
   var bufline2 = line.clone().addClass('BufferLine').appendTo(bufwin);
+  var invcurspan = $('<span>', {'class': 'InvisibleCursor'});
+  bufline2.append(invcurspan);
   var bufspan = bufline1.children('span');
   layout_test_pane.append(bufwin);
 
@@ -325,9 +458,9 @@ function measure_window() {
   line1size = get_size(gridline1);
   line2size = get_size(gridline2);
 
-  metrics.gridcharheight = gridline2.position().top - gridline1.position().top;
-  metrics.gridcharwidth = gridspan.width() / 8;
-  /* Yes, we can wind up with a non-integer charwidth value. */
+  metrics.gridcharheight = Math.max(1, gridline2.position().top - gridline1.position().top);
+  metrics.gridcharwidth = Math.max(1, gridspan.width() / 8);
+  /* Yes, we can wind up with a non-integer charwidth value. But we force the value to be >= 1; zero can lead to annoying NaNs later on. */
 
   /* Find the total margin around the character grid (out to the window's
      padding/border). These values include both sides (left+right,
@@ -340,14 +473,17 @@ function measure_window() {
   spansize = get_size(bufspan);
   line1size = get_size(bufline1);
   line2size = get_size(bufline2);
+  invcursize = get_size(invcurspan);    
 
-  metrics.buffercharheight = bufline2.position().top - bufline1.position().top;
-  metrics.buffercharwidth = bufspan.width() / 8;
-  /* Yes, we can wind up with a non-integer charwidth value. */
+  metrics.buffercharheight = Math.max(1, bufline2.position().top - bufline1.position().top);
+  metrics.buffercharwidth = Math.max(1, bufspan.width() / 8);
+  /* Again, at least 1, but not necessarily integer. */
 
-  /* Again, these values include both sides (left+right, top+bottom). */
+  /* Again, these values include both sides (left+right, top+bottom).
+     We add a couple of pixels to the vertical margin to allow for
+     measurement error in different fonts. */
   metrics.buffermarginx = winsize.width - spansize.width;
-  metrics.buffermarginy = winsize.height - (line1size.height + line2size.height);
+  metrics.buffermarginy = winsize.height - (line1size.height + line2size.height) + 2;
 
   /* Here we will include padding and border. */
   winsize = get_size(graphwin);
@@ -360,7 +496,11 @@ function measure_window() {
   /* Now that we're done measuring, discard the pane. */
   layout_test_pane.remove();
   
-  /* These values come from the game interface object. */
+  /* These values come from the game interface object.
+     Specific fields like "inspacingx" will default to general terms like
+     "spacing", if not supplied.
+     (The complete_metrics() function in glkapi.js does this job too, but
+     this implementation is older and I don't want to ditch it.) */
   metrics.outspacingx = 0;
   metrics.outspacingy = 0;
   metrics.inspacingx = 0;
@@ -392,6 +532,99 @@ function measure_window() {
   return metrics;
 }
 
+/* Compare two metrics objects; return whether they're "roughly"
+   similar. (We only care about window size and some of the font
+   metrics, because those are the fields likely to change out
+   from under the library.)
+*/
+function metrics_match(met1, met2) {
+  if (met1.width != met2.width)
+    return false;
+  if (met1.height != met2.height)
+    return false;
+  if (met1.gridcharwidth != met2.gridcharwidth)
+    return false;
+  if (met1.gridcharheight != met2.gridcharheight)
+    return false;
+  if (met1.buffercharwidth != met2.buffercharwidth)
+    return false;
+  if (met1.buffercharheight != met2.buffercharheight)
+    return false;
+  return true;
+}
+
+/* Create invisible divs in the gameport which will fire events if the
+   gameport changes size. (For any reason, including document CSS changes.
+   We need this to detect Lectrote's margin change, for example.)
+
+   This code is freely adapted from CSS Element Queries by Marc J. Schmidt.
+   https://github.com/marcj/css-element-queries
+*/
+function create_resize_sensors() {
+  var gameport = $('#'+gameport_id, dom_context);
+  if (!gameport.length)
+    return 'Cannot find gameport element #'+gameport_id+' in this document.';
+
+  var shrinkel = $('<div>', {
+    id: dom_prefix+'resize-sensor-shrink'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0', top:'0', bottom:'0',
+    overflow:'hidden', visibility:'hidden',
+    'z-index':'-1'
+  });
+  shrinkel.append($('<div>', {
+    id: dom_prefix+'resize-sensor-shrink-child'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0',
+    width:'200%', height:'200%'
+  }));
+
+  var expandel = $('<div>', {
+    id: dom_prefix+'resize-sensor-expand'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0', top:'0', bottom:'0',
+    overflow:'hidden', visibility:'hidden',
+    'z-index':'-1'
+  });
+  expandel.append($('<div>', {
+    id: dom_prefix+'resize-sensor-expand-child'
+  }).css({
+    position:'absolute',
+    left:'0', right:'0'
+  }));
+
+  var shrinkdom = shrinkel.get(0);
+  var expanddom = expandel.get(0);
+  var expandchilddom = expanddom.childNodes[0];
+
+  var reset = function() {
+    shrinkdom.scrollLeft = 100000;
+    shrinkdom.scrollTop = 100000;
+
+    expandchilddom.style.width = '100000px';
+    expandchilddom.style.height = '100000px';
+    expanddom.scrollLeft = 100000;
+    expanddom.scrollTop = 100000;
+  }
+
+  gameport.append(shrinkel);
+  gameport.append(expandel);
+  reset();
+
+  var evhan = function(ev) {
+    evhan_doc_resize(ev);
+    reset();
+  }
+
+  /* These events fire copiously when the window is being resized.
+     This is one reason evhan_doc_resize() has debouncing logic. */
+  shrinkel.on('scroll', evhan);
+  expandel.on('scroll', evhan);
+}
+
 /* This function becomes GlkOte.update(). The game calls this to update
    the screen state. The argument includes all the information about new
    windows, new text, and new input requests -- everything necessary to
@@ -400,8 +633,21 @@ function measure_window() {
 function glkote_update(arg) {
   hide_loading();
 
-  if (recording)
+  /* This field is *only* for the autorestore case, and only on the very
+     first update. It contains additional information (from save_allstate)
+     which helps recreate the display. */
+  var autorestore = null;
+  if (arg.autorestore && generation == 0)
+    autorestore = arg.autorestore;
+  delete arg.autorestore; /* keep it out of the recording */
+
+  if (recording) {
     recording_send(arg);
+  }
+
+  if (arg.debugoutput && debug_out_handler) {
+    debug_out_handler(arg.debugoutput);
+  }
 
   if (arg.type == 'error') {
     glkote_error(arg.message);
@@ -462,6 +708,10 @@ function glkote_update(arg) {
   if (arg.input != null)
     accept_inputset(arg.input);
 
+  /* Note that a timer value of null is different from undefined. */
+  if (arg.timer !== undefined)
+    accept_timerrequest(arg.timer);
+
   if (arg.specialinput != null)
     accept_specialinput(arg.specialinput);
 
@@ -493,8 +743,9 @@ function glkote_update(arg) {
           /* Scroll the unseen content to the top. */
           frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
           /* Compute the new topunseen value. */
+          win.pagefrommark = win.topunseen;
           var frameheight = frameel.outerHeight();
-          var realbottom = last_line_top_offset(frameel);
+          var realbottom = buffer_last_line_top_offset(win);
           var newtopunseen = frameel.scrollTop() + frameheight;
           if (newtopunseen > realbottom)
             newtopunseen = realbottom;
@@ -502,7 +753,7 @@ function glkote_update(arg) {
             win.topunseen = newtopunseen;
           /* The scroll-down has not touched needspaging, because it is
              currently false. Let's see if it should be true. */
-          if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
+          if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
             win.needspaging = false;
           }
           else {
@@ -510,23 +761,35 @@ function glkote_update(arg) {
           }
         }
 
-        /* Add or remove the more prompt, based on the new needspaging flag. */
-        var moreel = $('#win'+win.id+'_moreprompt', dom_context);
+        /* Add or remove the more prompt and previous mark, based on the
+           new needspaging flag. Note that the more-prompt will be
+           removed when the user scrolls down; but the prev-mark
+           stays until we get back here. */
+        var moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
+        var prevel = $('#'+dom_prefix+'win'+win.id+'_prevmark', dom_context);
         if (!win.needspaging) {
           if (moreel.length)
             moreel.remove();
+          if (prevel.length)
+            prevel.remove();
         }
         else {
           if (!moreel.length) {
             moreel = $('<div>',
-              { id: 'win'+win.id+'_moreprompt', 'class': 'MorePrompt' } );
+              { id: dom_prefix+'win'+win.id+'_moreprompt', 'class': 'MorePrompt' } );
             moreel.append('More');
             /* 20 pixels is a cheap approximation of a scrollbar-width. */
-            var morex = win.coords.right + 20;
+            var morex = win.coords.right + approx_scroll_width;
             var morey = win.coords.bottom;
             moreel.css({ bottom:morey+'px', right:morex+'px' });
             $('#'+windowport_id, dom_context).append(moreel);
           }
+          if (!prevel.length) {
+            prevel = $('<div>',
+              { id: dom_prefix+'win'+win.id+'_prevmark', 'class': 'PreviousMark' } );
+            frameel.prepend(prevel);
+          }
+          prevel.css('top', (win.pagefrommark+'px'));
         }
       }
     }
@@ -577,6 +840,44 @@ function glkote_update(arg) {
     defer_func(focusfunc);
   }
 
+  if (autorestore) {
+    if (autorestore.history) {
+      jQuery.each(autorestore.history, function(winid, ls) {
+          var win = windowdic[winid];
+          if (win != null) {
+            win.history = ls.slice(0);
+            win.historypos = win.history.length;
+          }
+        });
+    }
+    if (autorestore.defcolor) {
+      jQuery.each(autorestore.defcolor, function(winid, val) {
+          var win = windowdic[winid];
+          if (win != null) {
+            win.defcolor = val;
+          }
+        });
+    }
+    
+
+    /* For the case of autorestore (only), we short-circuit the paging
+       mechanism and assume the player has already seen all the text. */
+    jQuery.each(windowdic, function(winid, win) {
+        if (win.type == 'buffer') {
+          window_scroll_to_bottom(win);
+        }
+      });
+    
+    if (!(autorestore.metrics 
+        && autorestore.metrics.width == current_metrics.width 
+        && autorestore.metrics.height == current_metrics.height)) {
+      /* The window metrics don't match what's recorded in the
+         autosave. Trigger a synthetic resize event. */
+      current_metrics.width += 2;
+      evhan_doc_resize();
+    }
+  }
+
   /* Done with the update. Exit and wait for the next input event. */
 }
 
@@ -623,8 +924,8 @@ function accept_one_window(arg) {
       typeclass = 'GraphicsWindow';
     var rockclass = 'WindowRock_' + arg.rock;
     frameel = $('<div>',
-      { id: 'window'+arg.id,
-        'class': 'WindowFrame ' + typeclass + ' ' + rockclass });
+      { id: dom_prefix+'window'+arg.id,
+        'class': 'WindowFrame HasNoInputField ' + typeclass + ' ' + rockclass });
     frameel.data('winid', arg.id);
     frameel.on('mousedown', arg.id, evhan_window_mousedown);
     if (perform_paging && win.type == 'buffer')
@@ -647,6 +948,7 @@ function accept_one_window(arg) {
     win.needscroll = false;
     win.needspaging = false;
     win.topunseen = 0;
+    win.pagefrommark = 0;
     win.coords = { left:null, top:null, right:null, bottom:null };
     win.history = new Array();
     win.historypos = 0;
@@ -666,14 +968,14 @@ function accept_one_window(arg) {
     if (arg.gridheight > win.gridheight) {
       for (ix=win.gridheight; ix<arg.gridheight; ix++) {
         var el = $('<div>',
-          { id: 'win'+win.id+'_ln'+ix, 'class': 'GridLine' });
+          { id: dom_prefix+'win'+win.id+'_ln'+ix, 'class': 'GridLine' });
         el.append(NBSP);
         win.frameel.append(el);
       }
     }
     if (arg.gridheight < win.gridheight) {
       for (ix=arg.gridheight; ix<win.gridheight; ix++) {
-        var el = $('#win'+win.id+'_ln'+ix, dom_context);
+        var el = $('#'+dom_prefix+'win'+win.id+'_ln'+ix, dom_context);
         if (el.length)
           el.remove();
       }
@@ -687,33 +989,57 @@ function accept_one_window(arg) {
   }
 
   if (win.type == 'graphics') {
-    var el = $('#win'+win.id+'_canvas', dom_context);
+    var el = $('#'+dom_prefix+'win'+win.id+'_canvas', dom_context);
     if (!el.length) {
       win.graphwidth = arg.graphwidth;
       win.graphheight = arg.graphheight;
       win.defcolor = '#FFF';
       el = $('<canvas>',
-        { id: 'win'+win.id+'_canvas' });
-      el.attr('width', win.graphwidth);
-      el.attr('height', win.graphheight);
+        { id: dom_prefix+'win'+win.id+'_canvas' });
+      /* The pixel-ratio code here should work correctly on Chrome and
+         Safari, on screens of any pixel-ratio. I followed
+         http://www.html5rocks.com/en/tutorials/canvas/hidpi/ .
+      */
+      win.backpixelratio = 1;
+      var canvas = el.get(0);
+      var ctx = canvas_get_2dcontext(el);
+      if (ctx) {
+        /* This property is still namespaced as of 2016. */
+        win.backpixelratio = ctx.webkitBackingStorePixelRatio
+          || ctx.mozBackingStorePixelRatio
+          || ctx.msBackingStorePixelRatio
+          || ctx.oBackingStorePixelRatio
+          || ctx.backingStorePixelRatio 
+          || 1;
+      }
+      win.scaleratio = current_devpixelratio / win.backpixelratio;
+      //glkote_log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+      el.attr('width', win.graphwidth * win.scaleratio);
+      el.attr('height', win.graphheight * win.scaleratio);
+      el.css('width', (win.graphwidth + 'px'));
+      el.css('height', (win.graphheight + 'px'));
       win.frameel.css('background-color', win.defcolor);
+      if (ctx) {
+        /* Set scale to win.scaleratio */
+        ctx.setTransform(win.scaleratio, 0, 0, win.scaleratio, 0, 0);
+      }
       win.frameel.append(el);
     }
     else {
       if (win.graphwidth != arg.graphwidth || win.graphheight != arg.graphheight) {
         win.graphwidth = arg.graphwidth;
         win.graphheight = arg.graphheight;
-        el.attr('width', win.graphwidth);
-        el.attr('height', win.graphheight);
+        el.attr('width', win.graphwidth * win.scaleratio);
+        el.attr('height', win.graphheight * win.scaleratio);
+        el.css('width', (win.graphwidth + 'px'));
+        el.css('height', (win.graphheight + 'px'));
         /* Clear to the default color, as if for a "fill" command. */
-        var canvas = el.get(0);
-        if (canvas && canvas.getContext) {
-          var ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = win.defcolor;
-            ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
-            ctx.fillStyle = '#000000';
-          }
+        var ctx = canvas_get_2dcontext(el);
+        if (ctx) {
+          ctx.setTransform(win.scaleratio, 0, 0, win.scaleratio, 0, 0);
+          ctx.fillStyle = win.defcolor;
+          ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
+          ctx.fillStyle = '#000000';
         }
         win.frameel.css('background-color', win.defcolor);
         /* We have to trigger a redraw event for this window. But we can't do
@@ -774,25 +1100,9 @@ function close_one_window(win) {
   delete windowdic[win.id];
   win.frameel = null;
 
-  var moreel = $('#win'+win.id+'_moreprompt', dom_context);
+  var moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
   if (moreel.length)
     moreel.remove();
-}
-
-/* Regular expressions used in twiddling runs of whitespace. */
-var regex_initial_whitespace = new RegExp('^ ');
-var regex_final_whitespace = new RegExp(' $');
-var regex_long_whitespace = new RegExp('  +', 'g'); /* two or more spaces */
-
-/* Given a run of N spaces (N >= 2), return N-1 non-breaking spaces plus
-   a normal one. */
-function func_long_whitespace(match) {
-  var len = match.length;
-  if (len == 1)
-    return ' ';
-  /* Evil trick I picked up from Prototype. Gives len-1 copies of NBSP. */
-  var res = new Array(len).join(NBSP);
-  return res + ' ';
 }
 
 /* Handle all of the window content changes. */
@@ -826,7 +1136,7 @@ function accept_one_content(arg) {
       var linearg = lines[ix];
       var linenum = linearg.line;
       var content = linearg.content;
-      var lineel = $('#win'+win.id+'_ln'+linenum, dom_context);
+      var lineel = $('#'+dom_prefix+'win'+win.id+'_ln'+linenum, dom_context);
       if (!lineel.length) {
         glkote_error('Got content for nonexistent line ' + linenum + ' of window ' + arg.id + '.');
         continue;
@@ -883,7 +1193,7 @@ function accept_one_content(arg) {
         win.inputel.detach();
     }
 
-    var cursel = $('#win'+win.id+'_cursor', dom_context);
+    var cursel = $('#'+dom_prefix+'win'+win.id+'_cursor', dom_context);
     if (cursel.length)
       cursel.remove();
     cursel = null;
@@ -891,6 +1201,7 @@ function accept_one_content(arg) {
     if (arg.clear) {
       win.frameel.empty();
       win.topunseen = 0;
+      win.pagefrommark = 0;
     }
 
     /* Accept a missing text field as doing nothing. */
@@ -901,7 +1212,7 @@ function accept_one_content(arg) {
        a new paragraph. (If the flag is false, the line gets appended
        to the previous paragraph.)
 
-       We have to keep track of two flags per paragraph div. The blankpara
+       We have to keep track of a flag per paragraph div. The blankpara
        flag indicates whether this is a completely empty paragraph (a
        blank line). We have to drop a NBSP into empty paragraphs --
        otherwise they'd collapse -- and so this flag lets us distinguish
@@ -909,8 +1220,9 @@ function accept_one_content(arg) {
        (The difference is, when you append data to a truly empty paragraph,
        you have to delete the placeholder NBSP.)
 
-       The endswhite flag indicates whether the paragraph ends with a
-       space (or is completely empty). See below for why that's important. */
+       We also give the paragraph div the BlankPara class, in case
+       CSS cares.
+    */
 
     for (ix=0; ix<text.length; ix++) {
       var textarg = text[ix];
@@ -919,38 +1231,27 @@ function accept_one_content(arg) {
       if (textarg.append) {
         if (!content || !content.length)
           continue;
-        divel = last_child_of(win.frameel);
+        divel = buffer_last_line(win);
       }
       if (divel == null) {
         /* Create a new paragraph div */
-        divel = $('<div>', { 'class': 'BufferLine' });
+        divel = $('<div>', { 'class': 'BufferLine BlankPara' });
         divel.data('blankpara', true);
-        divel.data('endswhite', true);
         win.frameel.append(divel);
       }
-      else {
-        /* jquery-wrap the element. */
-        divel = $(divel);
-      }
-      if (textarg.flowbreak)
+      if (textarg.flowbreak) {
         divel.addClass('FlowBreak');
+      }
       if (!content || !content.length) {
         if (divel.data('blankpara'))
-          divel.text(NBSP);
+          divel.append($('<span>', { 'class':'BlankLineSpan' }).text(NBSP));
         continue;
       }
       if (divel.data('blankpara')) {
         divel.data('blankpara', false);
+        divel.removeClass('BlankPara');
         divel.empty();
       }
-      /* We must munge long strings of whitespace to make sure they aren't
-         collapsed. (This wouldn't be necessary if "white-space: pre-wrap"
-         were widely implemented. Mind you, these days it probably *is*,
-         but why update working code, right?)
-         The rule: if we find a block of spaces, turn all but the last one
-         into NBSP. Also, if a div's last span ends with a space (or the
-         div has no spans), and a new span begins with a space, turn that
-         into a NBSP. */
       for (sx=0; sx<content.length; sx++) {
         var rdesc = content[sx];
         var rstyle, rtext, rlink;
@@ -962,8 +1263,8 @@ function accept_one_content(arg) {
                  break should disappear. This will undoubtedly cause
                  headaches for portability someday. */
               var imgurl = rdesc.url;
-              if (window.GiLoad && GiLoad.get_image_url) {
-                var newurl = GiLoad.get_image_url(rdesc.image);
+              if (Blorb && Blorb.get_image_url) {
+                var newurl = Blorb.get_image_url(rdesc.image);
                 if (newurl)
                   imgurl = newurl;
               }
@@ -1002,7 +1303,6 @@ function accept_one_content(arg) {
                 el = ael;
               }
               divel.append(el);
-              divel.data('endswhite', false);
               continue;
             }
             glkote_log('Unknown special entry in line data: ' + rdesc.special);
@@ -1020,10 +1320,6 @@ function accept_one_content(arg) {
         }
         var el = $('<span>',
           { 'class': 'Style_' + rstyle } );
-        rtext = rtext.replace(regex_long_whitespace, func_long_whitespace);
-        if (divel.data('endswhite')) {
-          rtext = rtext.replace(regex_initial_whitespace, NBSP);
-        }
         if (rlink == undefined) {
           insert_text_detecting(el, rtext);
         }
@@ -1035,36 +1331,39 @@ function accept_one_content(arg) {
           el.append(ael);
         }
         divel.append(el);
-        divel.data('endswhite', regex_final_whitespace.test(rtext));
       }
     }
 
     /* Trim the scrollback. If there are more than max_buffer_length
        paragraphs, delete some. (It would be better to limit by
        character count, rather than paragraph count. But this is
-       easier.) */
+       easier.) (Yeah, the prev-mark can wind up included in the count --
+       and trimmed out. It's only slightly wrong.) */
     var parals = win.frameel.children();
     if (parals.length) {
       var totrim = parals.length - max_buffer_length;
       if (totrim > 0) {
         var ix, obj;
-        win.topunseen -= parals.get(totrim).offsetTop;
+        var offtop = parals.get(totrim).offsetTop;
+        win.topunseen -= offtop;
         if (win.topunseen < 0)
           win.topunseen = 0;
+        win.pagefrommark -= offtop;
+        if (win.pagefrommark < 0)
+          win.pagefrommark = 0;
         for (ix=0; ix<totrim; ix++) {
           $(parals.get(ix)).remove();
         }
       }
     }
 
-    /* Stick the invisible cursor-marker at the end. We use this to
-       position the input box. */
-    var divel = last_child_of(win.frameel);
+    /* Stick the invisible cursor-marker inside (at the end of) the last
+       paragraph div. We use this to position the input box. */
+    var divel = buffer_last_line(win);
     if (divel) {
-      cursel = $('<span>',
-        { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-      cursel.append(NBSP);
-      $(divel).append(cursel);
+      var cursel = $('<span>',
+        { id: dom_prefix+'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
+      divel.append(cursel);
 
       if (win.inputel) {
         /* Put back the inputel that we found earlier. */
@@ -1078,11 +1377,12 @@ function accept_one_content(arg) {
         var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
         if (width < 1)
           width = 1;
-        /* ### opera absolute positioning failure? */
         inputel.css({ position: 'absolute',
           left: '0px', top: '0px', width: width+'px' });
         cursel.append(inputel);
       }
+
+      cursel = null;
     }
   }
 
@@ -1138,6 +1438,8 @@ function accept_inputcancel(arg) {
       if (argi == null || argi.gen > win.input.gen) {
         /* cancel this input. */
         win.input = null;
+        win.frameel.addClass('HasNoInputField');
+        win.frameel.removeClass('HasInputField');
         if (win.inputel) {
           win.inputel.remove();
           win.inputel = null;
@@ -1171,14 +1473,20 @@ function accept_inputset(arg) {
     if (argi == null)
       return;
     win.input = argi;
+    win.frameel.addClass('HasInputField');
+    win.frameel.removeClass('HasNoInputField');
 
     /* Maximum number of characters to accept. */
     var maxlen = 1;
     if (argi.type == 'line')
       maxlen = argi.maxlen;
 
+    /* We're only going to emplace the inputel when it's freshly created. If it's lingering from a previous input, we leave it in place in the DOM. This *should* reduce soft-keyboard flashing problems without screwing up the DOM semantics. */
+    var newinputel = false;
     var inputel = win.inputel;
+    
     if (inputel == null) {
+      newinputel = true;
       var classes = 'Input';
       if (argi.type == 'line') {
         classes += ' LineInput';
@@ -1190,7 +1498,7 @@ function accept_inputset(arg) {
         glkote_error('Window ' + win.id + ' has requested unrecognized input type ' + argi.type + '.');
       }
       inputel = $('<input>',
-        { id: 'win'+win.id+'_input',
+        { id: dom_prefix+'win'+win.id+'_input',
           'class': classes, type: 'text', maxlength: maxlen });
       if (true) /* should be mobile-webkit-only? */
         inputel.attr('autocapitalize', 'off');
@@ -1221,7 +1529,7 @@ function accept_inputset(arg) {
     }
 
     if (win.type == 'grid') {
-      var lineel = $('#win'+win.id+'_ln'+argi.ypos, dom_context);
+      var lineel = $('#'+dom_prefix+'win'+win.id+'_ln'+argi.ypos, dom_context);
       if (!lineel.length) {
         glkote_error('Window ' + win.id + ' has requested input at unknown line ' + argi.ypos + '.');
         return;
@@ -1236,15 +1544,18 @@ function accept_inputset(arg) {
         width = maxwidth;
       inputel.css({ position: 'absolute',
         left: xpos+'px', top: pos.top+'px', width: width+'px' });
-      win.frameel.append(inputel);
+      if (newinputel)
+        win.frameel.append(inputel);
     }
 
     if (win.type == 'buffer') {
-      var cursel = $('#win'+win.id+'_cursor', dom_context);
+      var cursel = $('#'+dom_prefix+'win'+win.id+'_cursor', dom_context);
+      /* Check to make sure an InvisibleCursor exists on the last line.
+         The only reason it might not is if the window is entirely blank
+         (no lines). In that case, append one to the window frame itself. */
       if (!cursel.length) {
         cursel = $('<span>',
-          { id: 'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
-        cursel.append(NBSP);
+          { id: dom_prefix+'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
         win.frameel.append(cursel);
       }
       var pos = cursel.position();
@@ -1256,12 +1567,36 @@ function accept_inputset(arg) {
       var width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
       if (width < 1)
         width = 1;
-      /* ### opera absolute positioning failure? */
       inputel.css({ position: 'absolute',
         left: '0px', top: '0px', width: width+'px' });
-      cursel.append(inputel);
+      if (newinputel)
+        cursel.append(inputel);
     }
   });
+}
+
+/* Handle the change in the timer request. The argument is either null
+   (cancel the timer) or a positive value in milliseconds (reset and restart
+   the timer with that interval).
+*/
+function accept_timerrequest(arg) {
+  /* Cancel timer, if there is one. Note that if the game passes us a
+     timer value equal to our current interval, we will still reset and
+     restart the timer. */
+  if (request_timer) {
+    window.clearTimeout(request_timer);
+    request_timer = null;
+    request_timer_interval = null;
+  }
+
+  if (!arg) {
+    /* No new timer. */
+  }
+  else {
+    /* Start a new timer. */
+    request_timer_interval = arg;
+    request_timer = window.setTimeout(evhan_timer_event, request_timer_interval);
+  }
 }
 
 function accept_specialinput(arg) {
@@ -1288,16 +1623,29 @@ function accept_specialinput(arg) {
   }
 }
 
+/* Return the element which is the last BufferLine element of the
+   window. (jQuery-wrapped.) If none, return null.
+*/
+function buffer_last_line(win) {
+  var divel = last_child_of(win.frameel); /* not wrapped */
+  if (divel == null)
+    return null;
+  /* If the sole child is the PreviousMark, there are no BufferLines. */
+  if (divel.className.indexOf('BufferLine') < 0)
+    return null;
+  return $(divel);
+}
+
 /* Return the vertical offset (relative to the parent) of the top of the 
    last child of the parent. We use the raw DOM "offsetTop" property;
    jQuery doesn't have an accessor for it.
    (Possibly broken in MSIE7? It worked in the old version, though.)
 */
-function last_line_top_offset(el) {
-  var ls = el.children();
-  if (!ls || !ls.length)
+function buffer_last_line_top_offset(win) {
+  var divel = buffer_last_line(win);
+  if (!divel || !divel.length)
     return 0;
-  return ls.get(ls.length-1).offsetTop;
+  return divel.get(0).offsetTop;
 }
 
 /* Set windows_paging_count to the number of windows that need paging.
@@ -1360,6 +1708,37 @@ function glkote_get_interface() {
   return game_interface;
 }
 
+/* Return the library interface object that we were passed or created.
+   Call this if you want to use, e.g., the same Dialog object that GlkOte
+   is using.
+*/
+function glkote_get_library(val) {
+  switch (val) {
+    case 'Dialog': return Dialog;
+    case 'Blorb': return Blorb;
+  }
+  /* Unrecognized library name. */
+  return null;
+}
+    
+/* Get the DOM element ids used for various standard elements. The argument
+   should be one of 'windowport', 'gameport', 'errorpane', 'errorcontent',
+   'loadingpane'.
+   By default you will get the same string back. However, if a different
+   element ID was set in GlkOte's configuration, you'll get that.
+*/
+function glkote_get_dom_id(val) {
+  switch (val) {
+    case 'windowport': return windowport_id;
+    case 'gameport': return gameport_id;
+    case 'errorpane': return errorpane_id;
+    case 'errorcontent': return errorcontent_id;
+    case 'loadingpane': return loadingpane_id;
+  }
+  /* Unrecognized id name; just return the same value back. */
+  return val;
+}
+    
 /* Set the DOM context. This is the jQuery element within which all Glk
    DOM elements are looked up. (#gameport, #windowport, etc.)
 
@@ -1369,9 +1748,6 @@ function glkote_get_interface() {
    detach the Glk DOM and maintain it off-screen. That's possible if you 
    set the DOM context to the detached element. I think (although I have
    not tested) that this configuration is less well-optimized.
-
-   You cannot use this to maintain two separate Glk DOMs in the same
-   document. Sorry.
 */
 function glkote_set_dom_context(val) {
   dom_context = val;
@@ -1381,6 +1757,30 @@ function glkote_set_dom_context(val) {
 */
 function glkote_get_dom_context() {
   return dom_context;
+}
+
+/* Stash extra information needed for autosave only.
+*/
+function glkote_save_allstate() {
+  var obj = {
+    metrics: {
+      width: current_metrics.width,
+      height: current_metrics.height
+    },
+    history: {}
+  };
+
+  jQuery.each(windowdic, function(winid, win) {
+      if (win.history && win.history.length)
+        obj.history[winid] = win.history.slice(0);
+      if (win.defcolor) {
+        if (obj.defcolor === undefined)
+          obj.defcolor = {};
+        obj.defcolor[winid] = win.defcolor;
+      }
+    });
+  
+  return obj;
 }
 
 /* Log the message in the browser's error log, if it has one. (This shows
@@ -1400,13 +1800,50 @@ function glkote_log(msg) {
    is called when jQuery couldn't be loaded.
 */
 function glkote_error(msg) {
-  var el = document.getElementById('errorcontent');
+  if (!msg)
+    msg = '???';
+
+  var el = document.getElementById(errorcontent_id);
+  if (!el) return;
+    
   remove_children(el);
   el.appendChild(document.createTextNode(msg));
 
-  el = document.getElementById('errorpane');
+  el = document.getElementById(errorpane_id);
+  if (el.className == 'WarningPane')
+    el.className = null;
   el.style.display = '';   /* el.show() */
+  error_visible = true;
 
+  hide_loading();
+}
+
+/* Displays a blue warning pane, with a message in it.
+
+   Unlike glkote_error, a warning can be removed (call glkote_warning with
+   no argument). The warning pane is intrusive, so it should be used for
+   for conditions that interrupt or suspend normal play. An error overrides
+   a warning.
+
+   (Quixe uses this to display an "end of session" message.)
+*/
+function glkote_warning(msg) {
+  if (error_visible)
+    return;
+
+  if (!msg) {
+    $('#'+errorpane_id).hide();
+    return;
+  }
+
+  var el = document.getElementById(errorcontent_id);
+  if (!el) return;
+
+  remove_children(el);
+  el.appendChild(document.createTextNode(msg));
+
+  $('#'+errorpane_id).addClass('WarningPane');
+  $('#'+errorpane_id).show();
   hide_loading();
 }
 
@@ -1429,7 +1866,7 @@ function retry_update() {
 
 /* Hide the error pane. */
 function clear_error() {
-  $('#errorpane', dom_context).hide();
+  $('#'+errorpane_id, dom_context).hide();
 }
 
 /* Hide the loading pane (the spinny compass), if it hasn't already been
@@ -1442,7 +1879,7 @@ function hide_loading() {
     return;
   loading_visible = false;
 
-  var el = document.getElementById('loadingpane');
+  var el = document.getElementById(loadingpane_id);
   if (el) {
     el.style.display = 'none';  /* el.hide() */
   }
@@ -1457,7 +1894,7 @@ function show_loading() {
     return;
   loading_visible = true;
 
-  var el = document.getElementById('loadingpane');
+  var el = document.getElementById(loadingpane_id);
   if (el) {
     el.style.display = '';   /* el.show() */
   }
@@ -1543,6 +1980,18 @@ function insert_text_detecting(el, val) {
   el.append(document.createTextNode(val));
 }
 
+/* Get the CanvasRenderingContext2D from a canvas element. 
+*/
+function canvas_get_2dcontext(canvasel) {
+  if (!canvasel || !canvasel.length)
+    return undefined;
+  var canvas = canvasel.get(0);
+  if (canvas && canvas.getContext) {
+    return canvas.getContext('2d');
+  }
+  return undefined;
+}
+
 /* This is responsible for drawing the queue of graphics operations.
    It will do simple fills synchronously, but image draws must be
    handled in a callback (because the image data might need to be pulled
@@ -1573,14 +2022,8 @@ function perform_graphics_ops(loadedimg, loadedev) {
       continue;
     }
 
-    var ctx = undefined;
-    var canvas = undefined;
-    var el = $('#win'+win.id+'_canvas', dom_context);
-    if (el.length) {
-      canvas = el.get(0);
-      if (canvas && canvas.getContext)
-        ctx = canvas.getContext('2d');
-    }
+    var el = $('#'+dom_prefix+'win'+win.id+'_canvas', dom_context);
+    var ctx = canvas_get_2dcontext(el);
     if (!ctx) {
       glkote_log('perform_graphics_ops: op for nonexistent canvas ' + win.id);
       graphics_draw_queue.shift();
@@ -1603,7 +2046,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
         if (op.x === undefined) {
           /* Fill the whole canvas frame. Also set the background color,
              so that future window resizes look nice. */
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
           win.frameel.css('background-color', ctx.fillStyle);
         }
         else {
@@ -1631,8 +2074,8 @@ function perform_graphics_ops(loadedimg, loadedev) {
         }
         if (!loadedimg) {
           var imgurl = op.url;
-          if (window.GiLoad && GiLoad.get_image_url) {
-            var newurl = GiLoad.get_image_url(op.image);
+          if (Blorb && Blorb.get_image_url) {
+            var newurl = Blorb.get_image_url(op.image);
             if (newurl)
               imgurl = newurl;
           }
@@ -1743,10 +2186,17 @@ function send_response(type, win, val, val2) {
   if (disabled && type != 'specialresponse')
     return;
 
+  if (generation <= generation_sent
+    && !(type == 'init' || type == 'refresh')) {
+    glkote_log('Not sending repeated generation number: ' + generation);
+    return;
+  }
+
   var winid = 0;
   if (win)
     winid = win.id;
   var res = { type: type, gen: generation };
+  generation_sent = generation;
 
   if (type == 'line') {
     res.window = win.id;
@@ -1774,14 +2224,24 @@ function send_response(type, win, val, val2) {
     res.response = val;
     res.value = val2;
   }
+  else if (type == 'debuginput') {
+    res.value = val;
+  }
   else if (type == 'redraw') {
     res.window = win.id;
   }
-  else if (type == 'init' || type == 'arrange') {
+  else if (type == 'init') {
+    res.metrics = val;
+    res.support = ['timer', 'graphics', 'graphicswin', 'hyperlinks'];
+  }
+  else if (type == 'arrange') {
     res.metrics = val;
   }
 
-  if (!(type == 'init' || type == 'refresh' || type == 'specialresponse')) {
+  /* Save partial inputs, unless this is an event which disables
+     or ignores the UI. */
+  if (!(type == 'init' || type == 'refresh'
+      || type == 'specialresponse' || type == 'debuginput')) {
     jQuery.each(windowdic, function(tmpid, win) {
       var savepartial = (type != 'line' && type != 'char') 
                         || (win.id != winid);
@@ -1801,6 +2261,7 @@ function send_response(type, win, val, val2) {
     recording_state.input = res;
     recording_state.timestamp = (new Date().getTime());
   }
+
   game_interface.accept(res);
 }
 
@@ -1947,8 +2408,14 @@ function recording_standard_handler(state) {
 /* DOM event handlers. */
 
 /* Detect the browser window being resized.
-   Unfortunately, this doesn't catch "make font bigger/smaller" changes,
-   which ought to trigger the same reaction.)
+
+   This event is triggered by several causes:
+
+   - A real window DOM resize event. (This should include "make font
+   bigger/smaller".)
+   - Autorestore. (The window might be a different size than the autosave
+   data expects, so we trigger this.)
+   - The magic gameport resize sensors created in create_resize_sensors().
 */
 function evhan_doc_resize(ev) {
   /* We don't want to send a whole flurry of these events, just because
@@ -1987,15 +2454,10 @@ function doc_resize_real() {
   }
 
   var new_metrics = measure_window();
-  if (new_metrics.width == current_metrics.width
-    && new_metrics.height == current_metrics.height) {
+  if (metrics_match(new_metrics, current_metrics)) {
     /* If the metrics haven't changed, skip the arrange event. Necessary on
        mobile webkit, where the keyboard popping up and down causes a same-size
-       resize event.
-
-       This is not ideal; it means we'll miss metrics changes caused by
-       font-size changes. (Admittedly, we don't have any code to detect those
-       anyhow, so small loss.) */
+       resize event. */
     return;
   }
   current_metrics = new_metrics;
@@ -2019,6 +2481,44 @@ function send_window_redraw(winid) {
   send_response('redraw', win, null);
 }
 
+/* Event handler: the devicePixelRatio has changed. (Really we only get
+   this for changes across particular thresholds, but I set up a bunch.)
+*/
+function evhan_doc_pixelreschange(ev) {
+  var ratio = window.devicePixelRatio || 1;
+  if (ratio != current_devpixelratio) {
+    current_devpixelratio = ratio;
+    //glkote_log('### devicePixelRatio changed to ' + current_devpixelratio);
+
+    /* If we have any graphics windows, we need to redo their size and
+       scale, and then hit them with a redraw event. */
+    jQuery.each(windowdic, function(winid, win) {
+        if (win.type == 'graphics') {
+          var el = $('#'+dom_prefix+'win'+win.id+'_canvas', dom_context);
+          win.scaleratio = current_devpixelratio / win.backpixelratio;
+          //glkote_log('### changed canvas to scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+          var ctx = canvas_get_2dcontext(el);
+          el.attr('width', win.graphwidth * win.scaleratio);
+          el.attr('height', win.graphheight * win.scaleratio);
+          el.css('width', (win.graphwidth + 'px'));
+          el.css('height', (win.graphheight + 'px'));
+          if (ctx) {
+            /* Set scale to win.scaleratio */
+            ctx.setTransform(win.scaleratio, 0, 0, win.scaleratio, 0, 0);
+            ctx.fillStyle = win.defcolor;
+            ctx.fillRect(0, 0, win.graphwidth, win.graphheight);
+            ctx.fillStyle = '#000000';
+          }
+          win.frameel.css('background-color', win.defcolor);
+          /* We have to trigger a redraw event for this window. But we can't do
+             a bunch of them from the same handler. We'll set up a deferred
+             function call. */
+          defer_func(function() { send_window_redraw(winid); });
+        }  
+      });
+  }
+}
+
 /* Event handler: keypress events on input fields.
 
    Move the input focus to whichever window most recently had it.
@@ -2035,22 +2535,18 @@ function evhan_doc_keypress(ev) {
     /* If the focus is already on an input field, don't mess with it. */
     return;
   }
+  if (ev.target.className.indexOf('CanHaveInputFocus') >= 0) {
+    /* If the focus is on an element which insists it's input-like,
+       don't mess with that either. This is necessary for input fields
+       in shadow DOM and plugins. */
+    return;
+  }
 
   if (ev.altKey || ev.metaKey || ev.ctrlKey) {
     /* Don't mess with command key combinations. This is not a perfect
        test, since option-key combos are ordinary (accented) characters
        on Mac keyboards, but it's close enough. */
     return;
-  }
-
-  if (0) { /*### opera browser?*/
-    /* Opera inexplicably generates keypress events for the shift, option,
-       and command keys. The keycodes are 16...18. We don't want those
-       to focus-and-scroll-down. */
-    if (!keycode)
-      return;
-    if (keycode < 32 && keycode != 13)
-      return;
   }
 
   var win;
@@ -2070,7 +2566,7 @@ function evhan_doc_keypress(ev) {
       frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
       /* Compute the new topunseen value. */
       var frameheight = frameel.outerHeight();
-      var realbottom = last_line_top_offset(frameel);
+      var realbottom = buffer_last_line_top_offset(win);
       var newtopunseen = frameel.scrollTop() + frameheight;
       if (newtopunseen > realbottom)
         newtopunseen = realbottom;
@@ -2079,9 +2575,9 @@ function evhan_doc_keypress(ev) {
       if (win.needspaging) {
         /* The scroll-down might have cleared needspaging already. But 
            if not... */
-        if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
+        if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
           win.needspaging = false;
-          var moreel = $('#win'+win.id+'_moreprompt', dom_context);
+          var moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
           if (moreel.length)
             moreel.remove();
           readjust_paging_focus(true);
@@ -2161,12 +2657,6 @@ function evhan_window_mousedown(ev) {
 
   if (win.inputel) {
     last_known_focus = win.id;
-    if (0 /*###Prototype.Browser.MobileSafari*/) {
-      ev.preventDefault();
-      //glkote_log("### focus to " + win.id);
-      //### This doesn't always work, blah
-      win.inputel.focus();
-    }
   }
 
   if (win.needspaging)
@@ -2192,7 +2682,7 @@ function evhan_input_mouse_click(ev) {
   var ypos = 0;
   if (win.type == 'grid') {
     /* Measure click position relative to the zeroth line of the grid. */
-    var lineel = $('#win'+win.id+'_ln'+0, dom_context);
+    var lineel = $('#'+dom_prefix+'win'+win.id+'_ln'+0, dom_context);
     if (lineel.length) {
       var linepos = lineel.offset();
       xpos = Math.floor((ev.clientX - linepos.left) / current_metrics.gridcharwidth);
@@ -2209,7 +2699,7 @@ function evhan_input_mouse_click(ev) {
   }
   else if (win.type == 'graphics') {
     /* Measure click position relative to the canvas. */
-    var canel = $('#win'+win.id+'_canvas', dom_context);
+    var canel = $('#'+dom_prefix+'win'+win.id+'_canvas', dom_context);
     if (canel.length) {
       var pos = canel.offset();
       xpos = ev.clientX - pos.left;
@@ -2438,6 +2928,8 @@ function evhan_input_blur(ev) {
   currently_focussed = false;
 }
 
+/* Event handler: scrolling in buffer window 
+*/
 function evhan_window_scroll(ev) {
   var winid = ev.data;
   var win = windowdic[winid];
@@ -2449,20 +2941,48 @@ function evhan_window_scroll(ev) {
 
   var frameel = win.frameel;
   var frameheight = frameel.outerHeight();
-  var realbottom = last_line_top_offset(frameel);
+  var realbottom = buffer_last_line_top_offset(win);
   var newtopunseen = frameel.scrollTop() + frameheight;
   if (newtopunseen > realbottom)
     newtopunseen = realbottom;
   if (win.topunseen < newtopunseen)
     win.topunseen = newtopunseen;
 
-  if (frameel.scrollTop() + frameheight >= frameel.get(0).scrollHeight) {
+  if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
     win.needspaging = false;
-    var moreel = $('#win'+win.id+'_moreprompt', dom_context);
+    var moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
     if (moreel.length)
       moreel.remove();
     readjust_paging_focus(true);
     return;
+  }
+}
+
+/* Scroll a buffer window all the way down, removing the MORE prompt.
+   This is only used in the autorestore case.
+*/
+function window_scroll_to_bottom(win) {
+  var frameel = win.frameel;
+
+  var frameheight = frameel.outerHeight();
+  frameel.scrollTop(frameel.get(0).scrollHeight - frameheight);
+
+  var realbottom = buffer_last_line_top_offset(win);
+  var newtopunseen = frameel.scrollTop() + frameheight;
+  if (newtopunseen > realbottom)
+    newtopunseen = realbottom;
+  if (win.topunseen < newtopunseen)
+    win.topunseen = newtopunseen;
+  if (win.needspaging) {
+    /* The scroll-down might have cleared needspaging already. But 
+       if not... */
+    if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
+      win.needspaging = false;
+      var moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
+      if (moreel.length)
+        moreel.remove();
+      readjust_paging_focus(true);
+    }
   }
 }
 
@@ -2485,22 +3005,62 @@ function build_evhan_hyperlink(winid, linkval) {
   };
 }
 
+/* Event handler for the request_timer timeout that we set in 
+   accept_timerrequest().
+*/
+function evhan_timer_event() {
+  if ((!request_timer) || (!request_timer_interval)) {
+    /* This callback should have been cancelled before firing, so we
+       shouldn't even be here. */
+    return;
+  }
+
+  /* It's a repeating timer, so set it again. */
+  request_timer = window.setTimeout(evhan_timer_event, request_timer_interval);
+  
+  if (disabled) {
+    /* Can't handle the timer while the UI is disabled, so we punt.
+       It will fire again someday. */
+    return;
+  }
+
+  send_response('timer');
+}
+
+/* Event handler for the GiDebug command callback. 
+*/
+function evhan_debug_command(cmd) {
+  send_response('debuginput', null, cmd);
+}
+
 /* ---------------------------------------------- */
 
 /* End of GlkOte namespace function. Return the object which will
    become the GlkOte global. */
 return {
-  version:  '2.1.0',
-  init:     glkote_init, 
+  classname: 'GlkOte',
+  version:  '2.3.0',
+  init:     glkote_init,
+  inited:   glkote_inited,
   update:   glkote_update,
   extevent: glkote_extevent,
   getinterface: glkote_get_interface,
+  getlibrary: glkote_get_library,
+  getdomid: glkote_get_dom_id,
   getdomcontext: glkote_get_dom_context,
   setdomcontext: glkote_set_dom_context,
+  save_allstate : glkote_save_allstate,
   log:      glkote_log,
+  warning:  glkote_warning,
   error:    glkote_error
 };
 
-}();
+};
+
+/* GlkOte is an instance of GlkOteClass, ready to init. */
+var GlkOte = new GlkOteClass();
+
+// Node-compatible behavior
+try { exports.GlkOte = GlkOte; exports.GlkOteClass = GlkOteClass; } catch (ex) {};
 
 /* End of GlkOte library. */

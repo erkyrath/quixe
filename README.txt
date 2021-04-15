@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 2.1.1.
+Quixe Library: version 2.2.0.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -45,6 +45,17 @@ your "mystory.ulx.js" file.
 To set up a page that can play any game file on the Internet (as
 on the web site), copy play-remote.html.
 
+
+* Electron
+
+The included version of GlkOte has extra support for the Electron
+environment. This is a version of Node.js wrapped up as an application
+shell, with extra APIs for native file support. In this environment,
+use lib/elkote.min.js instead of lib/glkote.min.js.
+
+If you have no idea what I just said, ignore lib/elkote.min.js.
+
+
 * Contents
 
 - README.txt       -- this file
@@ -63,11 +74,12 @@ on the web site), copy play-remote.html.
   - glkote/...        -- copied from the GlkOte project
 
 - lib -- compressed Javascript source code
-  - jquery-1.11.2.js     -- standard jQuery library
-  - jquery-1.11.2.min.js -- ditto, minified
+  - jquery-1.12.4.js     -- standard jQuery library
+  - jquery-1.12.4.min.js -- ditto, minified
   (each of the next two files contains several files from the src directory,
   run through rjsmin.py)
   - glkote.min.js        -- glkote files
+  - elkote.min.js        -- glkote files (alternate package for Electron)
   - quixe.min.js         -- quixe files
 
 - media -- images, CSS, and layout for play.html et al
@@ -87,9 +99,76 @@ on the web site), copy play-remote.html.
 
 * Version History
 
-- 2.1.2 (###, 2015)
-  - Added basic WAI-ARIA support to buffer windows.
   - Added @hasundo and @discardundo opcodes. (Glulx spec 3.1.3.)
+
+- 2.2.0 (March 27, 2021)
+  - All of the API objects are now defined as Javascript classes
+    (QuixeClass, GiLoadClass, GiDispaClass). Each file exports this class
+    plus a single instance (Quixe, GiLoad). (There's no global GiDispa
+    instance because GiLoad always creates its own.)
+  - The Blorb functionality has been moved out of gi_load.js and into
+    a new file, glkote/gi_blorb.js.
+  - Added a max_buffer_length config option, defaulting to 800 (lines or
+    paragraphs) instead of the previous 200.
+
+- 2.1.8 (December 1, 2020)
+  - Fixed the spurious MORE prompt in fixed-size buffer windows.
+  - Hopefully fixed a fatal error with zero-height or hidden grid windows.
+  - More options to control DOM element ids.
+
+- 2.1.7 (March 29, 2020)
+  - Increased the font sizes in the default stylesheet.
+  - Adopt GlkOte's new timer API (no change in behavior).
+  - Change to how whitespace is displayed (ditto).
+  - A change to input line handling which might reduce keyboard flicker
+    on Android.
+  - Test localStorage functionality; if not available, fall back to
+    Javascript memory.
+  - Changed the transcript display pane to a <pre> tag, to work around
+    a Firefox copy-paste bug.
+  - Fixed variable declarations to support JS-strict mode.
+  - Added a log_execution_time option to control logging of game turn
+    speed.
+  - Added a warning to the Save dialog, saying that browser storage can
+    be erased by clearing cookies or by browser privacy policies. (Will
+    not appear in Lectrote, since that doesn't use browser storage.)
+
+- 2.1.6 (October 30, 2016)
+  - Fix for graphics windows being drawn with a slight extra lower margin.
+  - Detect size changes of the gameport (even if the window does not change
+    size) and fire the appropriate rearrange event.
+  - Adjust the (experimental) debug feature to look for a "Dbug" chunk in
+    a Blorb file. (But this does not yet support the current debug format.)
+  - Update to jQuery 1.12.4.
+
+- 2.1.5 (June 23, 2016)
+  - When MORE paging, display a margin mark at the last-seen position.
+  - Graphics windows now display scaled images at full screen resolution
+    on all browsers. (Previously, Counterfeit Monkey on a Retina display
+    in Chrome was fuzzy.)
+  - Hooks for extending the UI in game-specific ways.
+
+- 2.1.4 (March 11, 2016)
+  - Autosave option: the interpreter can save state after every command
+    and restore it when relaunched.
+  - Fixed a bug where local variables were corrupted after restoring a
+    saved game. (Did not affect UNDO, only RESTORE.)
+  - Fixed a bug where the MORE prompt could get stuck on (particularly when
+    you use browser-view zoom).
+    
+- 2.1.3 (February 5, 2016)
+  - Display a "game session has ended" message when the interpreter exits.
+  - Changed the behavior of unicode files in local storage. They are now
+    byte arrays (UTF8 or BE32) instead of unichar arrays. Legacy saved files
+    will not read back correctly. This only affects files created with
+    glk_stream_open_file_uni(), so it does *not* affect saved games.
+  - Fixed a bug where hyperlinks set on images (in text) would not work.
+  - Eevee provides further speed optimizations.
+
+- 2.1.2 (November 22, 2015)
+  - Added basic WAI-ARIA support to buffer windows.
+  - Fixed a bug where setting a graphics window's color and then clearing
+    it (in the same turn) would fail.
 
 - 2.1.1 (June 13, 2015)
   - Restructured generated JS code for better optimization in modern
@@ -169,15 +248,15 @@ on the web site), copy play-remote.html.
 
 * Permissions
 
-The Quixe, GiDispa, and GiLoad Javascript libraries are copyright 2010-15
-by Andrew Plotkin. They are distributed under the MIT license; see the
-"LICENSE" file.
+The Quixe, GiDispa, and GiLoad Javascript libraries are copyright
+2010-2021 by Andrew Plotkin. They are distributed under the MIT license;
+see the "LICENSE" file.
 
 This package includes the GlkOte, GlkAPI, and Dialog libraries, also
 copyright by Andrew Plotkin under the MIT license.
 
-This package includes the jQuery JavaScript framework, version 1.11.2
-Copyright 2005, 2014 jQuery Foundation, Inc. and other contributors
+This package includes the jQuery JavaScript framework, version 1.12.4
+Copyright jQuery Foundation and other contributors
 Released under the MIT license <http://jquery.org/license>
 For details, see the jQuery web site: <http://jquery.com/>
 
