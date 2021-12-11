@@ -2483,10 +2483,14 @@ function evhan_doc_keypress(ev) {
   if (windows_paging_count) {
     const win = windowdic.get(last_known_paging);
     if (win) {
-      if (!((keycode >= 32 && keycode <= 126) || keycode == 13)) {
+      if (!((keycode >= 32 && keycode <= 126) || keycode == 13||keycode==229)) {
         /* If the keystroke is not a printable character (or Enter),
            we return and let the default behavior happen. That lets
            pageup/pagedown/home/end work normally. */
+         
+        /* Let's capture keycode=229 as text to let evhan_input_char_* get the first letter
+           of the input text.
+           That makes char inputs work on mobile devices */
         return;
       }
       ev.preventDefault();
@@ -2716,6 +2720,10 @@ function evhan_input_char_keydown(ev) {
       res = 'func11'; break;
     case 123:
       res = 'func12'; break;
+    //On Screen Keyboard on touch devices send charCode 229 on all key except return, delete, vol+, vol-
+    //Take the first letter from the input on mobile devices
+    case 229:
+      res=$("input").val()[0];
   }
 
   if (res) {
@@ -2745,6 +2753,9 @@ function evhan_input_char_keypress(ev) {
   let res;
   if (keycode == 13)
     res = 'return';
+  //Mobile devices sends 299 from OSK. So take the first letter from the text input
+  else if (keycode==229) //Dirty else if -> swicth?
+    res=$("input").val()[0];
   else
     res = String.fromCharCode(keycode);
 
