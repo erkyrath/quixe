@@ -337,7 +337,7 @@ function usage_is_textual(val) {
 /* Run a function (no arguments) "soon". */
 function defer_func(func)
 {
-  return window.setTimeout(func, 0.01*1000);
+    return window.setTimeout(func, 0.01*1000);
 }
 
 /* Event handler: The user has changed which entry in the selection box is
