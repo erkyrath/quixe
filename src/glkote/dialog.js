@@ -737,6 +737,8 @@ function evhan_storage_changed(ev) {
             return false;
         }
 
+        var ix, file;
+        
         cur_filelist = [];
         lastusage = '';
         for (ix=0; ix<ls.length; ix++) {
@@ -753,7 +755,7 @@ function evhan_storage_changed(ev) {
         
         var selel = $('<select>', { id: dialog_el_id+'_select', name:'files' });
         selel.prop('size', '5'); /* firefox doesn't like this being set in the constructor */
-        var ix, file, datestr;
+        var datestr;
         var anyselected = false;
         for (ix=0; ix<ls.length; ix++) {
             file = ls[ix];

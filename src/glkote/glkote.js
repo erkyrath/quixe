@@ -1490,6 +1490,7 @@ function accept_inputset(arg) {
             else if (argi.type == 'char') {
                 inputel.on('keypress', evhan_input_char_keypress);
                 inputel.on('keydown', evhan_input_char_keydown);
+                inputel.on('input', evhan_input_char_input);
             }
             inputel.on('focus', win.id, evhan_input_focus);
             //inputel.on('blur', win.id, evhan_input_blur); // Currently has no effect
@@ -2758,6 +2759,32 @@ function evhan_input_char_keypress(ev) {
         return true;
 
     send_response('char', win, res);
+    return false;
+}
+
+/* Event handler: input events on input fields (character input)
+   The keydown and keypress inputs are unreliable in mobile browsers with
+   virtual keyboards. This handler can handle character input for printable
+   characters, but not function/arrow keys.
+*/
+function evhan_input_char_input(ev) {
+    const char = ev.target.value[0]
+    if (char === '') {
+        return false;
+    }
+    var winid = $(this).data('winid');
+    var win = windowdic.get(winid);
+    if (!win || !win.input) {
+        return true;
+    }
+    ev.target.value = ''
+    send_response('char', win, char);
+    /* Even though we have emptied the input, Android acts as though it still
+       has spaces within it, and won't send backspace keydown events until
+       the phantom spaces have all been deleted. Refocusing seems to fix it. */
+    if (char === ' ') {
+        $(ev.target).trigger('blur').trigger('focus')
+    }
     return false;
 }
 
