@@ -99,6 +99,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.2.### (###)
   - Added @hasundo and @discardundo opcodes. (Glulx spec 3.1.3.)
 
 - 2.2.0 (March 27, 2021)
