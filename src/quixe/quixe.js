@@ -3966,6 +3966,15 @@ self.accel_funcnum_map = accel_funcnum_map;
 var accel_params = [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 self.accel_params = accel_params;
 
+function accel_print_error(msg) {
+    if (self.iosysmode == 2) {
+        self.Glk.glk_put_jstring(msg);
+    };
+    /* If we're in iosys_Filter, there's no way to validly call the filter
+       function, and the Glk printing path might throw a fatal error.
+       Just give up. */
+}
+    
 /* The code for all the functions we can accelerate. Unrecognized indexes,
    including zero, map to undefined.
 
@@ -4002,7 +4011,7 @@ var accel_func_map = {
 
         /* func_1_z__region(obj) */
         if (accel_func_map[1](argc, argv) != 1) { 
-            self.Glk.glk_put_jstring("\n[** Programming error: tried to find the \".\" of (something) **]\n");
+            accel_print_error("\n[** Programming error: tried to find the \".\" of (something) **]\n");
             return 0;
         }
 
@@ -4083,7 +4092,7 @@ var accel_func_map = {
             return 0;
     
         if (!accel_helper_obj_in_class(cla)) {
-            self.Glk.glk_put_jstring("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
+            accel_print_error("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
             return 0;
         }
     
@@ -4117,7 +4126,7 @@ var accel_func_map = {
                 return Mem4(accel_params[8] + (4 * id));
             }
 
-            self.Glk.glk_put_jstring("\n[** Programming error: tried to read (something) **]\n");
+            accel_print_error("\n[** Programming error: tried to read (something) **]\n");
             return 0;
         }
 
@@ -4163,7 +4172,7 @@ var accel_func_map = {
 
         /* func_1_z__region(obj) */
         if (accel_func_map[1](argc, argv) != 1) { 
-            self.Glk.glk_put_jstring("\n[** Programming error: tried to find the \".\" of (something) **]\n");
+            accel_print_error("\n[** Programming error: tried to find the \".\" of (something) **]\n");
             return 0;
         }
 
@@ -4245,7 +4254,7 @@ var accel_func_map = {
             return 0;
     
         if (!accel_helper_obj_in_class(cla)) {
-            self.Glk.glk_put_jstring("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
+            accel_print_error("\n[** Programming error: tried to apply 'ofclass' with non-class **]\n");
             return 0;
         }
     
@@ -4279,7 +4288,7 @@ var accel_func_map = {
                 return Mem4(accel_params[8] + (4 * id));
             }
 
-            self.Glk.glk_put_jstring("\n[** Programming error: tried to read (something) **]\n");
+            accel_print_error("\n[** Programming error: tried to read (something) **]\n");
             return 0;
         }
 
