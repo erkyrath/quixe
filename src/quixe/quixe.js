@@ -1233,8 +1233,14 @@ function oputil_flush_string(context) {
     if (context.buffer.length == 0)
         return;
 
+    /* The context.buffer is text that needs to be flushed to the
+       Glk stream. */
+    
     var str = context.buffer.join("");
     context.buffer.length = 0;
+
+    if (str.length == 0)
+        return;
 
     context.code.push("self.Glk.glk_put_jstring("+QuoteEscapeString(str)+");");
 }
@@ -4678,7 +4684,10 @@ function stream_string(nextcp, addr, inmiddle, bitnum) {
         //qlog("### strop(" + addrkey + (substring?":[sub]":"") + "): " + strop);
     
         if (!(strop instanceof Function)) {
-            self.Glk.glk_put_jstring(strop);
+            /* We're being a little lax here. Printing the empty string
+               to an unset Glk stream is an error. We'll let it pass. */
+            if (strop.length != 0)
+                self.Glk.glk_put_jstring(strop);
             if (!substring)
                 return false;
         }
@@ -5161,7 +5170,7 @@ function compile_string(curiosys, startaddr, inmiddle, startbitnum) {
 
     if (!retval) {
         /* The simple case; retval is false or undefined. Equivalent to a
-           function that prints text and returns false. */
+           function that prints text (to Glk) and returns false. */
         ;;;if (context.code.length > 1) {
         ;;;    fatal_error("Simple-case string generated code."); //assert
         ;;;}
