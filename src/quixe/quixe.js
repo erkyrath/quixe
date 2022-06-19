@@ -5526,6 +5526,51 @@ function encode_float(val) {
         return (expo << 23) | (fbits);
 }
 
+/* Convert a pair of integers (in double-precision format) into a
+   Javascript number.
+*/
+function decode_double(valhi, vallo) {
+    var sign, res, expo, manthi, mantlo;
+
+    if (valhi & 0x80000000) {
+        sign = true;
+        valhi = val & 0x7fffffff;
+    }
+    else {
+        sign = false;
+    }
+
+    if (valhi == 0 && vallo == 0) {
+        return (sign ? -0.0 : 0.0);
+    }
+
+    expo = (valhi >> 20) & 0x7ff;
+    manthi = valhi & 0xfffff;
+    mantlo = vallo;
+    
+    if (expo == 2047) {
+        /* Either an infinity or a NaN. */
+        if (manthi == 0 && mantlo == 0) {
+            return (sign ? -Infinity : Infinity);
+        }
+        else {
+            return (sign ? -NaN : NaN);
+        }
+    }
+
+    res = mantlo / 4503599627370496.0 + manthi / 1048576.0;
+    
+    if (expo) {
+        res = (res+1) * Math.pow(2, (expo - 1023)));
+    }
+    else {
+        res = res * Math.pow(2, -1022));
+    }
+
+    return (sign ? -res : res);
+}
+
+
 self.decode_float = decode_float;
 self.encode_float = encode_float;
 
