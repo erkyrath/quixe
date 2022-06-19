@@ -5571,7 +5571,7 @@ function decode_double(valhi, vallo) {
 }
 
 /* Convert a Javascript number into IEEE-754 double-precision format.
-   The result will be a pair of (non-negative) 32-bit integers.
+   The result will be a pair of 32-bit integers.
 */
 function encode_double(val) {
     var absval, fhi, flo;
