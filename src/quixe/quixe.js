@@ -5534,7 +5534,7 @@ function decode_double(valhi, vallo) {
 
     if (valhi & 0x80000000) {
         sign = true;
-        valhi = val & 0x7fffffff;
+        valhi = valhi & 0x7fffffff;
     }
     else {
         sign = false;
