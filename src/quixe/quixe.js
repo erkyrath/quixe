@@ -5561,10 +5561,10 @@ function decode_double(valhi, vallo) {
     res = mantlo / 4503599627370496.0 + manthi / 1048576.0;
     
     if (expo) {
-        res = (res+1) * Math.pow(2, (expo - 1023)));
+        res = (res+1) * Math.pow(2, (expo - 1023));
     }
     else {
-        res = res * Math.pow(2, -1022));
+        res = res * Math.pow(2, -1022);
     }
 
     return (sign ? -res : res);
@@ -5576,6 +5576,7 @@ function decode_double(valhi, vallo) {
 function encode_double(val) {
     var absval, fhi, flo;
     var mant, expo, sign;
+    var valhi, vallo;
 
     if (isNaN(val)) {
         return { hi:0x7FF80000, lo:0x00000001 };
@@ -5643,11 +5644,15 @@ function encode_double(val) {
         }
     }
 
-    return { hi:(sign ? 0x80000000 : 0x00000000) | (expo << 20) | (fhi >> 8), lo:((fhi & 0xFF) << 24) | (flo) };
+    valhi = (sign ? 0x80000000 : 0x00000000) | (expo << 20) | (fhi >> 8);
+    vallo = ((fhi & 0xFF) << 24) | (flo);
+    return { hi:valhi, lo:vallo };
 }
 
 self.decode_float = decode_float;
 self.encode_float = encode_float;
+self.decode_double = decode_double;
+self.encode_double = encode_double;
 
 /* ----------------------------------------------------------------- */
 
