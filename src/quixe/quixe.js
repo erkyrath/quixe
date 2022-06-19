@@ -5570,6 +5570,81 @@ function decode_double(valhi, vallo) {
     return (sign ? -res : res);
 }
 
+/* Convert a Javascript number into IEEE-754 double-precision format.
+   The result will be a pair of (non-negative) 32-bit integers.
+*/
+function encode_double(val) {
+    var absval, fhi, flo;
+    var mant, expo, sign;
+
+    if (isNaN(val)) {
+        return { hi:0x7FF80000, lo:0x00000001 };
+    }
+    if (!isFinite(val)) {
+        if (val < 0)
+            return { hi:0xFFF00000, lo:0x0 };
+        else
+            return { hi:0x7FF00000, lo:0x0 };
+    }
+    if (val == 0) {
+        /* We have to deal with zeroes separately, because you can't test
+           (-0 < 0) -- it ain't so. You have to turn the thing into an
+           infinity and test that. */
+        if (1 / val < 0)
+            return { hi:0x80000000, lo:0x0 };
+        else
+            return { hi:0x00000000, lo:0x0 };
+    }
+
+    if (val < 0) {
+        sign = true;
+        absval = -val;
+    }
+    else {
+        sign = false;
+        absval = val;
+    }
+
+    expo = Math.floor(Math.log(absval) / Math.log(2));
+    mant = absval / Math.pow(2, expo);
+
+    if (expo >= 1024) {
+        /* Oops, overflow */
+        return (sign ? 0xff800000 : 0x7f800000); /* infinity */
+    }
+    else if (expo < -1022) {
+        /* Denormalized (very small) number */
+        mant = mant * Math.pow(2, 1022 + expo);
+        expo = 0;
+    }
+    else if (!(expo == 0 && mant == 0.0)) {
+        expo += 1023;
+        mant -= 1.0; /* Get rid of leading 1 */
+    }
+
+    /* fhi receives the high 28 bits; flo the low 24 bits (total 52 bits) */
+    mant *= 268435456.0;          /* 2^28 */
+    fhi = mant << 0;              /* Truncate */
+    mant -= fhi;
+    mant *= 16777216.0;           /* 2^24 */
+    flo = (mant+0.5) << 0;        /* Round */
+    
+    if (flo >> 24) {
+        /* The carry propagated out of a string of 24 1 bits. */
+        flo = 0;
+        fhi++;
+        if (fhi >> 28) {
+            /* And it also propagated out of the next 28 bits. */
+            fhi = 0;
+            expo++;
+            if (expo >= 255) {
+                return (sign ? 0xff800000 : 0x7f800000); /* infinity */
+            }
+        }
+    }
+
+    return { hi:(sign ? 0x80000000 : 0x00000000) | (expo << 20) | (fhi >> 8), lo:((fhi & 0xFF) << 24) | (flo) };
+}
 
 self.decode_float = decode_float;
 self.encode_float = encode_float;
