@@ -2822,11 +2822,15 @@ var opcode_table = {
     },
 
     0x238: function(context, operands) { /* jdisnan */
-        //###
+        context.code.push("if (("+operands[0]+" & 0x7ff00000 == 0x7ff00000) && (("+operands[0]+" & 0xfffff) != 0x0 || "+operands[1]+" != 0x0)) {");
+        oputil_perform_jump(context, operands[2]);
+        context.code.push("}");
     },
 
     0x239: function(context, operands) { /* jdisinf */
-        //###
+        context.code.push("if (("+operands[0]+" == 0xfff00000 || "+operands[0]+" == 0x7ff00000) && "+operands[1]+" == 0x0) {");
+        oputil_perform_jump(context, operands[2]);
+        context.code.push("}");
     },
 
     0x130: function(context, operands) { /* glk */
