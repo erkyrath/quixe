@@ -2697,6 +2697,134 @@ var opcode_table = {
         context.code.push("}");
     },
 
+    0x200: function(context, operands) { /* numtod */
+        //###
+    },
+
+    0x201: function(context, operands) { /* dtonumz */
+        //###
+    },
+
+    0x202: function(context, operands) { /* dtonumn */
+        //###
+    },
+
+    0x203: function(context, operands) { /* ftod */
+        //###
+    },
+
+    0x204: function(context, operands) { /* dtof */
+        //###
+    },
+
+    0x208: function(context, operands) { /* dceil */
+        //###
+    },
+
+    0x209: function(context, operands) { /* dfloor */
+        //###
+    },
+
+    0x210: function(context, operands) { /* dadd */
+        //###
+    },
+
+    0x211: function(context, operands) { /* dsub */
+        //###
+    },
+
+    0x212: function(context, operands) { /* dmul */
+        //###
+    },
+
+    0x213: function(context, operands) { /* ddiv */
+        //###
+    },
+
+    0x214: function(context, operands) { /* dmodr */
+        //###
+    },
+
+    0x215: function(context, operands) { /* dmodq */
+        //###
+    },
+
+    0x218: function(context, operands) { /* dsqrt */
+        //###
+    },
+
+    0x219: function(context, operands) { /* dexp */
+        //###
+    },
+
+    0x21A: function(context, operands) { /* dlog */
+        //###
+    },
+
+    0x21B: function(context, operands) { /* dpow */
+        //###
+    },
+
+    0x220: function(context, operands) { /* dsin */
+        //###
+    },
+
+    0x221: function(context, operands) { /* dcos */
+        //###
+    },
+
+    0x222: function(context, operands) { /* dtan */
+        //###
+    },
+
+    0x223: function(context, operands) { /* dasin */
+        //###
+    },
+
+    0x224: function(context, operands) { /* dacos */
+        //###
+    },
+
+    0x225: function(context, operands) { /* datan */
+        //###
+    },
+
+    0x226: function(context, operands) { /* datan2 */
+        //###
+    },
+
+    0x230: function(context, operands) { /* jdeq */
+        //###
+    },
+
+    0x231: function(context, operands) { /* jdne */
+        //###
+    },
+
+    0x232: function(context, operands) { /* jdlt */
+        //###
+    },
+
+    0x233: function(context, operands) { /* jdle */
+        //###
+    },
+
+    0x234: function(context, operands) { /* jdgt */
+        //###
+    },
+
+    0x235: function(context, operands) { /* jdge */
+        //###
+    },
+
+    0x238: function(context, operands) { /* jdisnan */
+        //###
+    },
+
+    0x239: function(context, operands) { /* jdisinf */
+        //###
+    },
+
     0x130: function(context, operands) { /* glk */
         var mayblock;
         if (quot_isconstant(operands[0]))
