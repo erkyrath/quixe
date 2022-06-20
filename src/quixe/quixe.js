@@ -854,11 +854,15 @@ function setup_operandlist_table() {
     var list_LL = new OperandList("LL");
     var list_LLL = new OperandList("LLL");
     var list_LLLL = new OperandList("LLLL");
+    var list_LLLLL = new OperandList("LLLLL");
+    var list_LLLLLLL = new OperandList("LLLLLLL");
     var list_LS = new OperandList("LS");
     var list_LLS = new OperandList("LLS");
     var list_LLLLLLS = new OperandList("LLLLLLS");
     var list_LLLLLLLS = new OperandList("LLLLLLLS");
+    var list_LSS = new OperandList("LSS");
     var list_LLSS = new OperandList("LLSS");
+    var list_LLLLSS = new OperandList("LLLLSS");
     var list_LC = new OperandList("LC");
     var list_LLC = new OperandList("LLC");
     var list_LLLC = new OperandList("LLLC");
@@ -994,7 +998,39 @@ function setup_operandlist_table() {
         0x1C4: list_LLL, /* jfgt */
         0x1C5: list_LLL, /* jfge */
         0x1C8: list_LL, /* jisnan */
-        0x1C9: list_LL  /* jisinf */
+        0x1C9: list_LL, /* jisinf */
+        0x200: list_LSS, /* numtod */
+        0x201: list_LLS, /* dtonumz */
+        0x202: list_LLS, /* dtonumn */
+        0x203: list_LSS, /* ftod */
+        0x204: list_LLS, /* dtof */
+        0x208: list_LLSS, /* dceil */
+        0x209: list_LLSS, /* dfloor */
+        0x210: list_LLLLSS, /* dadd */
+        0x211: list_LLLLSS, /* dsub */
+        0x212: list_LLLLSS, /* dmul */
+        0x213: list_LLLLSS, /* ddiv */
+        0x214: list_LLLLSS, /* dmodr */
+        0x215: list_LLLLSS, /* dmodq */
+        0x218: list_LLSS, /* dsqrt */
+        0x219: list_LLSS, /* dexp */
+        0x21A: list_LLSS, /* dlog */
+        0x21B: list_LLLLSS, /* dpow */
+        0x220: list_LLSS, /* dsin */
+        0x221: list_LLSS, /* dcos */
+        0x222: list_LLSS, /* dtan */
+        0x223: list_LLSS, /* dasin */
+        0x224: list_LLSS, /* dacos */
+        0x225: list_LLSS, /* datan */
+        0x226: list_LLLLSS, /* datan2 */
+        0x230: list_LLLLLLL, /* jdeq */
+        0x231: list_LLLLLLL, /* jdne */
+        0x232: list_LLLLL, /* jdlt */
+        0x233: list_LLLLL, /* jdle */
+        0x234: list_LLLLL, /* jdgt */
+        0x235: list_LLLLL, /* jdge */
+        0x238: list_LLL, /* jdisnan */
+        0x239: list_LLL  /* jdisinf */
     }
 }
 
@@ -1312,7 +1348,6 @@ function oputil_decode_float(context, operand, hold) {
    word).
 */
 function oputil_decode_double(context, ophi, oplo, hold) {
-{
     var val, valhi, vallo;
     if (quot_isconstant(ophi) && quot_isconstant(oplo)) {
         valhi = Number(ophi);
