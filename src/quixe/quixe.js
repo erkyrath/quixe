@@ -2753,8 +2753,8 @@ var opcode_table = {
         var vald = oputil_decode_double(context, operands[0], operands[1]);
         var valpair = alloc_holdvar(context);
         context.code.push(valpair+"=self.encode_double(Math.sqrt("+vald+"));");
-        context.code.push(operands[2]+valpair+".hi);");
-        context.code.push(operands[3]+valpair+".lo);");
+        context.code.push(operands[2]+valpair+".lo);");
+        context.code.push(operands[3]+valpair+".hi);");
     },
 
     0x219: function(context, operands) { /* dexp */
