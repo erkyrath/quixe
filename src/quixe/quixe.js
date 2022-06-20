@@ -1308,6 +1308,33 @@ function oputil_decode_float(context, operand, hold) {
     }
 }
 
+/* Return the float (really double) equivalent of two values (high word, low
+   word).
+*/
+function oputil_decode_double(context, ophi, oplo, hold) {
+{
+    var val, valhi, vallo;
+    if (quot_isconstant(ophi) && quot_isconstant(oplo)) {
+        valhi = Number(ophi);
+        vallo = Number(oplo);
+        /* The standard toString rendering of -0 is "0", so we have to
+           handle that case specially. */
+        if (valhi == 0x80000000 && vallo == 0x0)
+            return "-0";
+        return ""+decode_double(valhi, vallo);
+    }
+
+    val = "self.decode_double("+ophi+","+oplo+")";
+    if (hold) {
+        var holdvar = alloc_holdvar(context);
+        context.code.push(holdvar+"="+val+";");
+        return holdvar;
+    }
+    else {
+        return val;
+    }
+}
+    
 /* Generate code for a branch to operand. This includes the usual branch
    hack; 0 or 1 return from the current function. 
    If unconditional is false, the offstack values are left in place,
