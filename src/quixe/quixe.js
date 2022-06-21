@@ -5873,8 +5873,8 @@ function encode_double(val) {
         }
     }
 
-    valhi = (sign ? 0x80000000 : 0x00000000) | (expo << 20) | (fhi >> 8);
-    vallo = ((fhi & 0xFF) << 24) | (flo);
+    valhi = ((sign ? 0x80000000 : 0x00000000) | (expo << 20) | (fhi >> 8)) >>>0;
+    vallo = (((fhi & 0xFF) << 24) | (flo)) >>>0;
     return { hi:valhi, lo:vallo };
 }
 
