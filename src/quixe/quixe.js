@@ -2726,7 +2726,12 @@ var opcode_table = {
     },
 
     0x210: function(context, operands) { /* dadd */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        var valpair = alloc_holdvar(context);
+        context.code.push(valpair+"=self.encode_double("+vald1+" + "+vald2+");");
+        context.code.push(operands[4]+valpair+".lo);");
+        context.code.push(operands[5]+valpair+".hi);");
     },
 
     0x211: function(context, operands) { /* dsub */
