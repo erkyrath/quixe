@@ -5465,6 +5465,9 @@ function do_gestalt(val, val2) {
     case 12: /* ExtUndo */
         return 1; /* We can handle hasundo/discardundo. */
 
+    case 13: /* Double */
+        return 1; /* We can handle the double-precision opcodes. */
+
 
     default:
         return 0;
