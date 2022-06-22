@@ -2959,10 +2959,10 @@ var opcode_table = {
         if (quot_isconstant(operands[4]) && quot_isconstant(operands[5])) {
             valhi = Number(operands[4]);
             vallo = Number(operands[5]);
-            vald2 = "" + decode_double(valhi & 0x7fffffff, vallo & 0x7fffffff);
+            vald2 = "" + decode_double((valhi & 0x7fffffff), (vallo & 0x7fffffff));
         }
         else {
-            val = "self.decode_double(("+operands[4]+") & 0x7fffffff, ("+operands[5]+"))";
+            val = "self.decode_double((("+operands[4]+") & 0x7fffffff), ("+operands[5]+"))";
             vald2 = alloc_holdvar(context);
             context.code.push(vald2+"="+val+";");
         }
@@ -2992,10 +2992,10 @@ var opcode_table = {
         if (quot_isconstant(operands[4]) && quot_isconstant(operands[5])) {
             valhi = Number(operands[4]);
             vallo = Number(operands[5]);
-            vald2 = "" + decode_double(valhi & 0x7fffffff, vallo & 0x7fffffff);
+            vald2 = "" + decode_double((valhi & 0x7fffffff), (vallo & 0x7fffffff));
         }
         else {
-            val = "self.decode_double(("+operands[4]+") & 0x7fffffff, ("+operands[5]+"))";
+            val = "self.decode_double((("+operands[4]+") & 0x7fffffff), ("+operands[5]+"))";
             vald2 = alloc_holdvar(context);
             context.code.push(vald2+"="+val+";");
         }
@@ -3042,7 +3042,7 @@ var opcode_table = {
     },
 
     0x238: function(context, operands) { /* jdisnan */
-        context.code.push("if (("+operands[0]+" & 0x7ff00000 == 0x7ff00000) && (("+operands[0]+" & 0xfffff) != 0x0 || "+operands[1]+" != 0x0)) {");
+        context.code.push("if ((("+operands[0]+" & 0x7ff00000) == 0x7ff00000) && (("+operands[0]+" & 0xfffff) != 0x0 || "+operands[1]+" != 0x0)) {");
         oputil_perform_jump(context, operands[2]);
         context.code.push("}");
     },
