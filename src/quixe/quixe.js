@@ -2875,10 +2875,10 @@ var opcode_table = {
         var vald1 = oputil_decode_double(context, operands[2], operands[3], true);
         context.code.push("if ("+operands[0]+" == 0x3ff00000 && "+operands[1]+" == 0x0) {");
         /* pow(1, anything) is 1 */
-        context.code.push("  dbl = { hi:0x3f800000, lo:0x0 };");
+        context.code.push("  dbl = { hi:0x3ff00000, lo:0x0 };");
         context.code.push("} else if ("+operands[0]+" == 0xbff00000 && "+operands[1]+" == 0x0 && ("+operands[2]+" == 0xfff00000 || "+operands[2]+" == 0x7ff00000) && "+operands[3]+" == 0x0) {");
         /* pow(-1, infinity) is 1 */
-        context.code.push("  dbl = { hi:0x3f800000, lo:0x0 };");
+        context.code.push("  dbl = { hi:0x3ff00000, lo:0x0 };");
         context.code.push("} else {");
         context.code.push("  dbl=self.encode_double(Math.pow("+vald0+", "+vald1+"));");
         context.code.push("}");
@@ -6028,13 +6028,17 @@ function encode_double(val) {
     }
 
     expo = Math.floor(Math.log(absval) / Math.log(2));
-    mant = absval / Math.pow(2, expo);
-
-    if (expo >= 1024) {
+    if (expo == 1024) {
+        expo--;
+    }
+    else if (expo >= 1024) {
         /* Oops, overflow */
         return (sign ? 0xff800000 : 0x7f800000); /* infinity */
     }
-    else if (expo < -1022) {
+    
+    mant = absval / Math.pow(2, expo);
+    
+    if (expo < -1022) {
         /* Denormalized (very small) number */
         mant = mant * Math.pow(2, 1022 + expo);
         expo = 0;
