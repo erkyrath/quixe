@@ -2698,7 +2698,19 @@ var opcode_table = {
     },
 
     0x200: function(context, operands) { /* numtod */
-        //###
+        var sign0 = oputil_signify_operand(context, operands[0]);
+        if (quot_isconstant(operands[0])) {
+            var val = Number(sign0);
+            var valpair = encode_double(val);
+            context.code.push(operands[1]+valpair.lo+");");
+            context.code.push(operands[2]+valpair.hi+");");
+        }
+        else {
+            context.varsused["dbl"] = true;
+            context.code.push("dbl=self.encode_double("+sign0+");");
+            context.code.push(operands[1]+"dbl.lo);");
+            context.code.push(operands[2]+"dbl.hi);");
+        }
     },
 
     0x201: function(context, operands) { /* dtonumz */
