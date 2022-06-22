@@ -2933,7 +2933,7 @@ var opcode_table = {
         context.code.push("  dequal = (ddiff <= "+vald2+" && ddiff >= -("+vald2+"));");
         context.code.push("}");
         context.code.push("if (dequal) {");
-        oputil_perform_jump(context, operands[3]);
+        oputil_perform_jump(context, operands[6]);
         context.code.push("}");
     },
 
@@ -2966,7 +2966,7 @@ var opcode_table = {
         context.code.push("  dequal = (ddiff <= "+vald2+" && ddiff >= -("+vald2+"));");
         context.code.push("}");
         context.code.push("if (!dequal) {");
-        oputil_perform_jump(context, operands[3]);
+        oputil_perform_jump(context, operands[6]);
         context.code.push("}");
     },
 
