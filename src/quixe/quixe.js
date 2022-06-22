@@ -2714,11 +2714,41 @@ var opcode_table = {
     },
 
     0x201: function(context, operands) { /* dtonumz */
-        //###
+        context.varsused["vald"] = true;
+        context.varsused["res"] = true;
+        context.code.push("vald = "+oputil_decode_double(context, operands[0], operands[1])+";");
+        context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
+        context.code.push("  if (isNaN(vald) || !isFinite(vald) || (vald > 0x7fffffff))");
+        context.code.push("    res = 0x7fffffff;");
+        context.code.push("  else");
+        context.code.push("    res = Math.floor(vald);");
+        context.code.push("} else {");
+        context.code.push("  if (isNaN(vald) || !isFinite(vald) || (vald < -0x80000000))");
+        context.code.push("    res = -0x80000000;");
+        context.code.push("  else");
+        context.code.push("    res = Math.ceil(vald);");
+        context.code.push("}");
+        context.code.push(operands[2]+"res>>>0);");
     },
 
     0x202: function(context, operands) { /* dtonumn */
-        //###
+        context.varsused["vald"] = true;
+        context.varsused["res"] = true;
+        context.code.push("vald = "+oputil_decode_double(context, operands[0], operands[1])+";");
+        context.code.push("if (!("+operands[0]+" & 0x80000000)) {");
+        context.code.push("  if (isNaN(vald) || !isFinite(vald))");
+        context.code.push("    res = 0x7fffffff;");
+        context.code.push("  else");
+        context.code.push("    res = Math.round(vald);");
+        context.code.push("  if (res > 0x7fffffff) res = 0x7fffffff;");
+        context.code.push("} else {");
+        context.code.push("  if (isNaN(vald) || !isFinite(vald))");
+        context.code.push("    res = -0x80000000;");
+        context.code.push("  else");
+        context.code.push("    res = Math.round(vald);");
+        context.code.push("  if (res < -0x80000000) res = -0x80000000;");
+        context.code.push("}");
+        context.code.push(operands[2]+"res>>>0);");
     },
 
     0x203: function(context, operands) { /* ftod */
