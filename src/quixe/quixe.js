@@ -2752,11 +2752,16 @@ var opcode_table = {
     },
 
     0x203: function(context, operands) { /* ftod */
-        //###
+        var valf = oputil_decode_float(context, operands[0]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double("+valf+");");
+        context.code.push(operands[1]+"dbl.lo);");
+        context.code.push(operands[2]+"dbl.hi);");
     },
 
     0x204: function(context, operands) { /* dtof */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.code.push(operands[2]+"self.encode_float("+vald+"));");
     },
 
     0x208: function(context, operands) { /* dceil */
