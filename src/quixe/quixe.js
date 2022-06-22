@@ -2740,37 +2740,37 @@ var opcode_table = {
     0x210: function(context, operands) { /* dadd */
         var vald1 = oputil_decode_double(context, operands[0], operands[1]);
         var vald2 = oputil_decode_double(context, operands[2], operands[3]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double("+vald1+" + "+vald2+");");
-        context.code.push(operands[4]+valpair+".lo);");
-        context.code.push(operands[5]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double("+vald1+" + "+vald2+");");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x211: function(context, operands) { /* dsub */
         var vald1 = oputil_decode_double(context, operands[0], operands[1]);
         var vald2 = oputil_decode_double(context, operands[2], operands[3]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double("+vald1+" - "+vald2+");");
-        context.code.push(operands[4]+valpair+".lo);");
-        context.code.push(operands[5]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double("+vald1+" - "+vald2+");");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x212: function(context, operands) { /* dmul */
         var vald1 = oputil_decode_double(context, operands[0], operands[1]);
         var vald2 = oputil_decode_double(context, operands[2], operands[3]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double("+vald1+" * "+vald2+");");
-        context.code.push(operands[4]+valpair+".lo);");
-        context.code.push(operands[5]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double("+vald1+" * "+vald2+");");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x213: function(context, operands) { /* ddiv */
         var vald1 = oputil_decode_double(context, operands[0], operands[1]);
         var vald2 = oputil_decode_double(context, operands[2], operands[3]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double("+vald1+" / "+vald2+");");
-        context.code.push(operands[4]+valpair+".lo);");
-        context.code.push(operands[5]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double("+vald1+" / "+vald2+");");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x214: function(context, operands) { /* dmodr */
@@ -2783,26 +2783,26 @@ var opcode_table = {
 
     0x218: function(context, operands) { /* dsqrt */
         var vald = oputil_decode_double(context, operands[0], operands[1]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double(Math.sqrt("+vald+"));");
-        context.code.push(operands[2]+valpair+".lo);");
-        context.code.push(operands[3]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.sqrt("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x219: function(context, operands) { /* dexp */
         var vald = oputil_decode_double(context, operands[0], operands[1]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double(Math.exp("+vald+"));");
-        context.code.push(operands[2]+valpair+".lo);");
-        context.code.push(operands[3]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.exp("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x21A: function(context, operands) { /* dlog */
         var vald = oputil_decode_double(context, operands[0], operands[1]);
-        var valpair = alloc_holdvar(context);
-        context.code.push(valpair+"=self.encode_double(Math.log("+vald+"));");
-        context.code.push(operands[2]+valpair+".lo);");
-        context.code.push(operands[3]+valpair+".hi);");
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.log("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x21B: function(context, operands) { /* dpow */
