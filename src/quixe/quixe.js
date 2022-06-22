@@ -2845,27 +2845,51 @@ var opcode_table = {
     },
 
     0x220: function(context, operands) { /* dsin */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.sin("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x221: function(context, operands) { /* dcos */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.cos("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x222: function(context, operands) { /* dtan */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.tan("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x223: function(context, operands) { /* dasin */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.asin("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x224: function(context, operands) { /* dacos */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.acos("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x225: function(context, operands) { /* datan */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.atan("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x226: function(context, operands) { /* datan2 */
