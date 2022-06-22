@@ -2901,7 +2901,12 @@ var opcode_table = {
     },
 
     0x226: function(context, operands) { /* datan2 */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.atan2("+vald1+", "+vald2+"));");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x230: function(context, operands) { /* jdeq */
