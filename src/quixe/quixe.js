@@ -2905,11 +2905,69 @@ var opcode_table = {
     },
 
     0x230: function(context, operands) { /* jdeq */
-        //###
+        var val, valhi, vallo, vald0, vald1, vald2;
+        context.varsused["dequal"] = true;
+        context.varsused["ddiff"] = true;
+        context.code.push("if (("+operands[4]+" & 0x7ff00000) == 0x7ff00000 && (("+operands[4]+" & 0xfffff) != 0x0 || "+operands[5]+" != 0x0)) {");
+        /* The delta is NaN, which can never match. */
+        context.code.push("  dequal = 0;");
+        context.code.push("} else if (("+operands[0]+" == 0xfff00000 || "+operands[0]+" == 0x7ff00000) && ("+operands[1]+" == 0x0) && ("+operands[2]+" == 0xfff00000 || "+operands[2]+" == 0x7ff00000) && ("+operands[3]+" == 0x0)) {");
+        /* Both are infinite. Opposite infinities are never equal,
+           even if the difference is infinite, so this is easy. */
+        context.code.push("  dequal = ("+operands[0]+" == "+operands[2]+" && "+operands[1]+" == "+operands[3]+");");
+        context.code.push("} else {");
+        /* The other case: the values are not both infinite. */
+        if (quot_isconstant(operands[4]) && quot_isconstant(operands[5])) {
+            valhi = Number(operands[4]);
+            vallo = Number(operands[5]);
+            vald2 = "" + decode_double(valhi & 0x7fffffff, vallo & 0x7fffffff);
+        }
+        else {
+            val = "self.decode_double(("+operands[4]+") & 0x7fffffff, ("+operands[5]+"))";
+            vald2 = alloc_holdvar(context);
+            context.code.push(vald2+"="+val+";");
+        }
+        vald0 = oputil_decode_double(context, operands[0], operands[1]);
+        vald1 = oputil_decode_double(context, operands[2], operands[3]);
+        context.code.push("  ddiff = "+vald1+" - "+vald0+";");
+        context.code.push("  dequal = (ddiff <= "+vald2+" && ddiff >= -("+vald2+"));");
+        context.code.push("}");
+        context.code.push("if (dequal) {");
+        oputil_perform_jump(context, operands[3]);
+        context.code.push("}");
     },
 
     0x231: function(context, operands) { /* jdne */
-        //###
+        var val, valhi, vallo, vald0, vald1, vald2;
+        context.varsused["dequal"] = true;
+        context.varsused["ddiff"] = true;
+        context.code.push("if (("+operands[4]+" & 0x7ff00000) == 0x7ff00000 && (("+operands[4]+" & 0xfffff) != 0x0 || "+operands[5]+" != 0x0)) {");
+        /* The delta is NaN, which can never match. */
+        context.code.push("  dequal = 0;");
+        context.code.push("} else if (("+operands[0]+" == 0xfff00000 || "+operands[0]+" == 0x7ff00000) && ("+operands[1]+" == 0x0) && ("+operands[2]+" == 0xfff00000 || "+operands[2]+" == 0x7ff00000) && ("+operands[3]+" == 0x0)) {");
+        /* Both are infinite. Opposite infinities are never equal,
+           even if the difference is infinite, so this is easy. */
+        context.code.push("  dequal = ("+operands[0]+" == "+operands[2]+" && "+operands[1]+" == "+operands[3]+");");
+        context.code.push("} else {");
+        /* The other case: the values are not both infinite. */
+        if (quot_isconstant(operands[4]) && quot_isconstant(operands[5])) {
+            valhi = Number(operands[4]);
+            vallo = Number(operands[5]);
+            vald2 = "" + decode_double(valhi & 0x7fffffff, vallo & 0x7fffffff);
+        }
+        else {
+            val = "self.decode_double(("+operands[4]+") & 0x7fffffff, ("+operands[5]+"))";
+            vald2 = alloc_holdvar(context);
+            context.code.push(vald2+"="+val+";");
+        }
+        vald0 = oputil_decode_double(context, operands[0], operands[1]);
+        vald1 = oputil_decode_double(context, operands[2], operands[3]);
+        context.code.push("  ddiff = "+vald1+" - "+vald0+";");
+        context.code.push("  dequal = (ddiff <= "+vald2+" && ddiff >= -("+vald2+"));");
+        context.code.push("}");
+        context.code.push("if (!dequal) {");
+        oputil_perform_jump(context, operands[3]);
+        context.code.push("}");
     },
 
     0x232: function(context, operands) { /* jdlt */
