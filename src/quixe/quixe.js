@@ -2817,11 +2817,30 @@ var opcode_table = {
     },
 
     0x214: function(context, operands) { /* dmodr */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double("+vald1+" % "+vald2+");");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x215: function(context, operands) { /* dmodq */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.varsused["dbl"] = true;
+        context.varsused["modv"] = true;
+        context.varsused["quov"] = true;
+        context.code.push("modv=("+vald1+" % "+vald2+");");
+        context.code.push("dbl=self.encode_double(("+vald1+" - modv) / "+vald2+");");
+        context.code.push("if ((dbl.hi == 0x0 || dbl.hi == 0x80000000) && dbl.lo == 0x0) {");
+        /* When the quotient is zero, the sign has been lost in the
+           shuffle. We'll set that by hand, based on the original
+           arguments. */
+        context.code.push("  dbl.hi = (("+operands[0]+" ^ "+operands[2]+") & 0x80000000) >>>0;");
+        context.code.push("}");
+        context.code.push(operands[4]+"dbl.lo);");
+        context.code.push(operands[5]+"dbl.hi);");
     },
 
     0x218: function(context, operands) { /* dsqrt */
