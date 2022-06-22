@@ -2765,11 +2765,19 @@ var opcode_table = {
     },
 
     0x208: function(context, operands) { /* dceil */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.ceil("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x209: function(context, operands) { /* dfloor */
-        //###
+        var vald = oputil_decode_double(context, operands[0], operands[1]);
+        context.varsused["dbl"] = true;
+        context.code.push("dbl=self.encode_double(Math.floor("+vald+"));");
+        context.code.push(operands[2]+"dbl.lo);");
+        context.code.push(operands[3]+"dbl.hi);");
     },
 
     0x210: function(context, operands) { /* dadd */
