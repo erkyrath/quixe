@@ -2913,19 +2913,35 @@ var opcode_table = {
     },
 
     0x232: function(context, operands) { /* jdlt */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.code.push("if ("+vald1+" < "+vald2+") {");
+        oputil_perform_jump(context, operands[4]);
+        context.code.push("}");
     },
 
     0x233: function(context, operands) { /* jdle */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.code.push("if ("+vald1+" <= "+vald2+") {");
+        oputil_perform_jump(context, operands[4]);
+        context.code.push("}");
     },
 
     0x234: function(context, operands) { /* jdgt */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.code.push("if ("+vald1+" > "+vald2+") {");
+        oputil_perform_jump(context, operands[4]);
+        context.code.push("}");
     },
 
     0x235: function(context, operands) { /* jdge */
-        //###
+        var vald1 = oputil_decode_double(context, operands[0], operands[1]);
+        var vald2 = oputil_decode_double(context, operands[2], operands[3]);
+        context.code.push("if ("+vald1+" >= "+vald2+") {");
+        oputil_perform_jump(context, operands[4]);
+        context.code.push("}");
     },
 
     0x238: function(context, operands) { /* jdisnan */
