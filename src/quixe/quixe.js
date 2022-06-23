@@ -6037,6 +6037,19 @@ function encode_double(val) {
     }
     
     mant = absval / Math.pow(2, expo);
+
+    /* Normalize mantissa to be in the range [1.0, 2.0) */
+    if (0.5 <= mant && mant < 1.0) {
+        mant *= 2.0;
+        expo--;
+    }
+    else if (mant >= 2.0) {
+        mant *= 0.5;
+        expo++;
+    }
+    else if (mant == 0.0) {
+        expo = 0;
+    }
     
     if (expo < -1022) {
         /* Denormalized (very small) number */
