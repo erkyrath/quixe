@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.3.1.
+ * GlkOte Library: version 2.3.2.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -456,9 +456,8 @@ function measure_window() {
     let line1size = get_size(gridline1);
     let line2size = get_size(gridline2);
 
-    /* remglk assumes gridcharheight is an integer; rounding fixes browser zoom bug */
-    metrics.gridcharheight = Math.ceil(Math.max(1, gridline2.position().top - gridline1.position().top));
-    metrics.gridcharwidth = Math.ceil(Math.max(1, gridspan.width() / 8));
+    metrics.gridcharheight = Math.max(1, gridline2.position().top - gridline1.position().top);
+    metrics.gridcharwidth = Math.max(1, gridspan.width() / 8);
     /* Yes, we can wind up with a non-integer charwidth value. But we force the value to be >= 1; zero can lead to annoying NaNs later on. */
 
     /* Find the total margin around the character grid (out to the window's
@@ -863,6 +862,7 @@ function glkote_update(arg) {
         if (autorestore.recording_sessionid) {
             if (recording && recording_state) {
                 recording_state.sessionId = autorestore.recording_sessionid;
+                glkote_log('Transcript recording restored: session ' + recording_state.sessionId + ' "' + recording_state.label + '", destination ' + recording_handler_url);
             }
         }
 
@@ -3006,7 +3006,7 @@ function evhan_debug_command(cmd) {
    become the GlkOte global. */
 return {
     classname: 'GlkOte',
-    version:  '2.3.1',
+    version:  '2.3.2',
     init:     glkote_init,
     inited:   glkote_inited,
     update:   glkote_update,

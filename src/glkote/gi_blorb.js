@@ -543,7 +543,7 @@ function get_data_chunk(val) {
     if (!chunk)
         return null;
 
-    return { data:chunk.content, type:chunk.type, binary:chunk.binary };
+    return { data:chunk.content, binary:chunk.binary };
 }
 
 /* Convert an array of numeric byte values into a base64 string. */
