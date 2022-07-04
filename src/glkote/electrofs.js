@@ -114,7 +114,7 @@ function filters_for_usage(val)
     case 'data': 
         return [ { name: 'Glk Data File', extensions: ['glkdata'] } ];
     case 'save': 
-        return [ { name: 'Glk Save File', extensions: ['glksave'] } ];
+        return [ { name: 'Glk Save File', extensions: ['glksave', 'sav'] } ];
     case 'transcript': 
         return [ { name: 'Transcript File', extensions: ['txt'] } ];
     case 'command': 
