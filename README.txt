@@ -101,6 +101,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.2.1 (July 4, 2022)
   - Added @hasundo and @discardundo opcodes. (Glulx spec 3.1.3.)
+  - Added the double-precision opcodes. (Glulx spec 3.1.3.)
   - Fixed a bug where printing to the null I/O system could cause a
     "no stream set" error in GlkOte.
   - Fixed a bug where accelerated functions could write error messages
