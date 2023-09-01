@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.3.2.
+ * GlkOte Library: version 2.3.3.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -225,9 +225,9 @@ function glkote_init(iface) {
     }
     current_metrics = res;
 
-    /* Add some elements which will give us notifications if the gameport
+    /* Add an observer which will give us notifications if the gameport
        size changes. */
-    create_resize_sensors();
+    create_resize_sensor();
 
     if (iface.max_buffer_length)
         max_buffer_length = iface.max_buffer_length;
@@ -550,76 +550,29 @@ function metrics_match(met1, met2) {
     return true;
 }
 
-/* Create invisible divs in the gameport which will fire events if the
-   gameport changes size. (For any reason, including document CSS changes.
-   We need this to detect Lectrote's margin change, for example.)
-
-   This code is freely adapted from CSS Element Queries by Marc J. Schmidt.
-   https://github.com/marcj/css-element-queries
+/* Create an object which will fire events if the gameport changes size.
+   (For any reason, including document CSS changes. We need this to detect
+   Lectrote's margin change, for example.)
 */
-function create_resize_sensors() {
+function create_resize_sensor() {
     const gameport = $('#'+gameport_id, dom_context);
-    if (!gameport.length)
-        return 'Cannot find gameport element #'+gameport_id+' in this document.';
-
-    const shrinkel = $('<div>', {
-        id: dom_prefix+'resize-sensor-shrink'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0', top:'0', bottom:'0',
-        overflow:'hidden', visibility:'hidden',
-        'z-index':'-1'
-    });
-    shrinkel.append($('<div>', {
-        id: dom_prefix+'resize-sensor-shrink-child'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0',
-        width:'200%', height:'200%'
-    }));
-
-    const expandel = $('<div>', {
-        id: dom_prefix+'resize-sensor-expand'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0', top:'0', bottom:'0',
-        overflow:'hidden', visibility:'hidden',
-        'z-index':'-1'
-    });
-    expandel.append($('<div>', {
-        id: dom_prefix+'resize-sensor-expand-child'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0'
-    }));
-
-    const shrinkdom = shrinkel.get(0);
-    const expanddom = expandel.get(0);
-    const expandchilddom = expanddom.childNodes[0];
-
-    function reset() {
-        shrinkdom.scrollLeft = 100000;
-        shrinkdom.scrollTop = 100000;
-
-        expandchilddom.style.width = '100000px';
-        expandchilddom.style.height = '100000px';
-        expanddom.scrollLeft = 100000;
-        expanddom.scrollTop = 100000;
+    if (!gameport.length) {
+        console.log('Cannot find gameport element #'+gameport_id+' in this document.');
+        return;
     }
 
-    gameport.append(shrinkel);
-    gameport.append(expandel);
-    reset();
-
-    function evhan(ev) {
-        evhan_doc_resize(ev);
-        reset();
-    }
-
-    /* These events fire copiously when the window is being resized.
+    /* This event fires copiously when the window is being resized.
        This is one reason evhan_doc_resize() has debouncing logic. */
-    shrinkel.on('scroll', evhan);
-    expandel.on('scroll', evhan);
+    function evhan(ents) {
+        evhan_doc_resize();
+    }
+
+    try {
+        let observer = new ResizeObserver(evhan);
+        observer.observe(gameport.get(0));
+    } catch (ex) {
+        console.log('ResizeObserver is not available in this browser.');
+    }
 }
 
 /* This function becomes GlkOte.update(). The game calls this to update
@@ -2360,7 +2313,7 @@ function recording_standard_handler(state) {
    bigger/smaller".)
    - Autorestore. (The window might be a different size than the autosave
    data expects, so we trigger this.)
-   - The magic gameport resize sensors created in create_resize_sensors().
+   - The magic gameport resize sensor created in create_resize_sensor().
 */
 function evhan_doc_resize() {
     /* We don't want to send a whole flurry of these events, just because
@@ -3006,7 +2959,7 @@ function evhan_debug_command(cmd) {
    become the GlkOte global. */
 return {
     classname: 'GlkOte',
-    version:  '2.3.2',
+    version:  '2.3.3',
     init:     glkote_init,
     inited:   glkote_inited,
     update:   glkote_update,

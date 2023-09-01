@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkAPI -- a Javascript Glk API for IF interfaces
- * GlkOte Library: version 2.3.2.
+ * GlkOte Library: version 2.3.3.
  * Glk API which this implements: version 0.7.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
@@ -6373,7 +6373,7 @@ function glk_date_to_simple_time_local(dateref, factor) {
    become the Glk global. */
 return {
     classname: 'Glk',
-    version: '2.3.2', /* GlkOte/GlkApi version */
+    version: '2.3.3', /* GlkOte/GlkApi version */
     init : init,
     inited : is_inited,
     update : update,
