@@ -4351,15 +4351,17 @@ function srand_set_seed(seed) {
     if (xo_table === undefined)
         xo_table = Array(4);
 
+    seed = BigInt(seed>>>0);
+    
     for (ix=0; ix<4; ix++) {
-        seed += 0x9E3779B9;
+        seed = (seed + 0x9E3779B9n) & 0xFFFFFFFFn;
         s = seed;
-        s ^= s >> 15;
-        s *= 0x85EBCA6B;
-        s ^= s >> 13;
-        s *= 0xC2B2AE35;
-        s ^= s >> 16;
-        xo_table[ix] = s >>>0;
+        s = s ^ (s >> 15n);
+        s = (s * 0x85EBCA6Bn) & 0xFFFFFFFFn;
+        s = s ^ (s >> 13n);
+        s = (s * 0xC2B2AE35n) & 0xFFFFFFFFn;
+        s = s ^ (s >> 16n);
+        xo_table[ix] = Number(s);
     }
 }
 
