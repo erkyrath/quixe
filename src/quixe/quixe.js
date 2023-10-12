@@ -4365,13 +4365,14 @@ function srand_set_seed(seed) {
         s = (s * 0xC2B2AE35n) & 0xFFFFFFFFn;
         s = s ^ (s >> 16n);
         xo_table[ix] = Number(s);
+	console.log('### table', ix, s, xo_table[ix])
     }
 }
 
 function srand_get_random() {
     var t1x5 = BigInt(xo_table[1]) * 5n;
     t1x5 = Number(t1x5 & 0xFFFFFFFFn);
-    var result = BigInt(((t1x5 << 7) | (t1x5 >> (32-7)))) * 9n;
+    var result = BigInt(((t1x5 << 7) | (t1x5 >>> (32-7)))) * 9n;
     result = Number(result & 0xFFFFFFFFn);
 
     var t1s9 = (xo_table[1] << 9) >>>0;
@@ -4384,7 +4385,7 @@ function srand_get_random() {
     xo_table[2] = (xo_table[2] ^ t1s9) >>>0;
 
     var t3 = xo_table[3];
-    xo_table[3] =  ((t3 << 11) | (t3 >> (32-11))) >>>0;
+    xo_table[3] =  ((t3 << 11) | (t3 >>> (32-11))) >>>0;
 
     return result >>>0;
 }
