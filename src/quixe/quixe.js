@@ -6760,6 +6760,12 @@ function vm_autorestore(snapshot) {
     self.protectstart = snapshot.protectstart;
     self.protectend = snapshot.protectend;
 
+    if (snapshot.xo_table === undefined && snapshot.srand_table !== undefined) {
+	/* This is an old save file (before 2.2.3). Grab the old RNG state.
+	   We won't produce the same RNG sequence as the old interpreter,
+	   but we'll be in deterministic mode at least. */
+	snapshot.xo_table = snapshot.srand_table.slice(0, 4);
+    }
     if (snapshot.xo_table === undefined) {
         set_random(0);
     }
