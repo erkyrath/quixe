@@ -4335,45 +4335,51 @@ function set_random(val) {
 }
 self.set_random = set_random;
 
-/* Here is a pretty standard random-number generator and seed function.
+/* Here is the "xoshiro128**" random-number generator and seed function.
    It is used for the deterministic mode of the Glulx RNG. (In the
    normal, non-deterministic mode, we rely on Math.random() -- hopefully
    that pulls some nice juicy entropy from the OS.)
 */
-var srand_table = undefined; /* Array[0..54] */
-var srand_index1, srand_index2;
+var xo_table = undefined; /* Array[0..3] */
 
 function srand_set_seed(seed) {
-    var i, ii, k, val, loop;
+    /* Set up the 128-bit state from a single 32-bit integer. We rely
+       on a different RNG, SplitMix32. This isn't high-quality, but we
+       just need to get a bunch of bits into xo_table. */
+    var ix, s;
 
-    if (srand_table === undefined)
-        srand_table = Array(55);
+    if (xo_table === undefined)
+        xo_table = Array(4);
 
-    srand_table[54] = seed;
-    srand_index1 = 0;
-    srand_index2 = 31;
-    
-    k = 1;
-
-    for (i = 0; i < 55; i++) {
-        ii = (21 * i) % 55;
-        srand_table[ii] = k;
-        k = (seed - k) >>>0;
-        seed = srand_table[ii];
-    }
-    for (loop = 0; loop < 4; loop++) {
-        for (i = 0; i < 55; i++) {
-            val = srand_table[i] - srand_table[ (1 + i + 30) % 55];
-            srand_table[i] = val >>>0;
-        }
+    for (ix=0; ix<4; ix++) {
+        seed += 0x9E3779B9;
+        s = seed;
+        s ^= s >> 15;
+        s *= 0x85EBCA6B;
+        s ^= s >> 13;
+        s *= 0xC2B2AE35;
+        s ^= s >> 16;
+        xo_table[ix] = s >>>0;
     }
 }
 
 function srand_get_random() {
-    srand_index1 = (srand_index1 + 1) % 55;
-    srand_index2 = (srand_index2 + 1) % 55;
-    srand_table[srand_index1] = (srand_table[srand_index1] - srand_table[srand_index2]) >>>0;
-    return srand_table[srand_index1] / 0x100000000;
+    var t1x5 = xo_table[1] * 5;
+    var result = ((t1x5 << 7) | (t1x5 >> (32-7))) * 9;
+
+    var t1s9 = xo_table[1] << 9;
+
+    xo_table[2] ^= xo_table[0];
+    xo_table[3] ^= xo_table[1];
+    xo_table[1] ^= xo_table[2];
+    xo_table[0] ^= xo_table[3];
+
+    xo_table[2] ^= t1s9;
+
+    var t3 = xo_table[3];
+    xo_table[3] =  ((t3 << 11) | (t3 >> (32-11)));
+
+    return result >>>0;
 }
 
 /* accel_funcnum_map maps VM addresses to the index number of the (native)
@@ -6663,10 +6669,8 @@ function vm_autosave(eventaddr) {
     snapshot.iosysrock = self.iosysrock;
     snapshot.protectstart = self.protectstart;
     snapshot.protectend = self.protectend;
-    if (self.random_func == srand_get_random && srand_table) {
-        snapshot.srand_table = srand_table.slice(0);
-        snapshot.srand_index1 = srand_index1;
-        snapshot.srand_index2 = srand_index2;
+    if (self.random_func == srand_get_random && xo_table) {
+        snapshot.xo_table = xo_table.slice(0);
     }
     snapshot.accel_params = accel_params.slice(0);
     snapshot.accel_funcnum_map = {};
@@ -6756,14 +6760,12 @@ function vm_autorestore(snapshot) {
     self.protectstart = snapshot.protectstart;
     self.protectend = snapshot.protectend;
 
-    if (snapshot.srand_table === undefined) {
+    if (snapshot.xo_table === undefined) {
         set_random(0);
     }
     else {
         set_random(1);
-        srand_table = snapshot.srand_table.slice(0);
-        srand_index1 = snapshot.srand_index1;
-        srand_index2 = snapshot.srand_index2;
+        xo_table = snapshot.xo_table.slice(0);
     }
 
     accel_params = snapshot.accel_params.slice(0);
