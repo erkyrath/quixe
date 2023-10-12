@@ -4309,14 +4309,14 @@ function set_random(val) {
         self.random_func = native_random_func;
     }
     else {
-        srand_set_seed(val);
+        xo_set_seed(val);
         self.random_func = xo_random_func;
     }
 }
 self.set_random = set_random;
 
            
-/* Note that srand_get_random() returns a 32-bit unsigned int.
+/* Note that xo_get_random() returns a 32-bit unsigned int.
    Math.random() returns a float from 0 to 1. We'll need a bit of
    glue to make either of these fit the spec. */
 
@@ -4335,11 +4335,11 @@ function native_random_func(arg) {
     
 function xo_random_func(arg) {
     if (arg > 0)
-        return srand_get_random() % arg;
+        return xo_get_random() % arg;
     else if (arg < 0)
-        return -(srand_get_random() % -arg);
+        return -(xo_get_random() % -arg);
     else
-        return srand_get_random();
+        return xo_get_random();
 }
     
 /* Here is the "xoshiro128**" random-number generator and seed function.
@@ -4352,7 +4352,7 @@ function xo_random_func(arg) {
 */
 var xo_table = undefined; /* Array[0..3] */
 
-function srand_set_seed(seed) {
+function xo_set_seed(seed) {
     /* Set up the 128-bit state from a single 32-bit integer. We rely
        on a different RNG, SplitMix32. This isn't high-quality, but we
        just need to get a bunch of bits into xo_table. */
@@ -4375,7 +4375,7 @@ function srand_set_seed(seed) {
     }
 }
 
-function srand_get_random() {
+function xo_get_random() {
     var t1x5 = BigInt(xo_table[1]) * 5n;
     t1x5 = Number(t1x5 & 0xFFFFFFFFn);
     var result = BigInt(((t1x5 << 7) | (t1x5 >>> (32-7)))) * 9n;
