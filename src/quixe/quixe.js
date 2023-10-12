@@ -2113,30 +2113,8 @@ var opcode_table = {
 
     0x110: function(context, operands) { /* random */
         var expr;
-        /* Note that we don't trust Math.random() to be absolutely random.
-           On Chrome, the last few bits aren't. That's why random(0) is
-           done in two chunks. */
-        if (quot_isconstant(operands[0])) {
-            var val = Number(operands[0]) & 0xffffffff; /* signed */
-            if (val == 0)
-                expr = "(Math.floor(self.random_func() * 0x10000) | (Math.floor(self.random_func() * 0x10000) << 16)) >>>0";
-            else if (val > 0)
-                expr = "Math.floor(self.random_func() * "+val+")";
-            else
-                expr = "-Math.floor(self.random_func() * "+(-val)+")";
-        }
-        else {
-            var sign0 = oputil_signify_operand(context, operands[0], true);
-            var holdvar = alloc_holdvar(context);
-            expr = holdvar;
-            context.code.push("if ("+sign0+" > 0)");
-            context.code.push(holdvar+" = Math.floor(self.random_func() * "+sign0+");");
-            context.code.push("else if ("+sign0+" < 0)");
-            context.code.push(holdvar+" = -Math.floor(self.random_func() * -"+sign0+");");
-            context.code.push("else");
-            context.code.push(holdvar+" = (Math.floor(self.random_func() * 0x10000) | (Math.floor(self.random_func() * 0x10000) << 16)) >>>0;");
-        }
-        context.code.push(operands[1]+expr+");");
+        var sign0 = oputil_signify_operand(context, operands[0], true);
+        context.code.push(operands[1]+"self.random_func("+sign0+") >>>0);");
     },
 
     0x111: function(context, operands) { /* setrandom */
@@ -4325,16 +4303,45 @@ function parse_partial_operand()
    Math.random), or a seeded deterministic RNG.
 */
 function set_random(val) {
+    /* random_func(arg) must follow the Glulx spec: a random integer from
+       0 to arg, or a full-range 32-bit random integer if arg is 0. */
     if (val == 0) {
-        self.random_func = Math.random;
+        self.random_func = native_random_func;
     }
     else {
         srand_set_seed(val);
-        self.random_func = srand_get_random;
+        self.random_func = xo_random_func;
     }
 }
 self.set_random = set_random;
 
+           
+/* Note that srand_get_random() returns a 32-bit unsigned int.
+   Math.random() returns a float from 0 to 1. We'll need a bit of
+   glue to make either of these fit the spec. */
+
+function native_random_func(arg) {
+    if (arg > 0) 
+        return Math.floor(Math.random() * arg);
+    else if (arg < 0)
+        return -Math.floor(Math.random() * -arg);
+    else
+        return (Math.floor(Math.random() * 0x10000) | (Math.floor(Math.random() * 0x10000) << 16)) >>>0;
+    /* Note that we don't trust Math.random() to be absolutely random.
+       On Chrome, the last few bits aren't. Or weren't at one point
+       long ago, anyhow. We do the arg=0 case in two chunks just in
+       case. */
+}
+    
+function xo_random_func(arg) {
+    if (arg > 0)
+        return srand_get_random() % arg;
+    else if (arg < 0)
+        return -(srand_get_random() % -arg);
+    else
+        return srand_get_random();
+}
+    
 /* Here is the "xoshiro128**" random-number generator and seed function.
    It is used for the deterministic mode of the Glulx RNG. (In the
    normal, non-deterministic mode, we rely on Math.random() -- hopefully
@@ -4365,7 +4372,6 @@ function srand_set_seed(seed) {
         s = (s * 0xC2B2AE35n) & 0xFFFFFFFFn;
         s = s ^ (s >> 16n);
         xo_table[ix] = Number(s);
-	console.log('### table', ix, s, xo_table[ix])
     }
 }
 
@@ -6677,7 +6683,7 @@ function vm_autosave(eventaddr) {
     snapshot.iosysrock = self.iosysrock;
     snapshot.protectstart = self.protectstart;
     snapshot.protectend = self.protectend;
-    if (self.random_func == srand_get_random && xo_table) {
+    if (self.random_func == xo_random_func && xo_table) {
         snapshot.xo_table = xo_table.slice(0);
     }
     snapshot.accel_params = accel_params.slice(0);
@@ -6769,10 +6775,10 @@ function vm_autorestore(snapshot) {
     self.protectend = snapshot.protectend;
 
     if (snapshot.xo_table === undefined && snapshot.srand_table !== undefined) {
-	/* This is an old save file (before 2.2.3). Grab the old RNG state.
-	   We won't produce the same RNG sequence as the old interpreter,
-	   but we'll be in deterministic mode at least. */
-	snapshot.xo_table = snapshot.srand_table.slice(0, 4);
+        /* This is an old save file (before 2.2.3). Grab the old RNG state.
+           We won't produce the same RNG sequence as the old interpreter,
+           but we'll be in deterministic mode at least. */
+        snapshot.xo_table = snapshot.srand_table.slice(0, 4);
     }
     if (snapshot.xo_table === undefined) {
         set_random(0);
