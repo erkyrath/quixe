@@ -4339,6 +4339,9 @@ self.set_random = set_random;
    It is used for the deterministic mode of the Glulx RNG. (In the
    normal, non-deterministic mode, we rely on Math.random() -- hopefully
    that pulls some nice juicy entropy from the OS.)
+
+   Note that xoshiro128** requires BigInt math. This should be available
+   in browsers circa 2021 or later.
 */
 var xo_table = undefined; /* Array[0..3] */
 
@@ -4366,20 +4369,22 @@ function srand_set_seed(seed) {
 }
 
 function srand_get_random() {
-    var t1x5 = xo_table[1] * 5;
-    var result = ((t1x5 << 7) | (t1x5 >> (32-7))) * 9;
+    var t1x5 = BigInt(xo_table[1]) * 5n;
+    t1x5 = Number(t1x5 & 0xFFFFFFFFn);
+    var result = BigInt(((t1x5 << 7) | (t1x5 >> (32-7)))) * 9n;
+    result = Number(result & 0xFFFFFFFFn);
 
-    var t1s9 = xo_table[1] << 9;
+    var t1s9 = (xo_table[1] << 9) >>>0;
 
-    xo_table[2] ^= xo_table[0];
-    xo_table[3] ^= xo_table[1];
-    xo_table[1] ^= xo_table[2];
-    xo_table[0] ^= xo_table[3];
+    xo_table[2] = (xo_table[2] ^ xo_table[0]) >>>0;
+    xo_table[3] = (xo_table[3] ^ xo_table[1]) >>>0;
+    xo_table[1] = (xo_table[1] ^ xo_table[2]) >>>0;
+    xo_table[0] = (xo_table[0] ^ xo_table[3]) >>>0;
 
-    xo_table[2] ^= t1s9;
+    xo_table[2] = (xo_table[2] ^ t1s9) >>>0;
 
     var t3 = xo_table[3];
-    xo_table[3] =  ((t3 << 11) | (t3 >> (32-11)));
+    xo_table[3] =  ((t3 << 11) | (t3 >> (32-11))) >>>0;
 
     return result >>>0;
 }
