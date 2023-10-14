@@ -4361,25 +4361,23 @@ function xo_set_seed(seed) {
     if (xo_table === undefined)
         xo_table = Array(4);
 
-    seed = BigInt(seed>>>0);
+    seed = (seed>>>0);
     
     for (ix=0; ix<4; ix++) {
-        seed = (seed + 0x9E3779B9n) & 0xFFFFFFFFn;
+        seed = (seed + 0x9E3779B9) >>>0;
         s = seed;
-        s = s ^ (s >> 15n);
-        s = (s * 0x85EBCA6Bn) & 0xFFFFFFFFn;
-        s = s ^ (s >> 13n);
-        s = (s * 0xC2B2AE35n) & 0xFFFFFFFFn;
-        s = s ^ (s >> 16n);
-        xo_table[ix] = Number(s);
+        s = (s ^ (s >> 15)) >>>0;
+        s = Math.imul(s, 0x85EBCA6B) >>>0;
+        s = (s ^ (s >> 13)) >>>0;
+        s = Math.imul(s, 0xC2B2AE35) >>>0;
+        s = (s ^ (s >> 16)) >>>0;
+        xo_table[ix] = s >>>0;
     }
 }
 
 function xo_get_random() {
-    var t1x5 = BigInt(xo_table[1]) * 5n;
-    t1x5 = Number(t1x5 & 0xFFFFFFFFn);
-    var result = BigInt(((t1x5 << 7) | (t1x5 >>> (32-7)))) * 9n;
-    result = Number(result & 0xFFFFFFFFn);
+    var t1x5 = Math.imul(xo_table[1], 5) >>>0;
+    var result = Math.imul(((t1x5 << 7) | (t1x5 >>> (32-7))), 9) >>>0;
 
     var t1s9 = (xo_table[1] << 9) >>>0;
 
