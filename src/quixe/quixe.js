@@ -4346,9 +4346,6 @@ function xo_random_func(arg) {
    It is used for the deterministic mode of the Glulx RNG. (In the
    normal, non-deterministic mode, we rely on Math.random() -- hopefully
    that pulls some nice juicy entropy from the OS.)
-
-   Note that xoshiro128** requires BigInt math. This should be available
-   in browsers circa 2021 or later.
 */
 var xo_table = undefined; /* Array[0..3] */
 
