@@ -4373,6 +4373,7 @@ function xo_set_seed(seed) {
 }
 
 function xo_get_random() {
+    /* Return a random number in the 32-bit unsigned integer range. */
     var t1x5 = Math.imul(xo_table[1], 5) >>>0;
     var result = Math.imul(((t1x5 << 7) | (t1x5 >>> (32-7))), 9) >>>0;
 
