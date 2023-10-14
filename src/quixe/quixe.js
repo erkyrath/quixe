@@ -4366,11 +4366,11 @@ function xo_set_seed(seed) {
     for (ix=0; ix<4; ix++) {
         seed = (seed + 0x9E3779B9) >>>0;
         s = seed;
-        s = (s ^ (s >> 15)) >>>0;
+        s = (s ^ (s >>> 15)) >>>0;
         s = Math.imul(s, 0x85EBCA6B) >>>0;
-        s = (s ^ (s >> 13)) >>>0;
+        s = (s ^ (s >>> 13)) >>>0;
         s = Math.imul(s, 0xC2B2AE35) >>>0;
-        s = (s ^ (s >> 16)) >>>0;
+        s = (s ^ (s >>> 16)) >>>0;
         xo_table[ix] = s >>>0;
     }
 }
