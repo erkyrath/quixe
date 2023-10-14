@@ -4347,7 +4347,7 @@ function xo_random_func(arg) {
    normal, non-deterministic mode, we rely on Math.random() -- hopefully
    that pulls some nice juicy entropy from the OS.)
 */
-var xo_table = undefined; /* Array[0..3] */
+var xo_table = undefined; /* Uint32Array[0..3] */
 
 function xo_set_seed(seed) {
     /* Set up the 128-bit state from a single 32-bit integer. We rely
@@ -4356,7 +4356,7 @@ function xo_set_seed(seed) {
     var ix, s;
 
     if (xo_table === undefined)
-        xo_table = Array(4);
+        xo_table = new Uint32Array(4);
 
     seed = (seed>>>0);
     
@@ -4368,7 +4368,7 @@ function xo_set_seed(seed) {
         s = (s ^ (s >>> 13)) >>>0;
         s = Math.imul(s, 0xC2B2AE35) >>>0;
         s = (s ^ (s >>> 16)) >>>0;
-        xo_table[ix] = s >>>0;
+        xo_table[ix] = s;
     }
 }
 
@@ -4379,15 +4379,15 @@ function xo_get_random() {
 
     var t1s9 = (xo_table[1] << 9) >>>0;
 
-    xo_table[2] = (xo_table[2] ^ xo_table[0]) >>>0;
-    xo_table[3] = (xo_table[3] ^ xo_table[1]) >>>0;
-    xo_table[1] = (xo_table[1] ^ xo_table[2]) >>>0;
-    xo_table[0] = (xo_table[0] ^ xo_table[3]) >>>0;
+    xo_table[2] = (xo_table[2] ^ xo_table[0]);
+    xo_table[3] = (xo_table[3] ^ xo_table[1]);
+    xo_table[1] = (xo_table[1] ^ xo_table[2]);
+    xo_table[0] = (xo_table[0] ^ xo_table[3]);
 
-    xo_table[2] = (xo_table[2] ^ t1s9) >>>0;
+    xo_table[2] = (xo_table[2] ^ t1s9);
 
     var t3 = xo_table[3];
-    xo_table[3] =  ((t3 << 11) | (t3 >>> (32-11))) >>>0;
+    xo_table[3] =  ((t3 << 11) | (t3 >>> (32-11)));
 
     return result >>>0;
 }
@@ -6680,7 +6680,7 @@ function vm_autosave(eventaddr) {
     snapshot.protectstart = self.protectstart;
     snapshot.protectend = self.protectend;
     if (self.random_func == xo_random_func && xo_table) {
-        snapshot.xo_table = xo_table.slice(0);
+        snapshot.xo_table = [ xo_table[0], xo_table[1], xo_table[2], xo_table[3] ];
     }
     snapshot.accel_params = accel_params.slice(0);
     snapshot.accel_funcnum_map = {};
@@ -6774,14 +6774,14 @@ function vm_autorestore(snapshot) {
         /* This is an old save file (before 2.2.3). Grab the old RNG state.
            We won't produce the same RNG sequence as the old interpreter,
            but we'll be in deterministic mode at least. */
-        snapshot.xo_table = snapshot.srand_table.slice(0, 4);
+        snapshot.xo_table = new Uint32Array(snapshot.srand_table.slice(0, 4));
     }
     if (snapshot.xo_table === undefined) {
         set_random(0);
     }
     else {
         set_random(1);
-        xo_table = snapshot.xo_table.slice(0);
+        xo_table = new Uint32Array(snapshot.xo_table);
     }
 
     accel_params = snapshot.accel_params.slice(0);
