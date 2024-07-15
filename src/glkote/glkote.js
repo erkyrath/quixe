@@ -2731,7 +2731,7 @@ function evhan_input_char_keypress(ev) {
 */
 function evhan_input_char_input(ev) {
     const char = ev.target.value[0]
-    if (char === '') {
+    if (char === '' || char == null) {
         return false;
     }
     var winid = $(this).data('winid');
