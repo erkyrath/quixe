@@ -108,6 +108,7 @@
      of a window when it needs paging. */
   font-weight: bold;
   position: absolute;
+  pointer-events: none;
   background: #603010;
   color: #FFFFCC;
   opacity: 0.5;
