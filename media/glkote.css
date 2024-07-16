@@ -149,6 +149,11 @@
   font-size: 14px;
 }
 
+.Input:focus::placeholder {
+  /* Hide "Tap here to type" placeholder when the input is focused */
+  color: transparent;
+}
+
 /* The following are used for image alignment (in buffer windows). */
 
 .ImageMarginLeft {
