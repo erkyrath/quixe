@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.3.3.
+ * GlkOte Library: version 2.3.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -73,6 +73,7 @@ let request_timer = null;
 let request_timer_interval = null;
 let resize_timer = null;
 let retry_timer = null;
+let is_mobile = false;
 const perform_paging = true;
 let detect_external_links = false;
 let regex_external_links = null;
@@ -92,7 +93,11 @@ const approx_scroll_width = 20;
    this is less than the last-line bottom margin, it won't cause
    problems.) */
 const moreprompt_margin = 4;
-
+/* Minimum width of an input field. This comes up if the prompt is
+   unusually long, ending near the right margin. We'd rather the
+   input element wrap around to the next line in that case. */
+const inputel_minwidth = 200;
+    
 /* Some constants for key event native values. (Not including function 
    keys.) */
 const key_codes = {
@@ -170,12 +175,8 @@ function glkote_init(iface) {
         terminator_key_values[terminator_key_names[val]] = val;
     }
 
-    /*if (false) {
-    // ### test for mobile browser? "'ontouchstart' in document.documentElement"?
-    // Paging doesn't make sense for iphone/android, because you can't
-    //   get keystroke events from a window.
-    perform_paging = false;
-    }*/
+    /* Checking this is bad form, but we will use it for some UI tweaks. */
+    is_mobile = ('ontouchstart' in window);
 
     /* Map mapping window ID (strings) to window description objects. */
     windowdic = new Map();
@@ -781,17 +782,10 @@ function glkote_update(arg) {
     }
 
     if (newinputwin) {
-        /* MSIE is weird about when you can call focus(). The input element
-           has probably just been added to the DOM, and MSIE balks at
-           giving it the focus right away. So we defer the call until
-           after the javascript context has yielded control to the browser. */
-        const focusfunc = function() {
-            const win = windowdic.get(newinputwin);
-            if (win.inputel) {
-                win.inputel.focus();
-            }
-        };
-        defer_func(focusfunc);
+        const win = windowdic.get(newinputwin);
+        if (win.inputel) {
+            win.inputel.focus();
+        }
     }
 
     if (autorestore) {
@@ -1308,10 +1302,9 @@ function accept_one_content(arg) {
                    buffermarginx is one pixel too low. We fudge for that, giving a
                    result which errs on the low side. */
                 let width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-                if (width < 1)
-                    width = 1;
-                inputel.css({ position: 'absolute',
-                              left: '0px', top: '0px', width: width+'px' });
+                if (width < inputel_minwidth)
+                    width = inputel_minwidth;
+                inputel.css({ width: width+'px' });
                 cursel.append(inputel);
             }
         }
@@ -1430,6 +1423,12 @@ function accept_inputset(arg) {
             inputel = $('<input>',
                         { id: dom_prefix+'win'+win.id+'_input',
                           'class': classes, type: 'text', maxlength: maxlen });
+            if (is_mobile) {
+                if (maxlen < 3)
+                    inputel.attr('placeholder', '\u2316');
+                else
+                    inputel.attr('placeholder', 'Tap here to type');
+            }
             inputel.attr({
                 'aria-live': 'off',
                 'autocapitalize': 'off',
@@ -1495,10 +1494,9 @@ function accept_inputset(arg) {
                buffermarginx is one pixel too low. We fudge for that, giving a
                result which errs on the low side. */
             let width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-            if (width < 1)
-                width = 1;
-            inputel.css({ position: 'absolute',
-                          left: '0px', top: '0px', width: width+'px' });
+            if (width < inputel_minwidth)
+                width = inputel_minwidth;
+            inputel.css({ width: width+'px' });
             if (newinputel)
                 cursel.append(inputel);
         }
@@ -2959,7 +2957,7 @@ function evhan_debug_command(cmd) {
    become the GlkOte global. */
 return {
     classname: 'GlkOte',
-    version:  '2.3.3',
+    version:  '2.3.4',
     init:     glkote_init,
     inited:   glkote_inited,
     update:   glkote_update,
