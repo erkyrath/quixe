@@ -85,6 +85,8 @@ let Blorb = null; /* imported API object (the resource layer) */
 /* Some handy constants */
 /* A non-breaking space character. */
 const NBSP = '\xa0';
+/* And a zero-width character. */
+const ZWJ =  '\u200D';
 /* Size of the scrollbar, give or take some. */
 const approx_scroll_width = 20;
 /* Margin for how close you have to scroll to end-of-page to kill the
@@ -1142,11 +1144,11 @@ function accept_one_content(arg) {
 
            We have to keep track of a flag per paragraph div. The blankpara
            flag indicates whether this is a completely empty paragraph (a
-           blank line). We have to drop a NBSP into empty paragraphs --
+           blank line). We have to drop a space into empty paragraphs --
            otherwise they'd collapse -- and so this flag lets us distinguish
-           between an empty paragraph and one which truly contains a NBSP.
+           between an empty paragraph and one which truly contains a space.
            (The difference is, when you append data to a truly empty paragraph,
-           you have to delete the placeholder NBSP.)
+           you have to delete the placeholder space.)
 
            We also give the paragraph div the BlankPara class, in case
            CSS cares.
@@ -1172,7 +1174,7 @@ function accept_one_content(arg) {
             }
             if (!content || !content.length) {
                 if (divel.data('blankpara'))
-                    divel.append($('<span>', { 'class':'BlankLineSpan' }).text(NBSP));
+                    divel.append($('<span>', { 'class':'BlankLineSpan' }).text(' '));
                 continue;
             }
             if (divel.data('blankpara')) {
@@ -1290,21 +1292,30 @@ function accept_one_content(arg) {
         if (divel) {
             const cursel = $('<span>',
                              { id: dom_prefix+'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
+            const zwjel = $('<span>', { id: dom_prefix+'win'+win.id+'_curspos', 'class': 'InvisiblePos' });
+            zwjel.text(ZWJ); /* zero-width but not totally collapsed */
+            cursel.append(zwjel);
             divel.append(cursel);
 
             if (win.inputel) {
                 /* Put back the inputel that we found earlier. */
+                /* NOTE: Currently we never get here, or at least we don't
+                   in normal IF play. The accept_inputcancel() stage will
+                   always remove inputel entirely. */
                 const inputel = win.inputel;
-                const pos = cursel.position();
-                /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
-                   retested in jquery...) On Firefox, buffermarginx is too high (or
-                   getWidth() is too low) by the width of a scrollbar. On MSIE,
-                   buffermarginx is one pixel too low. We fudge for that, giving a
-                   result which errs on the low side. */
-                let width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-                if (width < inputel_minwidth)
-                    width = inputel_minwidth;
-                inputel.css({ width: width+'px' });
+                /* See discussion in accept_inputset(). */
+                const posleft = $('#'+dom_prefix+'win'+win.id+'_curspos', dom_context).offset().left - win.frameel.offset().left;
+                const width = win.frameel.width() - (current_metrics.buffermarginx + posleft + 2);
+                if (width < inputel_minwidth) {
+                    inputel.css({ width: inputel_minwidth+'px',
+                                  position: '',
+                                  left: '', top: '', });
+                }
+                else {
+                    inputel.css({ width: width+'px',
+                                  position: 'absolute',
+                                  left: '0px', top: '0px', });
+                }
                 cursel.append(inputel);
             }
         }
@@ -1346,7 +1357,8 @@ function accept_one_content(arg) {
 
    A field needs to be removed if it is not listed in the input argument,
    *or* if it is listed with a later generation number than we remember.
-   (The latter case means that input was cancelled and restarted.)
+   (The latter case means that input was cancelled and restarted.
+   TODO: Is that true? Seems to happen always.)
 */
 function accept_inputcancel(arg) {
     const hasinput = {};
@@ -1481,22 +1493,47 @@ function accept_inputset(arg) {
             let cursel = $('#'+dom_prefix+'win'+win.id+'_cursor', dom_context);
             /* Check to make sure an InvisibleCursor exists on the last line.
                The only reason it might not is if the window is entirely blank
-               (no lines). In that case, append one to the window frame itself. */
+               (no lines). In that case, append one to the window frame
+               itself. */
             if (!cursel.length) {
                 cursel = $('<span>',
                            { id: dom_prefix+'win'+win.id+'_cursor', 'class': 'InvisibleCursor' } );
+                const zwjel = $('<span>', { id: dom_prefix+'win'+win.id+'_curspos', 'class': 'InvisiblePos' });
+                zwjel.text(ZWJ); /* zero-width but not totally collapsed */
+                cursel.append(zwjel);
                 win.frameel.append(cursel);
             }
-            const pos = cursel.position();
-            /* This calculation is antsy. (Was on Prototype, anyhow, I haven't
-               retested in jquery...) On Firefox, buffermarginx is too high (or
-               getWidth() is too low) by the width of a scrollbar. On MSIE,
-               buffermarginx is one pixel too low. We fudge for that, giving a
-               result which errs on the low side. */
-            let width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-            if (width < inputel_minwidth)
-                width = inputel_minwidth;
-            inputel.css({ width: width+'px' });
+            /* Now we check how much free space we have to the right of the
+               prompt.
+               
+               Why? Normally we want the input element to be absolutely
+               positioned in its line, running to the right margin.
+               (We recompute the width on every rearrange event, so adapting
+               to geometry changes is no problem.) But if the prompt
+               happens to be long, we'd rather let the input line wrap,
+               in which case it *shouldn't* be absolutely positioned.)
+               (Maybe we should use a hard <br> rather than relying on
+               wrapping? Well, this works for the moment.)
+
+               The free-space calculation is a bit messy. We rely on a
+               zero-width span which sit *before* the input element
+               (and thus doesn't wrap). We check its offset (relative to
+               the frame) and then subtract from the total width.
+               (We're conservative about this, excluding every possible
+               margin.)
+             */
+            const posleft = $('#'+dom_prefix+'win'+win.id+'_curspos', dom_context).offset().left - win.frameel.offset().left;
+            const width = win.frameel.width() - (current_metrics.buffermarginx + posleft + 2);
+            if (width < inputel_minwidth) {
+                inputel.css({ width: inputel_minwidth+'px',
+                              position: '',
+                              left: '', top: '', });
+            }
+            else {
+                inputel.css({ width: width+'px',
+                              position: 'absolute',
+                              left: '0px', top: '0px', });
+            }
             if (newinputel)
                 cursel.append(inputel);
         }

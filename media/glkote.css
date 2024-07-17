@@ -68,6 +68,18 @@
   white-space: pre-wrap; /* required for spaces to work right */
 }
 
+.BlankLineSpan {
+  /* Work around an annoying corner case: if the BlankLineSpan is
+     followed by an input line, we don't need or want the placeholder
+     space. Suppress it. */
+  display: none;
+}
+
+.BlankLineSpan:only-child {
+  /* No input line, so no suppress. */
+  display: inline;
+}
+
 .GridWindow {
   background: #FFD0A0;
   overflow: hidden;
