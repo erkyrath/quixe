@@ -65,6 +65,8 @@ let error_visible = false;
 let windowdic = null;
 let current_metrics = null;
 let current_devpixelratio = null;
+let current_viewportheight = null;
+let orig_gameport_margins = null;
 let last_known_focus = 0;
 let last_known_paging = 0;
 let windows_paging_count = 0;
@@ -210,6 +212,14 @@ function glkote_init(iface) {
     /* Note the pixel ratio (resolution level; this is greater than 1 for
        high-res displays. */
     current_devpixelratio = window.devicePixelRatio || 1;
+
+    /* Record the original top and bottom margins (from window-edge) of
+       the gameport. This will be needed for mobile keyboard resizing. */
+    const gameport = $('#'+gameport_id, dom_context);
+    orig_gameport_margins = {
+        top: gameport.offset().top,
+        bottom: $(window).height() - (gameport.offset().top + gameport.outerHeight()),
+    };
 
     /* We can get callbacks on any *boolean* change in the resolution level.
        Not, unfortunately, on all changes. */
@@ -576,6 +586,10 @@ function create_resize_sensor() {
     } catch (ex) {
         console.log('ResizeObserver is not available in this browser.');
     }
+
+    if (is_mobile && window.visualViewport) {
+        $(visualViewport).on('resize', evhan_viewport_resize);
+    }
 }
 
 /* This function becomes GlkOte.update(). The game calls this to update
@@ -691,13 +705,15 @@ function glkote_update(arg) {
                        property; we have to go to the raw DOM to get it. */
                     frameel.scrollTop(frameel.get(0).scrollHeight);
                     win.needspaging = false;
+                    win.scrolledtoend = true;
                 }
                 else {
                     /* Scroll the unseen content to the top. */
                     frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
+                    const frameheight = frameel.outerHeight();
+                    win.scrolledtoend = frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight;
                     /* Compute the new topunseen value. */
                     win.pagefrommark = win.topunseen;
-                    const frameheight = frameel.outerHeight();
                     const realbottom = buffer_last_line_top_offset(win);
                     let newtopunseen = frameel.scrollTop() + frameheight;
                     if (newtopunseen > realbottom)
@@ -748,6 +764,19 @@ function glkote_update(arg) {
                     }
                     prevel.css('top', (win.pagefrommark+'px'));
                 }
+            }
+        }
+        else if (win.type == 'buffer') { /* but *not* win.needscroll */
+            /* This window has no new content. If its size has
+               changed, it would be smart to adjust the scrolling so
+               that the same text is visible.
+               Ideally that means the same *bottom line* of text as
+               before. But we're not that smart. We enforce a simpler
+               rule: If the window was scrolled all the way down before,
+               it should still be. */
+            if (win.scrolledtoend) {
+                const frameel = win.frameel;
+                frameel.scrollTop(frameel.get(0).scrollHeight);
             }
         }
     }
@@ -909,6 +938,7 @@ function accept_one_window(arg) {
         win.reqmouse = false;
         win.needscroll = false;
         win.needspaging = false;
+        win.scrolledtoend = true;
         win.topunseen = 0;
         win.pagefrommark = 0;
         win.coords = { left:null, top:null, right:null, bottom:null };
@@ -973,7 +1003,6 @@ function accept_one_window(arg) {
                     || 1;
             }
             win.scaleratio = current_devpixelratio / win.backpixelratio;
-            //glkote_log('### created canvas with scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
             el.attr('width', win.graphwidth * win.scaleratio);
             el.attr('height', win.graphheight * win.scaleratio);
             el.css('width', (win.graphwidth + 'px'));
@@ -1969,7 +1998,6 @@ function perform_graphics_ops(loadedimg, loadedev) {
         glkote_log('perform_graphics_ops called with no queued ops' + (loadedimg ? ' (plus image!)' : ''));
         return;
     }
-    //glkote_log('### perform_graphics_ops, ' + graphics_draw_queue.length + ' queued' + (loadedimg ? ' (plus image!)' : '') + '.'); /*###*/
 
     /* Look at the first queue entry, execute it, and then shift it off.
        On error we must be sure to shift anyway, or the queue will jam!
@@ -2027,7 +2055,6 @@ function perform_graphics_ops(loadedimg, loadedev) {
                 if (oldimg && oldimg.width > 0 && oldimg.height > 0) {
                     loadedimg = oldimg;
                     loadedev = true;
-                    //glkote_log('### found image in cache');
                 }
                 else {
                     /* This cached image is broken. I don't know if this can happen,
@@ -2042,7 +2069,6 @@ function perform_graphics_ops(loadedimg, loadedev) {
                     if (newurl)
                         imgurl = newurl;
                 }
-                //glkote_log('### setting up callback with url');
                 const newimg = new Image();
                 $(newimg).on('load', function(ev) { perform_graphics_ops(newimg, ev); });
                 $(newimg).on('error', function() { perform_graphics_ops(newimg, null); });
@@ -2068,7 +2094,6 @@ function perform_graphics_ops(loadedimg, loadedev) {
 
         graphics_draw_queue.shift();
     }
-    //glkote_log('### queue empty.');
 }
 
 /* Run a function (no arguments) in timeout seconds. */
@@ -2388,15 +2413,97 @@ function doc_resize_real() {
 
     const new_metrics = measure_window();
     if (metrics_match(new_metrics, current_metrics)) {
-        /* If the metrics haven't changed, skip the arrange event. Necessary on
-           mobile webkit, where the keyboard popping up and down causes a same-size
-           resize event. */
+        /* If the metrics haven't changed, skip the arrange event. Necessary
+           on mobile webkit, where the keyboard popping up and down causes
+           a same-size resize event.
+           (Not true any more given the evhan_viewport_resize() handler
+           below. But it's still a good optimization.) */
         return;
     }
     current_metrics = new_metrics;
     send_response('arrange', null, current_metrics);
 }
 
+/* Detect the *viewport* being resized, which typically means an
+   on-screen keyboard has opened or closed.
+   
+   (We only set up this handler if is_mobile is set. It is an
+   unwarranted assumption that only mobile devices have on-screen
+   keyboards! But there's a lot of weird fudging in here. For the time
+   being, we only do it if necessary, and "necessary" means mobile
+   browsers, close enough.)
+
+   The logic here started as the metrics.ts code (curiousdannii/asyncglk),
+   but it's evolved quite a bit based on iOS testing.
+
+   It would be better all around to rely on the viewport meta tag
+   "interactive-widget=resizes-content". However, as mid-2024, that
+   is Chrome-only (and I think Chrome defaults to "resizes-content"
+   anyhow).
+*/
+function evhan_viewport_resize() {
+    if ((visualViewport.scale - 1) > 0.001) {
+        /* We've pinch-zoomed in. The visualViewport will represent the
+           zoomed-in region, so we can't learn anything useful about the
+           keyboard from it. Bail; we'll adjust if the scale ever
+           returns to 1.0. */
+        return;
+    }
+
+    /* Dannii's AsyncGlk code has an iOS 15.0 workaround here, but that bug
+       was only extant for a couple of months in fall 2021. */
+
+    /* Only react to visualViewport.height changes... */
+    if (current_viewportheight == visualViewport.height) {
+        return;
+    }
+
+    current_viewportheight = visualViewport.height;
+
+    /* Adjust the top of the gameport so that its height matches the
+       viewport height. We are keeping the bottom fixed because iOS
+       Safari really wants the content to be bottom-aligned. (If
+       we fix the top and shorten the height, Safari persistently scrolls
+       down so that the blank space below is visible.)
+
+       We are assuming that the gameport either takes up the full window
+       or it has fixed top and bottom margins. (See orig_gameport_margins,
+       calculated at startup.) If the page layout is more dynamic than
+       that, this will fail.
+
+       Any top margin (navbar, etc) will be hidden once the keyboard is up.
+       This is an unfortunate consequence of the bottom-aligned scheme; the
+       top margin gets shifted up out of sight.
+    */
+
+    /* Ignore tiny height changes. */
+    const gameport = $('#'+gameport_id, dom_context);
+    const oldheight = gameport.outerHeight();
+    let newtop = ($(window).height() - current_viewportheight);
+    if (newtop < orig_gameport_margins.top)
+        newtop = orig_gameport_margins.top;
+    const newheight = $(window).height() - (newtop + orig_gameport_margins.bottom);
+
+    /* Do not react to tiny height changes... */
+    if (oldheight-newheight >= -1 && oldheight-newheight <= 1) {
+        return;
+    }
+
+    gameport.css('top', newtop+'px');
+    gameport.outerHeight(newheight);
+
+    /* The gameport size change triggers the resize sensor, which takes
+     care of scheduling an arrange event. */
+
+    /* Since our content is bottom-aligned, we scroll the window down as
+       much as possible. In fact, we do it twice, because Safari
+       sometimes likes to scroll to the top for its own annoying
+       reasons. */
+    window.scrollTo(0, newtop);
+    defer_func(function() { window.scrollTo(0, newtop); });
+}
+    
+    
 /* Send a "redraw" event for the given (graphics) window. This is triggered
    by the accept handler when it sees a graphics window change size.
 
@@ -2421,7 +2528,7 @@ function evhan_doc_pixelreschange() {
     const ratio = window.devicePixelRatio || 1;
     if (ratio != current_devpixelratio) {
         current_devpixelratio = ratio;
-        //glkote_log('### devicePixelRatio changed to ' + current_devpixelratio);
+        //glkote_log('devicePixelRatio changed to ' + current_devpixelratio);
 
         /* If we have any graphics windows, we need to redo their size and
            scale, and then hit them with a redraw event. */
@@ -2429,7 +2536,7 @@ function evhan_doc_pixelreschange() {
             if (win.type == 'graphics') {
                 const el = $('#'+dom_prefix+'win'+win.id+'_canvas', dom_context);
                 win.scaleratio = current_devpixelratio / win.backpixelratio;
-                //glkote_log('### changed canvas to scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
+                //glkote_log('changed canvas to scale ' + win.scaleratio + ' (device ' + current_devpixelratio + ' / backstore ' + win.backpixelratio + ')');
                 const ctx = canvas_get_2dcontext(el);
                 el.attr('width', win.graphwidth * win.scaleratio);
                 el.attr('height', win.graphheight * win.scaleratio);
@@ -2495,8 +2602,9 @@ function evhan_doc_keypress(ev) {
             const frameel = win.frameel;
             /* Scroll the unseen content to the top. */
             frameel.scrollTop(win.topunseen - current_metrics.buffercharheight);
-            /* Compute the new topunseen value. */
             const frameheight = frameel.outerHeight();
+            win.scrolledtoend = frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight;
+            /* Compute the new topunseen value. */
             const realbottom = buffer_last_line_top_offset(win);
             let newtopunseen = frameel.scrollTop() + frameheight;
             if (newtopunseen > realbottom)
@@ -2506,7 +2614,7 @@ function evhan_doc_keypress(ev) {
             if (win.needspaging) {
                 /* The scroll-down might have cleared needspaging already. But 
                    if not... */
-                if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
+                if (win.scrolledtoend) {
                     win.needspaging = false;
                     const moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
                     if (moreel.length)
@@ -2891,11 +2999,14 @@ function evhan_window_scroll(ev) {
     if (!win)
         return;
 
+    const frameel = win.frameel;
+    const frameheight = frameel.outerHeight();
+    
+    win.scrolledtoend = frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight;
+    
     if (!win.needspaging)
         return;
 
-    const frameel = win.frameel;
-    const frameheight = frameel.outerHeight();
     const realbottom = buffer_last_line_top_offset(win);
     let newtopunseen = frameel.scrollTop() + frameheight;
     if (newtopunseen > realbottom)
@@ -2903,7 +3014,7 @@ function evhan_window_scroll(ev) {
     if (win.topunseen < newtopunseen)
         win.topunseen = newtopunseen;
 
-    if (frameel.scrollTop() + frameheight + moreprompt_margin >= frameel.get(0).scrollHeight) {
+    if (win.scrolledtoend) {
         win.needspaging = false;
         const moreel = $('#'+dom_prefix+'win'+win.id+'_moreprompt', dom_context);
         if (moreel.length)
@@ -2921,6 +3032,8 @@ function window_scroll_to_bottom(win) {
 
     const frameheight = frameel.outerHeight();
     frameel.scrollTop(frameel.get(0).scrollHeight - frameheight);
+    
+    win.scrolledtoend = true;
 
     const realbottom = buffer_last_line_top_offset(win);
     let newtopunseen = frameel.scrollTop() + frameheight;
