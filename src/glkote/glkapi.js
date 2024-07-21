@@ -1,12 +1,12 @@
 'use strict';
 
 /* GlkAPI -- a Javascript Glk API for IF interfaces
- * GlkOte Library: version 2.3.3.
+ * GlkOte Library: version 2.3.4.
  * Glk API which this implements: version 0.7.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010-20 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-2024 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This file is a Glk API compatibility layer for glkote.js. It offers a 
@@ -6373,7 +6373,7 @@ function glk_date_to_simple_time_local(dateref, factor) {
    become the Glk global. */
 return {
     classname: 'Glk',
-    version: '2.3.3', /* GlkOte/GlkApi version */
+    version: '2.3.4', /* GlkOte/GlkApi version */
     init : init,
     inited : is_inited,
     update : update,

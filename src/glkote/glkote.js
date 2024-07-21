@@ -5,7 +5,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2008-20 by Andrew Plotkin.
+ * This Javascript library is copyright 2008-2024 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * GlkOte is a tool for creating interactive fiction -- and other text-based
