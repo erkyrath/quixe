@@ -101,6 +101,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.2.3 (###)
   - Changed the deterministic RNG to xoshiro**.
+  - Improved mobile browser support.
 
 - 2.2.2 (September 1, 2023)
   - Fixed an obscure scrolling bug in Firefox.
