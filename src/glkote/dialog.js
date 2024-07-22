@@ -65,6 +65,7 @@ var DialogClass = function() {
 var GlkOte = null; /* imported API object -- for GlkOte.log, GlkOte.getdomid */
 
 var dialog_el_id = 'dialog';
+let localization_map = {};
 
 var is_open = false;
 var dialog_callback = null;
@@ -75,6 +76,7 @@ var editing_dirent; /* null for the edit selection screen, or a dirent to
                        display */
 var cur_usage; /* a string representing the file's category */
 var cur_usage_name; /* the file's category as a human-readable string */
+var cur_usage_names; /* the file's category (pluralized) as a human-readable string */
 var cur_gameid; /* a string representing the game */
 var cur_filelist; /* the files currently on display */
 
@@ -82,6 +84,9 @@ var cur_filelist; /* the files currently on display */
 function dialog_init(iface) {
     if (iface && iface.dom_prefix) {
         dialog_el_id = iface.dom_prefix;
+    }
+    if (iface && iface.localize) {
+        localization_map = iface.localize;
     }
     
     if (iface && iface.GlkOte) {
@@ -140,6 +145,7 @@ function dialog_open(tosave, usage, gameid, callback) {
     cur_usage = usage;
     cur_gameid = gameid;
     cur_usage_name = label_for_usage(cur_usage);
+    cur_usage_names = label_for_usage(cur_usage, true);
 
     /* Figure out what the root div is called. The dialog box will be
        positioned in this div; also, the div will be greyed out by a 
@@ -185,13 +191,13 @@ function dialog_open(tosave, usage, gameid, callback) {
 
     row = $('<div>', { 'class': 'DiaButtonsFloat' });
     el = $('<button>', { id: dialog_el_id+'_edit', type: 'button' });
-    el.append('Edit');
+    el.text(localize('dialog_edit'));
     el.on('click', evhan_edit_button);
     row.append(el);
     form.append(row);
 
     row = $('<div>', { id: dialog_el_id+'_cap', 'class': 'DiaCaption' });
-    row.append('XXX'); // the caption will be replaced momentarily.
+    row.text('XXX'); // the caption will be replaced momentarily.
     form.append(row);
 
     if (will_save) {
@@ -202,7 +208,7 @@ function dialog_open(tosave, usage, gameid, callback) {
 
         /* This was spurred by the Safari seven-day expiration policy (March 2020), but the general fragility of local storage has been a bother for years. */
         row = $('<div>', { id: dialog_el_id+'_warning', 'class': 'DiaWarning' });
-        row.text('Warning: data may be erased by clearing cookies or browser privacy policies.');
+        row.text(localize('dialog_cookiewarning'));
         form.append(row);
     }
 
@@ -217,24 +223,24 @@ function dialog_open(tosave, usage, gameid, callback) {
     {
         /* Row of buttons */
         el = $('<button>', { id: dialog_el_id+'_cancel', type: 'button' });
-        el.append('Cancel');
+        el.text(localize('dialog_cancel'));
         el.on('click', evhan_cancel_button);
         row.append(el);
 
         el = $('<button>', { id: dialog_el_id+'_delete', type: 'button' });
-        el.append('Delete');
+        el.text(localize('dialog_delete'));
         el.on('click', evhan_delete_button);
         el.hide();
         row.append(el);
 
         el = $('<button>', { id: dialog_el_id+'_display', type: 'button' });
-        el.append('Display');
+        el.text(localize('dialog_display'));
         el.on('click', evhan_display_button);
         el.hide();
         row.append(el);
 
         el = $('<button>', { id: dialog_el_id+'_accept', type: 'submit' });
-        el.append(will_save ? 'Save' : 'Load');
+        el.text(will_save ? localize('dialog_save') : localize('dialog_load'));
         el.on('click', 
             (will_save ? evhan_accept_save_button : evhan_accept_load_button));
         row.append(el);
@@ -310,21 +316,13 @@ function set_caption(msg, isupper) {
 }
 
 /* Pick a human-readable label for the usage. This will be displayed in the
-   dialog prompts. (Possibly pluralized, with an "s".) 
+   dialog prompts.
 */
-function label_for_usage(val) {
-    switch (val) {
-    case 'data': 
-        return 'data file';
-    case 'save': 
-        return 'save file';
-    case 'transcript': 
-        return 'transcript';
-    case 'command': 
-        return 'command script';
-    default:
-        return 'file';
-    }
+function label_for_usage(val, plural) {
+    if (!plural)
+        return localize('dialog_usage_'+val);
+    else
+        return localize('dialog_usagepl_'+val);
 }
 
 /* Decide whether a given file is likely to contain text data. 
@@ -453,11 +451,11 @@ function evhan_accept_save_button(ev) {
            label to "Replace"; if the user really meant it, we'll wind up back
            in this event handler. */
         confirming = true;
-        set_caption('You already have a ' + cur_usage_name + ' "' 
-            + dirent.filename + '". Do you want to replace it?', false);
+        let val = localize('dialog_confirmreplace');
+        set_caption(val.replace('%1', cur_usage_name).replace('%2', dirent.filename), false);
         fel.prop('disabled', true);
         var butel = $('#'+dialog_el_id+'_accept');
-        butel.text('Replace');
+        butel.text(localize('dialog_replace'));
         return false;
     }
 
@@ -491,7 +489,7 @@ function evhan_edit_button(ev) {
             fel.prop('disabled', false);
             var butel = $('#'+dialog_el_id+'_accept');
             butel.prop('disabled', false);
-            butel.text('Save');
+            butel.text(localize('dialog_save'));
         }
 
         var fel = $('#'+dialog_el_id+'_input');
@@ -500,7 +498,7 @@ function evhan_edit_button(ev) {
         }
 
         var butel = $('#'+dialog_el_id+'_edit');
-        butel.text('Done');
+        butel.text(localize('dialog_done'));
 
         butel = $('#'+dialog_el_id+'_delete');
         butel.show();
@@ -522,7 +520,7 @@ function evhan_edit_button(ev) {
         }
 
         var butel = $('#'+dialog_el_id+'_edit');
-        butel.text('Edit');
+        butel.text(localize('dialog_edit'));
 
         butel = $('#'+dialog_el_id+'_delete');
         butel.hide();
@@ -542,7 +540,7 @@ function evhan_edit_button(ev) {
         $('#'+dialog_el_id+'_buttonrow').show();
 
         var butel = $('#'+dialog_el_id+'_edit');
-        butel.text('Done');
+        butel.text(localize('dialog_done'));
 
         evhan_storage_changed();
         return false;
@@ -599,7 +597,7 @@ function evhan_display_button(ev) {
     $('#'+dialog_el_id+'_buttonrow').hide();
 
     var butel = $('#'+dialog_el_id+'_edit');
-    butel.text('Close');
+    butel.text(localize('dialog_close'));
 
     editing_dirent = file.dirent;
     /* Force reload of display */
@@ -625,7 +623,7 @@ function evhan_cancel_button(ev) {
         fel.prop('disabled', false);
         var butel = $('#'+dialog_el_id+'_accept');
         butel.prop('disabled', false);
-        butel.text('Save');
+        butel.text(localize('dialog_save'));
         return false;
     }
 
@@ -671,7 +669,7 @@ function evhan_storage_changed(ev) {
             editing_dirent = null;
             $('#'+dialog_el_id+'_buttonrow').show();
             butel = $('#'+dialog_el_id+'_edit');
-            butel.text('Done');
+            butel.text(localize('dialog_done'));
         }
     }
 
@@ -694,7 +692,7 @@ function evhan_storage_changed(ev) {
           var textel = $('<pre>', { 'class': 'DiaDisplayText' });
           textel.text(dat);
           bodyel.append(textel);
-          set_caption('Displaying file contents...', true);
+          set_caption(localize('dialog_displayingcontents'), true);
         }
         else {
           var b64dat = window.btoa(dat);
@@ -703,7 +701,7 @@ function evhan_storage_changed(ev) {
           var linkel = $('<a>', { 'href': 'data:application/octet-stream;base64,'+b64dat, 'target': '_blank', 'download': 'data' });
           linkel.text(editing_dirent.filename);
           bodyel.append(linkel);
-          set_caption('Use "Save As" option in your browser to download this link.', true);
+          set_caption(localize('dialog_usesaveas'), true);
         }
 
         return false;
@@ -733,7 +731,7 @@ function evhan_storage_changed(ev) {
             butel.prop('disabled', true);
             butel = $('#'+dialog_el_id+'_display');
             butel.prop('disabled', true);
-            set_caption('You have no stored files. Press Done to continue.', true);
+            set_caption(localize('dialog_nostoredfiles'), true);
             return false;
         }
 
@@ -762,7 +760,7 @@ function evhan_storage_changed(ev) {
             if (!file.dirent) {
                 el = $('<option>', { name:'f'+ix } );
                 el.prop('disabled', true);
-                el.text('-- ' + label_for_usage(file.label) + 's --');
+                el.text('-- ' + label_for_usage(file.label, true) + ' --');
                 selel.append(el);
                 continue;
             }
@@ -781,7 +779,7 @@ function evhan_storage_changed(ev) {
         selel.on('change', evhan_select_change_editing);
         evhan_select_change_editing();
 
-        set_caption('All stored files are now visible. You may delete them, and display files containing text. Press Done when finished.', true);
+        set_caption(localize('dialog_allvisible'), true);
         return false;
     }
 
@@ -820,18 +818,19 @@ function evhan_storage_changed(ev) {
     }
 
     if (will_save) {
-        set_caption('Name this ' + cur_usage_name + '.', true);
+        let val = localize('dialog_namethis');
+        set_caption(val.replace('%1', cur_usage_name), true);
         el = $('#'+dialog_el_id+'_accept');
         el.prop('disabled', false);
     }
     else {
         if (ls.length == 0) {
-            set_caption('You have no ' + cur_usage_name + 's for this game.', true);
+            set_caption(localize('dialog_nousagefiles').replace('%1', cur_usage_names), true);
             el = $('#'+dialog_el_id+'_accept');
             el.prop('disabled', true);
         }
         else {
-            set_caption('Select a ' + cur_usage_name + ' to load.', true);
+            set_caption(localize('dialog_selectafile').replace('%1', cur_usage_name), true);
             el = $('#'+dialog_el_id+'_accept');
             el.prop('disabled', false);
         }
@@ -1100,6 +1099,57 @@ function files_list(usage, gameid) {
 
     //GlkOte.log('### files_list found ' + ls.length + ' files.');
     return ls;
+}
+
+/* Default localization strings (English).
+   Note that keys are namespaced. A given map may be shared between
+   GlkOte, Dialog, Quixe, etc. */
+const localization_basemap = {
+    /* Buttons... */
+    dialog_cancel: 'Cancel',
+    dialog_close: 'Close',
+    dialog_done: 'Done',
+    dialog_edit: 'Edit',
+    dialog_delete: 'Delete',
+    dialog_display: 'Display',
+    dialog_load: 'Load',
+    dialog_replace: 'Replace',
+    dialog_save: 'Save',
+
+    /* Labels... */
+    dialog_namethis: 'Name this %1.',
+    dialog_confirmreplace: 'You already have a %1 "%2". Do you want to replace it?',
+    dialog_cookiewarning: 'Warning: data may be erased by clearing cookies or browser privacy policies.',
+    dialog_allvisible: 'All stored files are now visible. You may delete them, and display files containing text. Press Done when finished.',
+    dialog_displayingcontents: 'Displaying file contents...',
+    dialog_usesaveas: 'Use "Save As" option in your browser to download this link.',
+    dialog_nostoredfiles: 'You have no stored files. Press Done to continue.',
+    dialog_nousagefiles: 'You have no %1 for this game.',
+    dialog_selectafile: 'Select a %1 to load.',
+
+    /* Usages (singular and plural)... */
+    dialog_usage_data: 'data file',
+    dialog_usage_save: 'save file',
+    dialog_usage_transcript: 'transcript',
+    dialog_usage_command: 'command script',
+    dialog_usage_default: 'file',
+    dialog_usagepl_data: 'data files',
+    dialog_usagepl_save: 'save files',
+    dialog_usagepl_transcript: 'transcripts',
+    dialog_usagepl_command: 'command scripts',
+    dialog_usagepl_default: 'files',
+};
+
+/* Localize a key using the provided localization map or the default
+   value. */
+function localize(key) {
+    let val = localization_map[key];
+    if (val)
+        return val;
+    val = localization_basemap[key];
+    if (val)
+        return val;
+    return key;
 }
 
 /* Convert a date object to a (short) string.
