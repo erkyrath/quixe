@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.3.4.
+ * GlkOte Library: version 2.3.5.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -220,11 +220,16 @@ function glkote_init(iface) {
     current_devpixelratio = window.devicePixelRatio || 1;
 
     /* Record the original top and bottom margins (from window-edge) of
-       the gameport. This will be needed for mobile keyboard resizing. */
+       the gameport. Also of the element that gameport is relative to.
+       These will be needed for mobile keyboard resizing. */
     const gameport = $('#'+gameport_id, dom_context);
+    const gameparent = gameport.offsetParent();
     orig_gameport_margins = {
         top: gameport.offset().top,
         bottom: $(window).height() - (gameport.offset().top + gameport.outerHeight()),
+        parenttop: gameparent.offset().top,
+        /* We won't need parentbottom. If we did, we'd have to be careful
+           of the case where gameparent is <html>. */
     };
 
     /* We can get callbacks on any *boolean* change in the resolution level.
@@ -1050,19 +1055,19 @@ function accept_one_window(arg) {
         }
     }
 
-    /* The trick is that left/right/top/bottom are measured to the outside
-       of the border, but width/height are measured from the inside of the
-       border. (Measured by the browser's DOM methods, I mean.) */
-    /* This method works in everything but IE. */
+    /* We used to set the "right" and "bottom" CSS values in styledic,
+       but that led to unpleasant (albeit transient) window-squashing
+       during resize. Using outerWidth()/outerHeight() works better. */
     const right = current_metrics.width - (arg.left + arg.width);
     const bottom = current_metrics.height - (arg.top + arg.height);
-    const styledic = { left: arg.left+'px', top: arg.top+'px',
-                       right: right+'px', bottom: bottom+'px' };
+    const styledic = { left: arg.left+'px', top: arg.top+'px' };
     win.coords.left = arg.left;
     win.coords.top = arg.top;
     win.coords.right = right;
     win.coords.bottom = bottom;
     frameel.css(styledic);
+    frameel.outerWidth(arg.width);
+    frameel.outerHeight(arg.height);
 }
 
 /* Handle closing one window. */
@@ -2512,6 +2517,7 @@ function evhan_viewport_resize() {
     let newtop = ($(window).height() - current_viewportheight);
     if (newtop < orig_gameport_margins.top)
         newtop = orig_gameport_margins.top;
+    const newreltop = newtop - orig_gameport_margins.parenttop;
     const newheight = $(window).height() - (newtop + orig_gameport_margins.bottom);
 
     /* Do not react to tiny height changes... */
@@ -2519,7 +2525,7 @@ function evhan_viewport_resize() {
         return;
     }
 
-    gameport.css('top', newtop+'px');
+    gameport.css('top', newreltop+'px');
     gameport.outerHeight(newheight);
 
     /* The gameport size change triggers the resize sensor, which takes
@@ -3137,7 +3143,7 @@ function evhan_debug_command(cmd) {
    become the GlkOte global. */
 return {
     classname: 'GlkOte',
-    version:  '2.3.4',
+    version:  '2.3.5',
     init:     glkote_init,
     inited:   glkote_inited,
     update:   glkote_update,

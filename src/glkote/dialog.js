@@ -1127,7 +1127,7 @@ const localization_basemap = {
     dialog_nousagefiles: 'You have no %1 for this game.',
     dialog_selectafile: 'Select a %1 to load.',
 
-    /* Usages (singular and plural)... */
+    /* File usages (singular and plural)... */
     dialog_usage_data: 'data file',
     dialog_usage_save: 'save file',
     dialog_usage_transcript: 'transcript',
