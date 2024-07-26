@@ -99,7 +99,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
-- 2.2.4 (###)
+- 2.2.4 (July 26, 2024)
   - Support GlkOte localization system.
   - Fixed mobile browser bug with OneColumn layout.
   
