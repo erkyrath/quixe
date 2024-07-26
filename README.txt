@@ -99,6 +99,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.2.4 (###)
+  - Fixed mobile browser bug.
+  
 - 2.2.3 (July 20, 2024)
   - Changed the deterministic RNG to xoshiro**.
   - Improved mobile browser support.
