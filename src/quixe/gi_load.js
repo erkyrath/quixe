@@ -71,7 +71,10 @@
  *     image data. (This is an older format, still supported.)
  *   exit_warning: A message to display (in a blue warning pane) when
  *     the game exits. If empty or null, no message is displayed.
- *     (default: "The game session has ended.")
+ *     (default: "The game session has ended." or see below.)
+ *   localize: Localization map. (Also passed through to GlkOte.)
+ *     You can set localize.giload_exit_warning in lieu of the above
+ *     option.
  *   do_vm_autosave: If set, the VM will check for a snapshot when
  *     launching, and load it if present. The VM will also save a snapshot
  *     after every move. (default: false)
@@ -179,6 +182,14 @@ function load_run(optobj, image, imageoptions) {
         all_options.engine_name = 'Quixe';
         all_options.blorb_gamechunk_type = 'GLUL';
         all_options.game_format_name = 'Glulx';
+    }
+
+    /* The exit_warning option can also come from the (newer) opt.localize
+       option. But setting opt.exit_warning directly takes precedence.
+       (Note that you can set opt.exit_warning to null, meaning "do
+       not display any warning on exit.) */
+    if (optobj && optobj.localize && optobj.localize.giload_exit_warning) {
+        all_options.exit_warning = optobj.localize.giload_exit_warning;
     }
 
     /* Pull in the values from the game_options, which override the defaults
