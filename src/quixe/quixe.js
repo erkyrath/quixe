@@ -98,8 +98,8 @@ function quixe_init(image, all_options) {
     self.GiDispa = all_options.GiDispa;
     self.GiLoad = all_options.GiLoad;
     self.Glk = all_options.io;
-    
-    game_image = image;
+
+    game_image = new Uint8Array(image);
 
     var ls = game_image.slice(0, 64);
     var ix, val;
@@ -3818,7 +3818,7 @@ function compile_func(funcaddr) {
     /* We also copy the raw format list. This will be handy later on,
        when we need to serialize the stack. Note that it might be
        padded with extra zeroes to a four-byte boundary. */
-    var rawformat = memmap.slice(rawstart, addr);
+    var rawformat = Array.from(memmap.slice(rawstart, addr));
     while (rawformat.length % 4)
         rawformat.push(0);
 
@@ -6298,7 +6298,9 @@ function vm_restart() {
 
     /* Build (or rebuild) main memory array. */
     memmap = null; // garbage-collect old memmap
-    memmap = game_image.slice(0, endgamefile);
+    var arraybuf = new ArrayBuffer(endgamefile, { maxByteLength: 0x100000000 } );
+    memmap = new Uint8Array(arraybuf);
+    memmap.set(game_image);
     self.endmem = memmap.length;
     change_memsize(origendmem, false);
     /* endmem is now origendmem */
@@ -6896,12 +6898,8 @@ function change_memsize(newlen, internal) {
     if (newlen & 0xFF)
         fatal_error("Can only resize Glulx memory space to a 256-byte boundary.");
 
-    memmap.length = newlen;
-    if (newlen > self.endmem) {
-        for (lx=self.endmem; lx<newlen; lx++) {
-            memmap[lx] = 0;
-        }
-    }
+    memmap.buffer.resize(newlen);
+    /* Automatically zero-padded. */
 
     self.endmem = newlen;    
 }
