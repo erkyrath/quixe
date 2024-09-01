@@ -6298,9 +6298,7 @@ function vm_restart() {
 
     /* Build (or rebuild) main memory array. */
     memmap = null; // garbage-collect old memmap
-    var arraybuf = new ArrayBuffer(endgamefile, { maxByteLength: 0x100000000 } );
-    memmap = new Uint8Array(arraybuf);
-    memmap.set(game_image);
+    memmap = new Uint8Array(game_image);
     self.endmem = memmap.length;
     change_memsize(origendmem, false);
     /* endmem is now origendmem */
@@ -6838,8 +6836,7 @@ function vm_restoreundo() {
 
     var oldrom = memmap.slice(0, ramstart);
     memmap = null; // garbage-collect old memmap
-    var arraybuf = new ArrayBuffer(ramstart+snapshot.ram.length, { maxByteLength: 0x100000000 } );
-    memmap = new Uint8Array(arraybuf);
+    memmap = new Uint8Array(ramstart+snapshot.ram.length);
     memmap.set(oldrom);
     memmap.set(snapshot.ram, ramstart);
     oldrom = null;
@@ -6905,8 +6902,10 @@ function change_memsize(newlen, internal) {
     if (newlen & 0xFF)
         fatal_error("Can only resize Glulx memory space to a 256-byte boundary.");
 
-    memmap.buffer.resize(newlen);
-    /* Automatically zero-padded. */
+    var oldmem = memmap.slice(0, newlen); /* Might not include all of memmap */
+    memmap = null; // garbage-collect old memmap
+    memmap = new Uint8Array(newlen); /* Automatically zero-padded. */
+    memmap.set(oldmem)
 
     self.endmem = newlen;    
 }
