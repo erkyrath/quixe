@@ -6902,9 +6902,9 @@ function change_memsize(newlen, internal) {
     if (newlen & 0xFF)
         fatal_error("Can only resize Glulx memory space to a 256-byte boundary.");
 
-    var oldmem = memmap.slice(0, newlen); /* Might not include all of memmap */
+    var oldmem = memmap.slice(0, newlen); // might not include all of memmap
     memmap = null; // garbage-collect old memmap
-    memmap = new Uint8Array(newlen); /* Automatically zero-padded. */
+    memmap = new Uint8Array(newlen); // automatically zero-padded
     memmap.set(oldmem)
 
     self.endmem = newlen;    
