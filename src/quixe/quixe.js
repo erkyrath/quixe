@@ -6443,7 +6443,7 @@ function vm_save(streamid) {
     for (var i = ramstart; i < game_image.length; i++) {
         cmem[i - ramstart] ^= game_image[i];
     }
-    cmem = compress_bytes(cmem);
+    cmem = compress_bytes(cmem); // now a regular Array
     cmem.splice(0, 0, 0,0,0,0); // prepend four zeroes
     // Write in the endmem value
     ByteWrite4(cmem, 0, self.endmem);
@@ -6541,7 +6541,10 @@ function vm_restore(streamid) {
     while (ram_xor.length < newendmem - ramstart)
         ram_xor.push(0);
     change_memsize(newendmem, false);
-    memmap = game_image.slice(0, ramstart).concat(ram_xor);
+    memmap = null; // garbage-collect old memmap
+    memmap = new Uint8Array(ramstart+ram_xor.length);
+    memmap.set(game_image.slice(0, ramstart));
+    memmap.set(ram_xor, ramstart);
     for (var i = ramstart; i < game_image.length; i++) {
         memmap[i] ^= game_image[i];
     }
