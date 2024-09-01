@@ -354,18 +354,18 @@ function MemSlice(addr, length) {
 }
 function MemW1(addr, val) {
     // ignore high bytes if necessary
-    memmap[addr] = val & 0xFF;
+    memmap[addr] = val;
 }
 function MemW2(addr, val) {
     // ignore high bytes if necessary
-    memmap[addr] = (val >> 8) & 0xFF;
-    memmap[addr+1] = val & 0xFF;
+    memmap[addr] = (val >> 8);
+    memmap[addr+1] = val;
 }
 function MemW4(addr, val) {
-    memmap[addr]   = (val >> 24) & 0xFF;
-    memmap[addr+1] = (val >> 16) & 0xFF;
-    memmap[addr+2] = (val >> 8) & 0xFF;
-    memmap[addr+3] = val & 0xFF;
+    memmap[addr]   = (val >> 24);
+    memmap[addr+1] = (val >> 16);
+    memmap[addr+2] = (val >> 8);
+    memmap[addr+3] = val;
 }
 
 self.Mem1 = Mem1;
