@@ -6656,7 +6656,7 @@ function vm_autosave(eventaddr) {
 
     /* Save the RAM, stack, and heap. */
 
-    snapshot.ram = memmap.slice(ramstart);
+    snapshot.ram = Array.from(memmap.slice(ramstart));
     snapshot.endmem = self.endmem;
     snapshot.pc = self.pc;
     snapshot.stack = [];
@@ -6707,9 +6707,10 @@ function vm_autosave(eventaddr) {
    vm_setup, replacing the vm_restart call.
 */
 function vm_autorestore(snapshot) {
-
-    memmap = game_image.slice(0, endgamefile);
-    memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
+    memmap = null; // garbage-collect old memmap
+    memmap = new Uint8Array(ramstart+snapshot.ram.length);
+    memmap.set(game_image.slice(0, ramstart));
+    memmap.set(snapshot.ram, ramstart);
     self.endmem = snapshot.endmem;
     self.pc = snapshot.pc;
 
