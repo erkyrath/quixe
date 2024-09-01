@@ -6928,7 +6928,7 @@ function copy_protected_range() {
         end: self.protectend,
         len: len
     };
-    var arr = memmap.slice(self.protectstart, self.protectend);
+    var arr = Array.from(memmap.slice(self.protectstart, self.protectend));
 
     /* It is legal to protect a range that falls outside of memory; the
        extra bits are presumed to be zero. */
