@@ -6808,7 +6808,7 @@ function vm_saveundo() {
     ;;;}
 
     var snapshot = {};
-    snapshot.ram = memmap.slice(ramstart);
+    snapshot.ram = memmap.slice(ramstart); // undo snapshots use Uint8Array for ram
     snapshot.endmem = self.endmem;
     snapshot.pc = self.pc;
     snapshot.stack = [];
@@ -6836,7 +6836,14 @@ function vm_restoreundo() {
     var snapshot = undostack.pop();
     var protect = copy_protected_range();
 
-    memmap = memmap.slice(0, ramstart).concat(snapshot.ram);
+    var oldrom = memmap.slice(0, ramstart);
+    memmap = null; // garbage-collect old memmap
+    var arraybuf = new ArrayBuffer(ramstart+snapshot.ram.length, { maxByteLength: 0x100000000 } );
+    memmap = new Uint8Array(arraybuf);
+    memmap.set(oldrom);
+    memmap.set(snapshot.ram, ramstart);
+    oldrom = null;
+
     self.endmem = snapshot.endmem;
     stack = snapshot.stack;
     self.frame = stack[stack.length - 1];
