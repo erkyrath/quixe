@@ -6322,7 +6322,8 @@ function vm_restart() {
 }
 self.vm_restart = vm_restart;
 
-/* Run-length-encode an array, for Quetzal. */
+/* Run-length-encode an array, for Quetzal.
+   This can take an Array or Uint8Array; it returns an Array. */
 function compress_bytes(arr) {
     var result = [];
     var i = 0;
@@ -6436,7 +6437,7 @@ function vm_save(streamid) {
     
     var chunks = [];
     
-    chunks.push({ key:"IFhd", chunk:game_image.slice(0, 128) });
+    chunks.push({ key:"IFhd", chunk:Array.from(game_image.slice(0, 128)) });
     
     var cmem = memmap.slice(ramstart);
     for (var i = ramstart; i < game_image.length; i++) {
