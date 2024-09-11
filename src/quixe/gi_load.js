@@ -247,7 +247,7 @@ function load_run(optobj, image, imageoptions) {
 
     if (!gameurl && image) {
         /* The story data is already loaded -- it's not an a URL at all. 
-           Decode it, and then fire it off. */
+           Decode it into a Uint8Array, and then fire it off. */
         GlkOte.log('GiLoad: trying pre-loaded load (' + image_format + ')...');
         switch (image_format) {
         case 'base64':
@@ -257,7 +257,7 @@ function load_run(optobj, image, imageoptions) {
             image = decode_raw_text(image);
             break;
         case 'array':
-            /* Leave image alone */
+            image = new Uint8Array(image);
             break;
         default:
             all_options.io.fatal_error("Could not decode story file data: " + image_format);
@@ -486,7 +486,7 @@ function absolutize(url) {
 
 /* Convert a byte string into an array of numeric byte values. */
 function decode_raw_text(str) {
-    var arr = Array(str.length);
+    var arr = new Uint8Array(str.length);
     var ix;
     for (ix=0; ix<str.length; ix++) {
         arr[ix] = str.charCodeAt(ix) & 0xFF;
@@ -499,7 +499,7 @@ function decode_raw_text(str) {
 function decode_base64(base64data)
 {
     var data = atob(base64data);
-    var image = Array(data.length);
+    var image = new Uint8Array(data.length);
     var ix;
     
     for (ix=0; ix<data.length; ix++)
