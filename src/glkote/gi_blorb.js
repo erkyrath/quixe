@@ -38,7 +38,7 @@
  *   { data:[...], type:str, binary:bool }
  *
  * Blorb.get_metadata(FIELD): Return a metadata field (a string)
- *   from the iFiction <bibliographic> section.
+ *   from the iFiction <identification> and <bibliographic> sections.
  *
  * Blorb.get_cover_pict(): Return the number of the image resource
  *   which contains the cover art. If there is no cover art, this
@@ -274,14 +274,31 @@ function blorb_init(data, opts) {
         if (chunktype == "IFmd") {
             var arr = image.slice(pos, pos+chunklen);
             var dat = encode_utf8_text(arr);
+            /* We shove the <identification> and <bibliographic> fields
+               into a single object, which is crude but works fine
+               in practice. */
+            /* Note that if a tag appears twice, we prefer the first version.
+               This should only matter for 'ifid'. */
             /* TODO: Handle this in some way that doesn't rely on jQuery. */
             var met = $('<metadata>').html(dat);
+            var identels = met.find('identification').children();
+            if (identels.length) {
+                var el;
+                for (ix=0; ix<identels.length; ix++) {
+                    el = identels[ix];
+                    var key = el.tagName.toLowerCase();
+                    if (!metadata[key])
+                        metadata[key] = el.textContent;
+                }
+            }
             var bibels = met.find('bibliographic').children();
             if (bibels.length) {
                 var el;
                 for (ix=0; ix<bibels.length; ix++) {
                     el = bibels[ix];
-                    metadata[el.tagName.toLowerCase()] = el.textContent;
+                    var key = el.tagName.toLowerCase();
+                    if (!metadata[key])
+                        metadata[key] = el.textContent;
                 }
             }
         }
