@@ -621,9 +621,12 @@ function glkote_update(arg) {
     let autorestore = null;
     if (arg.autorestore && generation == 0)
         autorestore = arg.autorestore;
-    delete arg.autorestore; /* keep it out of the recording */
 
-    if (recording) {
+    /* In the autorestore case we skip recording. We don't yet have the
+       session ID (that'll be pulled *from* the autorestore data), so this
+       would just create a garbage one-line session. */
+    
+    if (recording && !autorestore) {
         recording_send(arg);
     }
 
