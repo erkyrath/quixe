@@ -100,6 +100,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 * Version History
 
 - 2.2.5 (###)
+  - Fix bug in 2.2.4 that could cause scrollbar flashing.
   - Change the internal representation of VM memory to Uint8Array.
 
 - 2.2.4 (July 26, 2024)
