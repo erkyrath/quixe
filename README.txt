@@ -104,6 +104,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.2.4 (July 26, 2024)
   - Support GlkOte localization system.
+  - Improved window appearance during resizing.
   - Fixed mobile browser bug with OneColumn layout.
   
 - 2.2.3 (July 20, 2024)
