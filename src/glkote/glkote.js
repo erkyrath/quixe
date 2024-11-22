@@ -430,9 +430,14 @@ function measure_window() {
        that name. Nowadays, it's sometimes used as a hidden font-preloader. */
     $('#'+dom_prefix+'layouttestpane', dom_context).remove();
 
-    /* Exclude padding and border. */
-    metrics.width  = gameport.width();
-    metrics.height = gameport.height();
+    /* Gameport size, excluding padding and border.
+
+       We subtract one pixel because the width()/height() methods round
+       to the nearest integer (not the floor). If they rounded up, the
+       game might overflow the actual gameport by a pixel, which could
+       produce nasty spurious scrollbars. */
+    metrics.width  = Math.max(0, gameport.width()-1);
+    metrics.height = Math.max(0, gameport.height()-1);
 
     /* Create a dummy layout div containing a grid window and a buffer window,
        each with two lines of text. */
