@@ -12,6 +12,13 @@
   height: 100%;
 }
 
+#gameport {
+  /* The host page is supposed to define the gameport's layout, but
+     this property is needed to prevent possible overflow scrollbars.
+     We'll enforce it here. */
+  overflow: hidden;
+}
+
 #errorpane {
   position: absolute;
   top: 0px;
