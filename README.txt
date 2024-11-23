@@ -101,6 +101,11 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 - 2.2.5 (###)
   - Fix bug in 2.2.4 that could cause scrollbar flashing.
+  - Pageup/pagedown/home/end now work consistently when the input line is
+    focused. (Wasn't working in Firefox.)
+  - Avoid spurious recording stanza sent (with spurious sessionId) before
+    autorestore. (Thanks curiousdannii.)
+  - Recording sessionIds are now UUIDs (hexdigits and hyphens).
   - Change the internal representation of VM memory to Uint8Array.
 
 - 2.2.4 (July 26, 2024)
