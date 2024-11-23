@@ -1,6 +1,6 @@
 Quixe -- a Glulx VM interpreter written in Javascript
 
-Quixe Library: version 2.2.4.
+Quixe Library: version 2.2.5.
 Designed by Andrew Plotkin <erkyrath@eblong.com>.
 (Storage and heap-management code contributed by Iain Merrick.)
 <http://eblong.com/zarf/glulx/quixe/>
@@ -99,7 +99,7 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
-- 2.2.5 (###)
+- 2.2.5 (November 23, 2024)
   - Fix bug in 2.2.4 that could cause scrollbar flashing.
   - Pageup/pagedown/home/end now work consistently when the input line is
     focused. (Wasn't working in Firefox.)
