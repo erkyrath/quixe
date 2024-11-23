@@ -667,7 +667,7 @@ function file_read(dirent, israw)
    become the Dialog global. */
 return {
     classname: 'Dialog (ElectroFS)',
-    version: '2.3.5', /* GlkOte/GlkApi version */
+    version: '2.3.6', /* GlkOte/GlkApi version */
     streaming: true,
     init_async: init_async,
     inited: dialog_inited,

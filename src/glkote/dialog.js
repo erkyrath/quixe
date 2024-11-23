@@ -1299,7 +1299,7 @@ $(window).on('storage', evhan_storage_changed);
    become the Dialog global. */
 return {
     classname: 'Dialog',
-    version: '2.3.5', /* GlkOte/GlkApi version */
+    version: '2.3.6', /* GlkOte/GlkApi version */
     streaming: false,
     init: dialog_init,
     inited: dialog_inited,
