@@ -305,8 +305,17 @@ function glkote_init(iface) {
         }
         else {
             /* Set up the recording-state object. */
+            let sessionid = null;
+            try {
+                /* UUID-style */
+                sessionid = crypto.randomUUID();
+            }
+            catch (ex) {
+                /* The old way, all numeric digits */
+                sessionid = (new Date().getTime()) + '' + (Math.ceil( Math.random() * 10000 ));
+            }
             recording_state = {
-                sessionId: (new Date().getTime()) + '' + (Math.ceil( Math.random() * 10000 )),
+                sessionId: sessionid,
                 input: null, output: null,
                 timestamp: 0, outtimestamp: 0
             };
@@ -435,7 +444,11 @@ function measure_window() {
        We subtract one pixel because the width()/height() methods round
        to the nearest integer (not the floor). If they rounded up, the
        game might overflow the actual gameport by a pixel, which could
-       produce nasty spurious scrollbars. */
+       produce nasty spurious scrollbars.
+       
+       (TODO: in jQuery 3, the width()/height() methods do not round.
+       Could upgrade and use those with Math.floor().)
+    */
     metrics.width  = Math.max(0, gameport.width()-1);
     metrics.height = Math.max(0, gameport.height()-1);
 
@@ -2603,7 +2616,7 @@ function evhan_doc_pixelreschange() {
     }
 }
 
-/* Event handler: keypress events on input fields.
+/* Event handler: keypress events on the whole document.
 
    Move the input focus to whichever window most recently had it.
 */
@@ -2636,12 +2649,6 @@ function evhan_doc_keypress(ev) {
     if (windows_paging_count) {
         const win = windowdic.get(last_known_paging);
         if (win) {
-            if (!((keycode >= 32 && keycode <= 126) || keycode == 13)) {
-                /* If the keystroke is not a printable character (or Enter),
-                   we return and let the default behavior happen. That lets
-                   pageup/pagedown/home/end work normally. */
-                return;
-            }
             ev.preventDefault();
             const frameel = win.frameel;
             /* Scroll the unseen content to the top. */
@@ -2940,7 +2947,12 @@ function evhan_input_char_input(ev) {
 /* Event handler: keydown events on input fields (line input)
 
    Divert the up and down arrow keys to scroll through the command history
-   for this window. */
+   for this window.
+   
+   Also divert the page-up/page-down/home/end keys to scroll the pane.
+   (Chrome/Safari has this behavior as a default, but Firefox doesn't,
+   so we don't rely on it.)
+*/
 function evhan_input_keydown(ev) {
     let keycode = 0;
     if (ev) keycode = ev.keyCode; //### ev.which?
@@ -2969,6 +2981,30 @@ function evhan_input_keydown(ev) {
         }
 
         return false;
+    }
+    else if (keycode == key_codes.KEY_PAGEDOWN || keycode == key_codes.KEY_PAGEUP || keycode == key_codes.KEY_HOME || keycode == key_codes.KEY_END) {
+        const winid = $(this).data('winid');
+        const win = windowdic.get(winid);
+        if (win) {
+            const frameel = win.frameel;
+            const frameheight = frameel.outerHeight();
+            let newval = 0;
+            if (keycode == key_codes.KEY_PAGEDOWN) {
+                // Scroll by the window height minus one line.
+                newval = frameel.scrollTop() + (frameheight - current_metrics.buffercharheight);
+            }
+            else if (keycode == key_codes.KEY_PAGEUP) {
+                newval = frameel.scrollTop() - (frameheight - current_metrics.buffercharheight);
+            }
+            else if (keycode == key_codes.KEY_HOME) {
+                newval = 0;
+            }
+            else {
+                newval = frameel.get(0).scrollHeight;
+            }
+            frameel.scrollTop(newval);
+            return false;
+        }
     }
     else if (terminator_key_values[keycode]) {
         const winid = $(this).data('winid');
