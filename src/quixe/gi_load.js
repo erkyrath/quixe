@@ -195,7 +195,7 @@ function load_run(optobj, image, imageoptions) {
     /* Pull in the values from the game_options, which override the defaults
        set above. */
     if (optobj) {
-        jQuery.extend(all_options, optobj);
+        Object.assign(all_options, optobj);
     }
 
     /* If the GlkOte, GiDispa, Blorb classes were not provided, create
