@@ -59,6 +59,11 @@
  *     (default: "Quixe" or "IFVMS")
  *   default_story: The URL of the game file to load, if not otherwise
  *     provided.
+ *   story_loader: A function to be called if no game file is available.
+ *     (If neither default_story nor a "?story=..." parameter is found.)
+ *     You might use this to implement your own story selector. The
+ *     function must take one callback argument; when you have a game
+ *     ready, call the callback and pass it a Uint8Array.
  *   proxy_url: The URL of the web-app service which is used to convert
  *     binary data to Javascript, if the browser needs that. (default:
  *     https://zcode.appspot.com/proxy/)
@@ -274,7 +279,12 @@ function load_run(optobj, image, imageoptions) {
     }
 
     if (!gameurl) {
-        all_options.io.fatal_error("No story file specified!");
+        if (all_options.story_loader) {
+            all_options.story_loader(start_game);
+        }
+        else {
+            all_options.io.fatal_error("No story file specified!");
+        }
         return;
     }
 
