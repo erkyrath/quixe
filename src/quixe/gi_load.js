@@ -352,9 +352,8 @@ function load_run(optobj, image, imageoptions) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
-        var script = $('<script>', 
-            { src:gameurl, 'type':"text/javascript" });
-        headls[0].appendChild(script.get(0));
+        var script = createscriptnode(gameurl);
+        headls[0].appendChild(script);
         return;
     }
 
@@ -430,9 +429,8 @@ function load_run(optobj, image, imageoptions) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
-        var script = $('<script>', 
-            { src:fullurl, 'type':"text/javascript" });
-        headls[0].appendChild(script.get(0));
+        var script = createscriptnode(fullurl);
+        headls[0].appendChild(script);
         return;
     }
 
@@ -481,6 +479,14 @@ function isstring(val) {
     return (typeof val === 'string' || val instanceof String);
 }
 
+/* Create a <script> node to be added to the <head>. */
+function createscriptnode(url) {
+    var el = document.createElement('script');
+    el.setAttribute('type', 'text/javascript');
+    el.setAttribute('src', url);
+    return el;
+}
+    
 /* In the following functions, "decode" means turning native string data
    into an array of numbers; "encode" is the other direction. That's weird,
    I know. It's because an array of byte values is the natural data format
