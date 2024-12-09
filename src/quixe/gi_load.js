@@ -347,17 +347,14 @@ function load_run(optobj, image, imageoptions) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
-        var headls = $('head');
+        var headls = document.getElementsByTagName('head');
         if (!headls.length) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
         var script = $('<script>', 
             { src:gameurl, 'type':"text/javascript" });
-        /* jQuery is now sensitive about this, and will not allow it as
-          a Chrome work-around. We use a raw DOM method instead. */
-        // headls.append(script);
-        headls.get(0).appendChild(script.get(0));
+        headls[0].appendChild(script.get(0));
         return;
     }
 
@@ -428,14 +425,14 @@ function load_run(optobj, image, imageoptions) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
-        var headls = $('head');
+        var headls = document.getElementsByTagName('head');
         if (!headls.length) {
             all_options.io.fatal_error("This page has no <head> element!");
             return;
         }
         var script = $('<script>', 
             { src:fullurl, 'type':"text/javascript" });
-        headls.append(script);
+        headls[0].appendChild(script.get(0));
         return;
     }
 
