@@ -363,7 +363,7 @@ function load_run(optobj, image, imageoptions) {
         GlkOte.log('GiLoad: trying binary load...');
         jQuery.ajax(gameurl, {
                 'type': 'GET',
-                    beforeSend: function(jqxhr, settings) {
+                beforeSend: function(jqxhr, settings) {
                     /* This ensures that the data doesn't get decoded or
                        munged in any way. */
                     jqxhr.overrideMimeType('text/plain; charset=x-user-defined');
