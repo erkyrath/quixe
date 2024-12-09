@@ -217,7 +217,7 @@ function load_run(optobj, image, imageoptions) {
        resources could also be an object already, in which case
        we leave it as is.) */
     if (all_options.resources != undefined) {
-        if (jQuery.type(all_options.resources) === 'string') {
+        if (isstring(all_options.resources)) {
             if (window[all_options.resources])
                 all_options.resources = window[all_options.resources];
             else
@@ -227,7 +227,7 @@ function load_run(optobj, image, imageoptions) {
     /* Same deal for image_info_map. (You wouldn't usually have both,
        mind you.) */
     if (all_options.image_info_map != undefined) {
-        if (jQuery.type(all_options.image_info_map) === 'string') {
+        if (isstring(all_options.image_info_map)) {
             if (window[all_options.image_info_map])
                 all_options.image_info_map = window[all_options.image_info_map];
             else
@@ -476,6 +476,12 @@ function get_query_params() {
 function absolutize(url) {
     var res = new URL(url, document.location.href);
     return res.href;
+}
+
+/* Really, is val a string? Supports the "new String('foo')" corner
+   case. */
+function isstring(val) {
+    return (typeof val === 'string' || val instanceof String);
 }
 
 /* In the following functions, "decode" means turning native string data
