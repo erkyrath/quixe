@@ -14,8 +14,8 @@
  * as part of the Quixe engine, but can also be used by IFVMS. Thus it is
  * equipped to handle both Glulx and Z-code games (naked or Blorbed).
  *
- * (This code makes use of the jQuery library, which therefore must be
- * available.)
+ * (This code used to rely on the jQuery library, but that dependency
+ * has been removed.)
  *
  * When you are putting together a Quixe installation page, you call
  * GiLoad.load_run() to get the game started. You should do this in the
@@ -301,7 +301,7 @@ function load_run(optobj, image, imageoptions) {
        that binary_supported and crossorigin_supported will wind up
        true in all modern browsers. Why throw away code, though... */
 
-    var xhr = new XMLHttpRequest(); /* ### not right on IE? */
+    var xhr = new XMLHttpRequest();
     var binary_supported = (xhr.overrideMimeType !== undefined);
     /* I'm told that Opera's overrideMimeType() doesn't work, but
        I'm not inclined to worry about it these days. */
@@ -418,19 +418,21 @@ function load_run(optobj, image, imageoptions) {
            convert it to base64 for us. The proxy gives the right headers
            to make cross-origin Ajax work. */
         GlkOte.log('GiLoad: trying proxy load... (' + all_options.proxy_url + ')');
-        jQuery.ajax(all_options.proxy_url, {
-                'type': 'GET',
-                data: { encode: 'base64', url: absgameurl },
-                error: function(jqxhr, textstatus, errorthrown) {
-                    /* I would like to display the responseText here, but
-                       most servers return a whole HTML page, and that doesn't
-                       fit into fatal_error. */
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + textstatus + ": " + errorthrown);
-                },
-                success: function(response, textstatus, errorthrown) {
-                    start_game(decode_base64(response));
-                }
+        /* Set up an HTTP request... */
+        let xhr = new XMLHttpRequest();
+        xhr.addEventListener('load', function(ev) {
+            if (xhr.status != 200) {
+                all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error: " + xhr.statusText);
+            }
+            else {
+                start_game(decode_base64(xhr.response));                
+            }
         });
+        /* Add params for the proxy server... */
+        let queryurl = all_options.proxy_url + '?encode=base64' + '&url=' + encodeURIComponent(absgameurl);
+        xhr.open('GET', queryurl, true);
+        xhr.setRequestHeader('Accept', "*/*");
+        xhr.send();
         return;
     }
 
