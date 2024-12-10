@@ -376,20 +376,22 @@ function load_run(optobj, image, imageoptions) {
     if (binary_supported && same_origin) {
         /* We can do an Ajax GET of the binary data. */
         GlkOte.log('GiLoad: trying binary load...');
-        jQuery.ajax(gameurl, {
-                'type': 'GET',
-                beforeSend: function(jqxhr, settings) {
-                    /* This ensures that the data doesn't get decoded or
-                       munged in any way. */
-                    jqxhr.overrideMimeType('text/plain; charset=x-user-defined');
-                },
-                success: function(response, textstatus, errorthrown) {
-                    start_game(decode_raw_text(response));
-                },
-                error: function(jqxhr, textstatus, errorthrown) {
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + textstatus + ": " + errorthrown);
-                }
+        /* Set up an HTTP request... */
+        let xhr = new XMLHttpRequest();
+        xhr.addEventListener('load', function(ev) {
+            if (xhr.status != 200) {
+                all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error: " + xhr.statusText);
+            }
+            else {
+                start_game(decode_raw_text(xhr.response));                
+            }
         });
+        xhr.open('GET', gameurl, true);
+        /* This ensures that the data doesn't get decoded or
+           munged in any way. */
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        xhr.setRequestHeader('Accept', "*/*");
+        xhr.send();
         return;
     }
 
