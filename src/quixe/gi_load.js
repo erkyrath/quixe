@@ -338,14 +338,20 @@ function load_run(optobj, image, imageoptions) {
         window.processBase64Zcode = function(val) { 
             start_game(decode_base64(val));
         };
-        jQuery.ajax(gameurl, {
-                'type': 'GET',
-                dataType: 'script',
-                cache: true,
-                error: function(jqxhr, textstatus, errorthrown) {
-                    all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error " + textstatus + ": " + errorthrown);
-                }
+        /* Set up an HTTP request... */
+        let xhr = new XMLHttpRequest();
+        xhr.addEventListener('load', function(ev) {
+            if (xhr.status != 200) {
+                all_options.io.fatal_error("The story could not be loaded. (" + gameurl + "): Error: " + xhr.statusText);
+            }
+            else {
+                globaleval(xhr.response);
+            }
         });
+        xhr.open('GET', gameurl, true);
+        /* Accept headers for Javascript. (Lifted from jQuery.) */
+        xhr.setRequestHeader('Accept', "text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01");
+        xhr.send();
         return;
     }
 
@@ -489,6 +495,18 @@ function isstring(val) {
     return (typeof val === 'string' || val instanceof String);
 }
 
+/* Evaluate text as JS in the global context. This is eval() with some
+   hacks on top. It's lifted from old jQuery, so the hacks may not be
+   relevant any more, but I'm keeping them just in case. */
+function globaleval(data) {
+    // We use execScript on Internet Explorer
+    // We use an anonymous function so that context is window
+    // rather than ~jQuery~ GiLoad in Firefox
+    ( window.execScript || function( data ) {
+        window[ "eval" ].call( window, data );
+    } )( data );
+}
+    
 /* Create a <script> node to be added to the <head>. */
 function createscriptnode(url) {
     var el = document.createElement('script');
