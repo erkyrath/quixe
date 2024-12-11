@@ -6823,6 +6823,8 @@ function vm_saveundo() {
     snapshot.usedlist = usedlist.slice(0);
     snapshot.freelist = freelist.slice(0);
 
+    //console.log('snapshot size (bytes)', estimate_undo_size(snapshot));
+    
     undostack.push(snapshot);
     if (undostack.length > 10) {
         undostack.shift();
