@@ -6891,6 +6891,22 @@ self.vm_restoreundo = vm_restoreundo;
 self.vm_hasundo = vm_hasundo;
 self.vm_discardundo = vm_discardundo;
 
+/* Approximate how much JS memory an undo record occupies (in bytes).
+   We're guessing about the size of JS objects, of course. The point is
+   just to estimate how big the undo stack is getting.
+*/
+function estimate_undo_size(snapshot) {
+    var size = snapshot.ram.length;
+    for (var obj of snapshot.stack) {
+        size += 4 * 5; // five general fields
+        size += 4 * obj.valstack.length;  // ints
+        size += 4 * obj.locals.length; // ints, probably
+    }
+    size += 12 * snapshot.usedlist.length;  // three ints each
+    size += 12 * snapshot.freelist.length;  // three ints each
+    return size;
+}
+    
 /* Change the size of the memory map. The internal flag should be true 
    only when the heap-allocation system is calling.
 */
