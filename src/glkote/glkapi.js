@@ -463,8 +463,8 @@ function handle_char_input(disprock, input) {
 
     if (input.length == 1) {
         charval = input.charCodeAt(0);
-        if (!win.char_request_uni)
-            charval = charval & 0xFF;
+        if (charval >= 0x100 && !win.char_request_uni)
+            charval = Const.keycode_Unknown;
     }
     else {
         charval = KeystrokeNameMap[input];
@@ -3480,7 +3480,7 @@ function gli_stream_open_window(win) {
 */
 function gli_stream_dirty_file(str) {
     if (str.streaming)
-        GlkOte.log('### gli_stream_dirty_file called for streaming file!');
+        GlkOte.log('Bug: gli_stream_dirty_file called for streaming file!');
     if (str.timer_id === null) {
         if (str.flush_func === null) {
             /* Bodge together a closure to act as a stream method. */
@@ -3498,7 +3498,7 @@ function gli_stream_flush_file(str) {
     var Dialog = GlkOte.getlibrary('Dialog');
     
     if (str.streaming)
-        GlkOte.log('### gli_stream_flush_file called for streaming file!');
+        GlkOte.log('Bug: gli_stream_flush_file called for streaming file!');
     if (!(str.timer_id === null)) {
         clearTimeout(str.timer_id);
     }
