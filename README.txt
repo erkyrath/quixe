@@ -99,6 +99,9 @@ If you have no idea what I just said, ignore lib/elkote.min.js.
 
 * Version History
 
+- 2.2.6 (###)
+  - Fix bug with out-of-range characters in glk_request_char_event().
+
 - 2.2.5 (November 23, 2024)
   - Fix bug in 2.2.4 that could cause scrollbar flashing.
   - Pageup/pagedown/home/end now work consistently when the input line is
