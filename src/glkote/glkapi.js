@@ -1293,6 +1293,7 @@ var Const = {
     gestalt_Sound2 : 21,
     gestalt_ResourceStream : 22,
     gestalt_GraphicsCharInput : 23,
+    gestalt_DrawImageScale : 24,
 
     keycode_Unknown  : 0xffffffff,
     keycode_Left     : 0xfffffffe,
@@ -1406,8 +1407,17 @@ var Const = {
     imagealign_InlineDown : 2,
     imagealign_InlineCenter : 3,
     imagealign_MarginLeft : 4,
-    imagealign_MarginRight : 5
-
+    imagealign_MarginRight : 5,
+    
+    imagerule_WidthOrig : 0x01,
+    imagerule_WidthFixed : 0x02,
+    imagerule_WidthRatio : 0x03,
+    imagerule_WidthMask : 0x03,
+    imagerule_HeightOrig : 0x04,
+    imagerule_HeightFixed : 0x08,
+    imagerule_AspectRatio : 0x0C,
+    imagerule_HeightMask : 0x0C,
+    imagerule_WidthWindowMax : 0x10
 };
 
 var KeystrokeNameMap = {
@@ -4265,6 +4275,7 @@ function glk_gestalt_ext(sel, val, arr) {
         return 1;
 
     case 7: // gestalt_DrawImage
+    case 24: // gestalt_DrawImageScale
         if (val == Const.wintype_TextBuffer)
             return 1;
         if (val == Const.wintype_Graphics && has_canvas)
@@ -5525,6 +5536,8 @@ function glk_image_draw(win, imgid, val1, val2) {
     if (!info)
         return 0;
 
+    /* info.url and info.alttext may be undefined, but we copy them if
+       provided. */
     var img = { special:'image', image:imgid, 
                 url:info.url, alttext:info.alttext,
                 width:info.width, height:info.height };
@@ -5581,6 +5594,130 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
                 url:info.url, alttext:info.alttext,
                 width:width, height:height };
 
+    switch (win.type) {
+    case Const.wintype_TextBuffer:
+        var alignment = 'inlineup';
+        switch (val1) {
+            case Const.imagealign_InlineUp:
+                alignment = 'inlineup';
+                break;
+            case Const.imagealign_InlineDown:
+                alignment = 'inlinedown';
+                break;
+            case Const.imagealign_InlineCenter:
+                alignment = 'inlinecenter';
+                break;
+            case Const.imagealign_MarginLeft:
+                alignment = 'marginleft';
+                break;
+            case Const.imagealign_MarginRight:
+                alignment = 'marginright';
+                break;
+        }
+        img.alignment = alignment;
+        if (win.hyperlink)
+            img.hyperlink = win.hyperlink;
+        gli_window_buffer_put_special(win, img);
+        return 1;
+
+    case Const.wintype_Graphics:
+        img.x = val1;
+        img.y = val2;
+        /* width, height already set */
+        win.content.push(img);
+        return 1;
+    }
+
+    return 0;
+}
+
+function glk_image_draw_scaled_ext(win, imgid, val1, val2, width, height, imagerule, maxwidth) {
+    if (!win)
+        throw('glk_image_draw_scaled_ext: invalid window');
+
+    if (!Blorb || !Blorb.get_image_info)
+        return 0;
+    var info = Blorb.get_image_info(imgid);
+    if (!info)
+        return 0;
+
+    /* Same as above, except we have more ways to calculate the width and
+       height */
+    var img = { special:'image', image:imgid, 
+                url:info.url, alttext:info.alttext };
+
+    var widthrule = (imagerule & Const.imagerule_WidthMask);
+    var heightrule = (imagerule & Const.imagerule_HeightMask);
+
+    if (win.type == Const.wintype_Graphics) {
+        /* For graphics windows, we can (and should) calculate ratios
+           now. */
+        if (widthrule == Const.imagerule_WidthRatio) {
+            widthrule = Const.imagerule_WidthFixed;
+            width = win.graphwidth * (width / 0x10000);
+        }
+        if (heightrule == Const.imagerule_AspectRatio) {
+            heightrule = Const.imagerule_WidthFixed;
+            var aspect = (info.height / info.width);
+            height = width * aspect * (height / 0x10000);
+        }
+        if (maxwidth && width > maxwidth*win.graphwidth) {
+            var aspect = (height / width);
+            width = maxwidth*win.graphwidth;
+            height = width * aspect;
+        }
+    }
+    
+    switch (widthrule) {
+    case Const.imagerule_WidthOrig:
+        img.width = info.width;
+        break;
+    case Const.imagerule_WidthFixed:
+        img.width = width; /* passed in */
+        break;
+    case Const.imagerule_WidthRatio:
+        img.widthratio = (width / 0x10000); /* passed in, 16.16 */
+        break;
+    default:
+        throw('glk_image_draw_scaled_ext: invalid widthrule');
+    }
+
+    switch (heightrule) {
+    case Const.imagerule_HeightOrig:
+        img.height = info.height;
+        break;
+    case Const.imagerule_HeightFixed:
+        img.height = height; /* passed in */
+        break;
+    case Const.imagerule_AspectRatio:
+        var aspectratio = (height / 0x10000); /* passed in, 16.16 */
+        img.aspectwidth = info.width;
+        img.aspectheight = info.height * aspectratio;
+        break;
+    default:
+        throw('glk_image_draw_scaled_ext: invalid heightrule');
+    }
+
+    if (maxwidth == 0) {
+        img.winmaxwidth = null;
+    }
+    else {
+        var maxwidthf = (maxwidth / 0x10000);
+        img.winmaxwidth = maxwidthf;
+        
+        if (widthrule == Const.imagerule_WidthRatio) {
+            /* The width is already scaled to the window width, so maxwidth
+               is irrelevant. Drop it. But if our width is *wider* than the
+               window width, scale down proportionally. */
+            if (img.widthratio > img.winmaxwidth) {
+                if (img.height !== undefined)
+                    img.height = img.height * (img.winmaxwidth / img.widthratio);
+                img.widthratio = img.winmaxwidth;
+            }
+            img.winmaxwidth = null;
+        }
+    }
+    
     switch (win.type) {
     case Const.wintype_TextBuffer:
         var alignment = 'inlineup';
@@ -6461,6 +6598,7 @@ return {
     glk_image_get_info : glk_image_get_info,
     glk_image_draw : glk_image_draw,
     glk_image_draw_scaled : glk_image_draw_scaled,
+    glk_image_draw_scaled_ext : glk_image_draw_scaled_ext,
     glk_window_flow_break : glk_window_flow_break,
     glk_window_erase_rect : glk_window_erase_rect,
     glk_window_fill_rect : glk_window_fill_rect,

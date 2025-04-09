@@ -142,8 +142,8 @@ let recording_handler = null;
 let recording_handler_url = null;
 const recording_context = {};
 
-/* An image cache. This maps numbers to Image objects. These are used only
-   for painting in graphics (canvas) windows.
+/* An image cache. This maps numbers or url strings to Image objects.
+   These are used only for painting in graphics (canvas) windows.
 */
 const image_cache = {};
 
@@ -1257,6 +1257,7 @@ function accept_one_content(arg) {
                                be. Margin-aligned images which do not follow a line
                                break should disappear. This will undoubtedly cause
                                headaches for portability someday. */
+                            console.log('### rdesc', rdesc);
                             let imgurl = rdesc.url;
                             if (Blorb && Blorb.get_image_url) {
                                 const newurl = Blorb.get_image_url(rdesc.image);
@@ -1264,8 +1265,34 @@ function accept_one_content(arg) {
                                     imgurl = newurl;
                             }
                             let el = $('<img>', 
-                                       { src:imgurl,
-                                         width:''+rdesc.width, height:''+rdesc.height } );
+                                       { src:imgurl } );
+                            let winmaxwidth = rdesc.winmaxwidth;
+                            // null means no limit, undefined means 1.0
+                            if (winmaxwidth === undefined)
+                                winmaxwidth = 1.0;
+                            if (winmaxwidth) {
+                                el.css('max-width', percentstr(winmaxwidth));
+                            }
+                            if (rdesc.widthratio === undefined) {
+                                el.attr('width', ''+rdesc.width);
+                            }
+                            else {
+                                el.css('width', percentstr(rdesc.widthratio));
+                            }
+                            if (rdesc.aspectwidth === undefined && rdesc.aspectheight === undefined) {
+                                if (winmaxwidth && rdesc.widthratio === undefined) {
+                                    // Special case: we need to define the height as an aspect ratio, because winmaxwidth means proportional scaling.
+                                    // (Note that winmaxwidth and rdesc.widthratio should not be used together, so we don't have to worry about that case.)
+                                    el.css('aspect-ratio', ratiostr(rdesc.width, rdesc.height));
+                                }
+                                else {
+                                    el.attr('height', ''+rdesc.height);
+                                }
+                            }
+                            else {
+                                el.css('aspect-ratio', ratiostr(rdesc.aspectwidth, rdesc.aspectheight));
+                            }
+                
                             if (rdesc.alttext)
                                 el.attr('alt', rdesc.alttext);
                             else
@@ -1290,6 +1317,7 @@ function accept_one_content(arg) {
                                 el.addClass('ImageInlineUp');
                                 break;
                             }
+                            console.log('### image el', el.get(0)); //###
                             if (rdesc.hyperlink != undefined) {
                                 const ael = $('<a>',
                                               { 'href': '#', 'class': 'Internal' } );
@@ -1898,6 +1926,29 @@ function retry_update() {
     send_response('refresh', null, null);
 }
 
+/* Convert a JS number to a CSS-style percentage. */
+function percentstr(num) {
+    /* Return N*100 to two decimal places. But if it came out as an integer, great. */
+    let val = '' + (num * 100);
+    if (val == 'NaN') {
+        console.log('bad value in percentstr', num);
+        return '';
+    }
+    let pos = val.indexOf('.');
+    if (pos >= 0)
+        val = val.slice(0, pos+4);
+    return val+'%';
+}
+
+/* Convert a pair of JS numbers to a CSS-style ratio. Both must be nonzero. */
+function ratiostr(wid, hgt) {
+    if (!wid || !hgt) {
+        console.log('bad value in ratiostr', wid, hgt);
+        return '';
+    }
+    return ''+wid+'/'+hgt;
+}
+    
 /* Hide the loading pane (the spinny compass), if it hasn't already been
    hidden.
 
@@ -2086,8 +2137,9 @@ function perform_graphics_ops(loadedimg, loadedev) {
                loadedimg already contains the desired image. If it doesn't, we
                check the cache. If that doesn't have it, we have to create a new
                Image and set up the loading callbacks. */
+            const cachekey = (op.url || op.image);
             if (!loadedimg) {
-                const oldimg = image_cache[op.image];
+                const oldimg = image_cache[cachekey];
                 if (oldimg && oldimg.width > 0 && oldimg.height > 0) {
                     loadedimg = oldimg;
                     loadedev = true;
@@ -2095,7 +2147,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
                 else {
                     /* This cached image is broken. I don't know if this can happen,
                        but if it does, drop it. */
-                    delete image_cache[op.image];
+                    delete image_cache[cachekey];
                 }
             }
             if (!loadedimg) {
@@ -2116,7 +2168,7 @@ function perform_graphics_ops(loadedimg, loadedev) {
             /* We were called back with an image. Hopefully it loaded ok. Note that
                for the error callback, loadedev is null. */
             if (loadedev) {
-                image_cache[op.image] = loadedimg;
+                image_cache[cachekey] = loadedimg;
                 ctx.drawImage(loadedimg, op.x, op.y, op.width, op.height);
             }
             loadedev = null;
