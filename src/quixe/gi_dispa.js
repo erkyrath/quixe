@@ -338,8 +338,8 @@ var proto_map = {
 234 : new FuncSpec(234, "window_fill_rect", new Prototype([arg_class_window, arg_int_unsigned, arg_int_signed, arg_int_signed, arg_int_unsigned, arg_int_unsigned], null)),
 // 235 (0x0EB): window_set_background_color - 2QaIu:
 235 : new FuncSpec(235, "window_set_background_color", new Prototype([arg_class_window, arg_int_unsigned], null)),
-// 236 (0x0EC): image_draw_scaled_ext - 8QaIuIsIsIuIuIu:Iu
-236 : new FuncSpec(236, "image_draw_scaled_ext", new Prototype([arg_class_window, arg_int_unsigned, arg_int_signed, arg_int_signed, arg_int_unsigned, arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_int_unsigned, false, true, true))),
+// 236 (0x0EC): image_draw_scaled_ext - 9QaIuIsIsIuIuIuIu:Iu
+236 : new FuncSpec(236, "image_draw_scaled_ext", new Prototype([arg_class_window, arg_int_unsigned, arg_int_signed, arg_int_signed, arg_int_unsigned, arg_int_unsigned, arg_int_unsigned, arg_int_unsigned], new ArgRef(arg_int_unsigned, false, true, true))),
 // 240 (0x0F0): schannel_iterate - 3Qd<Iu:Qd
 240 : new FuncSpec(240, "schannel_iterate", new Prototype([arg_class_schannel, new ArgRef(arg_int_unsigned, false, true, false)], new ArgRef(arg_class_schannel, false, true, true))),
 // 241 (0x0F1): schannel_get_rock - 2Qd:Iu
