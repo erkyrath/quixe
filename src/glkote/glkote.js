@@ -1438,6 +1438,7 @@ function accept_one_content(arg) {
                number. */
             const newop = { winid:win.id };
             Object.assign(newop, op);
+            console.log('### graphop', newop);
             graphics_draw_queue.push(newop);
         }
         if (docall && graphics_draw_queue.length > 0) {
