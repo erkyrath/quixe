@@ -5589,7 +5589,8 @@ function glk_image_draw_scaled(win, imgid, val1, val2, width, height) {
         return 0;
 
     /* Same as above, except we use the passed-in width and height
-       values */
+       values. Note that by omitting winmaxwidth, we will implicitly
+       limit maxwidth to the window width (in buffer windows). */
     var img = { special:'image', image:imgid, 
                 url:info.url, alttext:info.alttext,
                 width:width, height:height };
@@ -5642,7 +5643,7 @@ function glk_image_draw_scaled_ext(win, imgid, val1, val2, width, height, imager
         return 0;
 
     /* Same as above, except we have more ways to calculate the width and
-       height */
+       height. */
     var img = { special:'image', image:imgid, 
                 url:info.url, alttext:info.alttext };
 
@@ -5651,21 +5652,17 @@ function glk_image_draw_scaled_ext(win, imgid, val1, val2, width, height, imager
 
     if (win.type == Const.wintype_Graphics) {
         /* For graphics windows, we can (and should) calculate ratios
-           now. */
+           now. We ignore maxwidth. */
         if (widthrule == Const.imagerule_WidthRatio) {
             widthrule = Const.imagerule_WidthFixed;
             width = win.graphwidth * (width / 0x10000);
         }
         if (heightrule == Const.imagerule_AspectRatio) {
-            heightrule = Const.imagerule_WidthFixed;
+            heightrule = Const.imagerule_HeightFixed;
             var aspect = (info.height / info.width);
             height = width * aspect * (height / 0x10000);
         }
-        if (maxwidth && width > maxwidth*win.graphwidth) {
-            var aspect = (height / width);
-            width = maxwidth*win.graphwidth;
-            height = width * aspect;
-        }
+        maxwidth = 0;
     }
     
     switch (widthrule) {
@@ -5699,6 +5696,7 @@ function glk_image_draw_scaled_ext(win, imgid, val1, val2, width, height, imager
     }
 
     if (maxwidth == 0) {
+        /* We always wind up here for graphics windows. */
         img.winmaxwidth = null;
     }
     else {
