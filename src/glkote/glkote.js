@@ -1257,7 +1257,6 @@ function accept_one_content(arg) {
                                be. Margin-aligned images which do not follow a line
                                break should disappear. This will undoubtedly cause
                                headaches for portability someday. */
-                            console.log('### rdesc', rdesc);
                             let imgurl = rdesc.url;
                             if (Blorb && Blorb.get_image_url) {
                                 const newurl = Blorb.get_image_url(rdesc.image);
@@ -1317,7 +1316,6 @@ function accept_one_content(arg) {
                                 el.addClass('ImageInlineUp');
                                 break;
                             }
-                            console.log('### image el', el.get(0)); //###
                             if (rdesc.hyperlink != undefined) {
                                 const ael = $('<a>',
                                               { 'href': '#', 'class': 'Internal' } );
@@ -1438,7 +1436,6 @@ function accept_one_content(arg) {
                number. */
             const newop = { winid:win.id };
             Object.assign(newop, op);
-            console.log('### graphop', newop);
             graphics_draw_queue.push(newop);
         }
         if (docall && graphics_draw_queue.length > 0) {

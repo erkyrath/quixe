@@ -764,6 +764,9 @@ function update() {
         //qlog("### disabling ui");
         dataobj.disable = true;
     }
+    if (has_exited) {
+        dataobj.exit = true;
+    }
 
     /* Clean this up; it's only meaningful within one run/update cycle. */
     current_partial_outputs = null;
