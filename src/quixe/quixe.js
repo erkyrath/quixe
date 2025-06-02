@@ -7436,7 +7436,7 @@ function execute_loop() {
    become the Quixe global. */
 return {
     classname: 'Quixe',
-    version: '2.2.5', /* Quixe version */
+    version: '2.2.6', /* Quixe version */
     init: quixe_init,
     inited: quixe_inited,
     getlibrary: quixe_getlibrary,
