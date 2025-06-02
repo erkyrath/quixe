@@ -4,7 +4,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010-2024 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-2025 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a "file" for saving
@@ -1299,7 +1299,7 @@ $(window).on('storage', evhan_storage_changed);
    become the Dialog global. */
 return {
     classname: 'Dialog',
-    version: '2.3.6', /* GlkOte/GlkApi version */
+    version: '2.3.7', /* GlkOte/GlkApi version */
     streaming: false,
     init: dialog_init,
     inited: dialog_inited,

@@ -4,7 +4,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2016-2024 by Andrew Plotkin.
+ * This Javascript library is copyright 2016-2025 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This is a (mostly-) drop-in replacement for dialog.js for the Electron.io
@@ -667,7 +667,7 @@ function file_read(dirent, israw)
    become the Dialog global. */
 return {
     classname: 'Dialog (ElectroFS)',
-    version: '2.3.6', /* GlkOte/GlkApi version */
+    version: '2.3.7', /* GlkOte/GlkApi version */
     streaming: true,
     init_async: init_async,
     inited: dialog_inited,
