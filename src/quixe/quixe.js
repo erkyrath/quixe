@@ -5625,7 +5625,7 @@ function do_gestalt(val, val2) {
         return 0x00030103; /* Glulx spec version 3.1.3 */
 
     case 1: /* TerpVersion */
-        return 0x00020205; /* Quixe version 2.2.5 */
+        return 0x00020206; /* Quixe version 2.2.6 */
 
     case 2: /* ResizeMem */
         return 1; /* Memory resizing works. */
