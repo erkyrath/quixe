@@ -37,7 +37,8 @@
  *   IMAGEOPTIONS.format: Describes how the game file is encoded:
  *     "base64": a base64-encoded binary file
  *     "raw": a binary file stored in a string
- *     "array": an array of (numeric) byte values
+ *     "array": an array of (numeric) byte values (either Array or
+ *       Uint8Array)
  *
  *   If the third argument is a string rather than an object, it is taken
  *   to be IMAGEOPTIONS.format.
